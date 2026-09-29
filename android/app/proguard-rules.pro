@@ -9,11 +9,14 @@
 # ─── Flutter Deferred Components / Play Core (not used offline) ──────────────
 -dontwarn com.google.android.play.core.**
 
-# ─── Application Native Scanner & OpenCV 4.9.0 JNI ──────────────────────────
+# ─── Application Native Scanner & OpenCV 4.9.0 + Tesseract JNI ──────────────
 -keep class com.yourname.docscanner.** { *; }
 -keep class org.opencv.** { *; }
 -keepclassmembers class org.opencv.** { *; }
 -dontwarn org.opencv.**
+-keep class com.googlecode.tesseract.android.** { *; }
+-keepclassmembers class com.googlecode.tesseract.android.** { *; }
+-dontwarn com.googlecode.tesseract.android.**
 
 # ─── Google ML Kit Text Recognition & Play Services JNI ─────────────────────
 -keep class com.google.mlkit.** { *; }

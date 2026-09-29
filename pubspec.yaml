@@ -29,6 +29,11 @@ dependencies:
   image: ^4.3.0
   permission_handler: ^11.3.1
   intl: any
+  sqflite: ^2.3.3+1
+  file_picker: ^8.1.2
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.2
+  cryptography: ^2.7.0
 
 dev_dependencies:
   flutter_test:
@@ -40,6 +45,7 @@ flutter:
 
   assets:
     - assets/fonts/
+    - assets/tessdata/
 
   fonts:
     - family: Cairo

@@ -252,5 +252,42 @@ class NativeScannerBridge {
       await _channel.invokeMethod<bool>('setSecureScreen', {'enabled': enabled});
     } catch (_) {}
   }
+
+  /// Runs offline Tesseract 4/5 LSTM OCR natively via JNI (`TessBaseAPI`).
+  /// Supports `ara`, `eng`, and `ara+eng`.
+  static Future<Map<String, dynamic>?> runTesseractOcr({
+    required String imagePath,
+    required String dataPath,
+    String language = 'ara+eng',
+    bool preprocess = true,
+  }) async {
+    try {
+      final res = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'runTesseractOcr',
+        {
+          'imagePath': imagePath,
+          'dataPath': dataPath,
+          'language': language,
+          'preprocess': preprocess,
+        },
+      ).timeout(const Duration(seconds: 45));
+      if (res == null) return null;
+      return Map<String, dynamic>.from(res);
+    } catch (e) {
+      debugPrint('[NativeScannerBridge] runTesseractOcr failed: $e');
+      return null;
+    }
+  }
+
+  /// Consumes incoming files shared or opened from external apps (ACTION_SEND / ACTION_VIEW).
+  static Future<List<String>> consumeIncomingFiles() async {
+    try {
+      final res = await _channel.invokeMethod<List<dynamic>>('consumeIncomingFiles');
+      if (res == null) return const [];
+      return res.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 }
 

@@ -1,17 +1,84 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:image/image.dart' as img;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../../shared/models/document_paper_size.dart';
+import 'ocr_service.dart';
 
 export '../../../shared/models/document_paper_size.dart';
 
+/// Compression targets for Phase 3.1 (Government portals, email attachments, etc.)
+enum PdfCompressionPreset {
+  none,
+  under2mb,
+  under1mb,
+  under500kb,
+  under200kb,
+  manual;
+
+  String get labelAr => switch (this) {
+        PdfCompressionPreset.none => 'بدون ضغط (الجودة الأصلية)',
+        PdfCompressionPreset.under2mb => 'أقل من 2 ميجابايت',
+        PdfCompressionPreset.under1mb => 'أقل من 1 ميجابايت',
+        PdfCompressionPreset.under500kb => 'أقل من 500 كيلوبايت (للنماذج الحكومية)',
+        PdfCompressionPreset.under200kb => 'أقل من 200 كيلوبايت (أقصى ضغط)',
+        PdfCompressionPreset.manual => 'جودة يدوية مخصصة',
+      };
+
+  int? get targetMaxBytes => switch (this) {
+        PdfCompressionPreset.none => null,
+        PdfCompressionPreset.under2mb => 2 * 1024 * 1024,
+        PdfCompressionPreset.under1mb => 1024 * 1024,
+        PdfCompressionPreset.under500kb => 500 * 1024,
+        PdfCompressionPreset.under200kb => 200 * 1024,
+        PdfCompressionPreset.manual => null,
+      };
+}
+
+class PdfBuildOptions {
+  const PdfBuildOptions({
+    this.applyEnhancement = false,
+    this.searchableOcrPages,
+    this.compressionPreset = PdfCompressionPreset.none,
+    this.manualJpegQuality = 85,
+    this.watermarkText,
+    this.includeDateStamp = false,
+    this.dateStampText,
+  });
+
+  final bool applyEnhancement;
+  final List<OcrPageData>? searchableOcrPages;
+  final PdfCompressionPreset compressionPreset;
+  final int manualJpegQuality;
+  final String? watermarkText;
+  final bool includeDateStamp;
+  final String? dateStampText;
+
+  bool get isSearchable =>
+      searchableOcrPages != null && searchableOcrPages!.isNotEmpty;
+}
+
 class PdfBuilderService {
+  static Uint8List? _cachedCairoFontBytes;
+
+  static Future<Uint8List?> _loadCairoFontBytes() async {
+    if (_cachedCairoFontBytes != null) return _cachedCairoFontBytes;
+    try {
+      final data = await rootBundle.load('assets/fonts/Cairo-Regular.ttf');
+      _cachedCairoFontBytes = data.buffer.asUint8List();
+      return _cachedCairoFontBytes;
+    } catch (e) {
+      debugPrint('[PdfBuilderService] Could not load Cairo font: $e');
+      return null;
+    }
+  }
+
   /// Fast header check (<0.1ms): returns true if the JPEG needs rotation or downscaling (>2048px).
   static bool needsNormalization(Uint8List bytes) {
     final info = _peekJpegInfo(bytes);
@@ -25,24 +92,175 @@ class PdfBuilderService {
     required List<String> imagePaths,
     required List<DocumentPaperSize> paperSizes,
     bool applyEnhancement = false,
+    PdfBuildOptions? options,
   }) async {
+    final effectiveOptions = options ??
+        PdfBuildOptions(applyEnhancement: applyEnhancement);
     final normalizedPaths = List<String>.from(imagePaths);
+
+    Uint8List? fontBytes;
+    if (effectiveOptions.isSearchable ||
+        (effectiveOptions.watermarkText?.trim().isNotEmpty ?? false) ||
+        effectiveOptions.includeDateStamp) {
+      fontBytes = await _loadCairoFontBytes();
+    }
+
     return Isolate.run(
-      () => _buildPdfBytes(normalizedPaths, paperSizes, applyEnhancement),
+      () => _buildPdfWithOptionsInIsolate(
+        imagePaths: normalizedPaths,
+        paperSizes: paperSizes,
+        options: effectiveOptions,
+        cairoFontBytes: fontBytes,
+      ),
     );
   }
+
+  /// Convenience builder for Searchable PDF with invisible Arabic/English OCR text layer.
+  Future<Uint8List> buildSearchablePdf({
+    required List<String> imagePaths,
+    required List<DocumentPaperSize> paperSizes,
+    required List<OcrPageData> ocrPages,
+    PdfCompressionPreset compressionPreset = PdfCompressionPreset.none,
+    int manualJpegQuality = 85,
+    String? watermarkText,
+    bool includeDateStamp = false,
+  }) {
+    return buildPdf(
+      imagePaths: imagePaths,
+      paperSizes: paperSizes,
+      options: PdfBuildOptions(
+        searchableOcrPages: ocrPages,
+        compressionPreset: compressionPreset,
+        manualJpegQuality: manualJpegQuality,
+        watermarkText: watermarkText,
+        includeDateStamp: includeDateStamp,
+      ),
+    );
+  }
+}
+
+Future<Uint8List> _buildPdfWithOptionsInIsolate({
+  required List<String> imagePaths,
+  required List<DocumentPaperSize> paperSizes,
+  required PdfBuildOptions options,
+  Uint8List? cairoFontBytes,
+}) async {
+  final targetBytes = options.compressionPreset.targetMaxBytes;
+  if (targetBytes == null) {
+    final forceQuality = options.compressionPreset == PdfCompressionPreset.manual
+        ? options.manualJpegQuality.clamp(15, 95)
+        : null;
+    final maxDim = forceQuality != null
+        ? (forceQuality < 50 ? 1280 : (forceQuality < 75 ? 1600 : _maxDimension))
+        : _maxDimension;
+    return _buildPdfBytes(
+      imagePaths,
+      paperSizes,
+      options.applyEnhancement,
+      ocrPages: options.searchableOcrPages,
+      cairoFontBytes: cairoFontBytes,
+      forceJpegQuality: forceQuality,
+      maxDimension: maxDim,
+      watermarkText: options.watermarkText,
+      includeDateStamp: options.includeDateStamp,
+      dateStampText: options.dateStampText,
+    );
+  }
+
+  // Target-Size Binary Search Compression (Phase 3.1)
+  // First try standard pass-through if already smaller than targetBytes
+  final initialPdf = await _buildPdfBytes(
+    imagePaths,
+    paperSizes,
+    options.applyEnhancement,
+    ocrPages: options.searchableOcrPages,
+    cairoFontBytes: cairoFontBytes,
+    watermarkText: options.watermarkText,
+    includeDateStamp: options.includeDateStamp,
+    dateStampText: options.dateStampText,
+  );
+
+  if (initialPdf.length <= targetBytes) {
+    return initialPdf;
+  }
+
+  // Binary search over compression profiles (0 = most aggressive, 7 = high quality)
+  const profiles = <({int quality, int maxDim})>[
+    (quality: 18, maxDim: 720),
+    (quality: 28, maxDim: 900),
+    (quality: 38, maxDim: 1080),
+    (quality: 48, maxDim: 1240),
+    (quality: 58, maxDim: 1440),
+    (quality: 68, maxDim: 1650),
+    (quality: 76, maxDim: 1850),
+    (quality: 84, maxDim: 2048),
+  ];
+
+  int low = 0;
+  int high = profiles.length - 1;
+  Uint8List? bestFit;
+
+  while (low <= high) {
+    final mid = (low + high) ~/ 2;
+    final profile = profiles[mid];
+    final candidate = await _buildPdfBytes(
+      imagePaths,
+      paperSizes,
+      options.applyEnhancement,
+      ocrPages: options.searchableOcrPages,
+      cairoFontBytes: cairoFontBytes,
+      forceJpegQuality: profile.quality,
+      maxDimension: profile.maxDim,
+      watermarkText: options.watermarkText,
+      includeDateStamp: options.includeDateStamp,
+      dateStampText: options.dateStampText,
+    );
+
+    if (candidate.length <= targetBytes) {
+      bestFit = candidate;
+      low = mid + 1; // try higher quality
+    } else {
+      high = mid - 1; // need stronger compression
+    }
+  }
+
+  if (bestFit != null) return bestFit;
+
+  // Fallback to most aggressive profile if still above target
+  return _buildPdfBytes(
+    imagePaths,
+    paperSizes,
+    options.applyEnhancement,
+    ocrPages: options.searchableOcrPages,
+    cairoFontBytes: cairoFontBytes,
+    forceJpegQuality: profiles.first.quality,
+    maxDimension: profiles.first.maxDim,
+    watermarkText: options.watermarkText,
+    includeDateStamp: options.includeDateStamp,
+    dateStampText: options.dateStampText,
+  );
 }
 
 Future<Uint8List> _buildPdfBytes(
   List<String> imagePaths,
   List<DocumentPaperSize> paperSizes,
-  bool applyEnhancement,
-) async {
+  bool applyEnhancement, {
+  List<OcrPageData>? ocrPages,
+  Uint8List? cairoFontBytes,
+  int? forceJpegQuality,
+  int maxDimension = _maxDimension,
+  String? watermarkText,
+  bool includeDateStamp = false,
+  String? dateStampText,
+}) async {
   debugPrint(
     'PdfBuilderService: Starting PDF build. Total pages: ${imagePaths.length}',
   );
   final sw = Stopwatch()..start();
   final document = pw.Document();
+  final pw.Font? cairoFont = cairoFontBytes != null
+      ? pw.Font.ttf(cairoFontBytes.buffer.asByteData())
+      : null;
 
   for (var index = 0; index < imagePaths.length; index++) {
     final imagePath = imagePaths[index];
@@ -51,11 +269,12 @@ Future<Uint8List> _buildPdfBytes(
         : DocumentPaperSize.auto;
     final pageStopwatch = Stopwatch()..start();
 
-    debugPrint(
-      '[PdfBuilder] Page ${index + 1}/${imagePaths.length} - path: $imagePath, paperSize: ${paperSize.name}',
+    final prepared = await _safePrepareImage(
+      imagePath,
+      applyEnhancement,
+      forceJpegQuality: forceJpegQuality,
+      maxDimension: maxDimension,
     );
-
-    final prepared = await _safePrepareImage(imagePath, applyEnhancement);
     final image = pw.MemoryImage(prepared.bytes);
 
     final width = prepared.width.toDouble();
@@ -63,6 +282,20 @@ Future<Uint8List> _buildPdfBytes(
 
     final isLandscape = width > height;
     final format = isLandscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4;
+    const margin = 8 * PdfPageFormat.mm;
+    final availW = format.width - (margin * 2);
+    final availH = format.height - (margin * 2);
+
+    double renderW = availW;
+    double renderH = availH;
+    final imgAspect = width / math.max(1.0, height);
+    if (availW / availH > imgAspect) {
+      renderH = availH;
+      renderW = renderH * imgAspect;
+    } else {
+      renderW = availW;
+      renderH = renderW / imgAspect;
+    }
 
     pw.Widget imageWidget;
     switch (paperSize) {
@@ -70,6 +303,8 @@ Future<Uint8List> _buildPdfBytes(
         final cardWidthMm = isLandscape ? 85.6 : 53.98;
         final cardWidth = cardWidthMm * PdfPageFormat.mm;
         final cardHeight = cardWidth * (height / width);
+        renderW = cardWidth;
+        renderH = cardHeight;
         imageWidget = pw.SizedBox(
           width: cardWidth,
           height: cardHeight,
@@ -79,6 +314,8 @@ Future<Uint8List> _buildPdfBytes(
       case DocumentPaperSize.receipt:
         final receiptWidth = 80.0 * PdfPageFormat.mm;
         final receiptHeight = receiptWidth * (height / width);
+        renderW = receiptWidth;
+        renderH = receiptHeight;
         imageWidget = pw.SizedBox(
           width: receiptWidth,
           height: receiptHeight,
@@ -87,33 +324,134 @@ Future<Uint8List> _buildPdfBytes(
         break;
       case DocumentPaperSize.a4:
       case DocumentPaperSize.auto:
-        imageWidget = pw.FittedBox(
-          fit: pw.BoxFit.contain,
-          child: pw.Image(image, fit: pw.BoxFit.contain),
+        imageWidget = pw.SizedBox(
+          width: renderW,
+          height: renderH,
+          child: pw.Image(image, fit: pw.BoxFit.fill),
         );
         break;
     }
+
+    // Check if we have OCR lines for this page (Searchable PDF invisible text layer)
+    final OcrPageData? pageOcr = (ocrPages != null && index < ocrPages.length)
+        ? ocrPages[index]
+        : null;
+
+    final stackChildren = <pw.Widget>[imageWidget];
+
+    if (pageOcr != null && pageOcr.lines.isNotEmpty) {
+      for (final line in pageOcr.lines) {
+        if (line.text.trim().isEmpty) continue;
+        final leftPt = (line.normLeft.clamp(0.0, 0.98)) * renderW;
+        final topPt = (line.normTop.clamp(0.0, 0.98)) * renderH;
+        final widthPt = (line.normWidth.clamp(0.02, 1.0 - line.normLeft)) * renderW;
+        final heightPt = (line.normHeight.clamp(0.015, 0.25)) * renderH;
+        final fontSize = (heightPt * 0.72).clamp(6.0, 28.0);
+
+        stackChildren.add(
+          pw.Positioned(
+            left: leftPt,
+            top: topPt,
+            child: pw.Opacity(
+              opacity: 0.004, // Visually transparent, selectable by PDF viewers
+              child: pw.Directionality(
+                textDirection:
+                    line.isRtl ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+                child: pw.SizedBox(
+                  width: widthPt,
+                  height: heightPt * 1.25,
+                  child: pw.Text(
+                    line.text,
+                    style: pw.TextStyle(
+                      font: cairoFont,
+                      fontSize: fontSize,
+                      color: PdfColors.black,
+                    ),
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    // Optional custom watermark (off by default)
+    if (watermarkText != null && watermarkText.trim().isNotEmpty) {
+      stackChildren.add(
+        pw.Positioned.fill(
+          child: pw.Center(
+            child: pw.Transform.rotate(
+              angle: -0.52,
+              child: pw.Opacity(
+                opacity: 0.16,
+                child: pw.Directionality(
+                  textDirection: pw.TextDirection.rtl,
+                  child: pw.Text(
+                    watermarkText.trim(),
+                    style: pw.TextStyle(
+                      font: cairoFont,
+                      fontSize: 34,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.grey700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Optional date stamp in bottom corner (off by default)
+    if (includeDateStamp) {
+      final stamp = dateStampText ??
+          DateTime.now().toIso8601String().split('T').first;
+      stackChildren.add(
+        pw.Positioned(
+          bottom: 4,
+          left: 6,
+          child: pw.Opacity(
+            opacity: 0.65,
+            child: pw.Text(
+              stamp,
+              style: pw.TextStyle(
+                font: cairoFont,
+                fontSize: 8.5,
+                color: PdfColors.grey800,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final pageContent = stackChildren.length == 1
+        ? imageWidget
+        : pw.SizedBox(
+            width: renderW,
+            height: renderH,
+            child: pw.Stack(children: stackChildren),
+          );
 
     document.addPage(
       pw.Page(
         pageTheme: pw.PageTheme(
           pageFormat: format,
-          margin: const pw.EdgeInsets.all(8 * PdfPageFormat.mm),
+          margin: const pw.EdgeInsets.all(margin),
         ),
-        build: (_) => pw.Center(child: imageWidget),
+        build: (_) => pw.Center(child: pageContent),
       ),
     );
 
     debugPrint(
-      '[PdfBuilder] Page ${index + 1} ready in ${pageStopwatch.elapsedMilliseconds}ms (read+prepare+layout)',
+      '[PdfBuilder] Page ${index + 1} ready in ${pageStopwatch.elapsedMilliseconds}ms',
     );
   }
 
-  final saveStopwatch = Stopwatch()..start();
   final pdfBytes = await document.save();
-  debugPrint(
-    '[PdfBuilder] PDF encode/save took ${saveStopwatch.elapsedMilliseconds}ms',
-  );
   debugPrint(
     '[PdfBuilder] DONE in ${sw.elapsedMilliseconds}ms - output ${pdfBytes.length} bytes',
   );
@@ -125,30 +463,23 @@ Future<Uint8List> _buildPdfBytes(
 // Fast path: parse JPEG header without full decode
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Reads JPEG dimensions and EXIF orientation from the file header only.
-/// Returns null if the file is not a valid JPEG or parsing fails.
-/// This is ~100-1000× faster than a full img.decodeImage().
 ({int width, int height, int orientation})? _peekJpegInfo(Uint8List bytes) {
-  // Must start with JPEG SOI marker FF D8
   if (bytes.length < 4) return null;
   if (bytes[0] != 0xFF || bytes[1] != 0xD8) return null;
 
   int width = 0;
   int height = 0;
-  int orientation = 1; // default: no rotation
+  int orientation = 1;
   int i = 2;
 
   while (i + 3 < bytes.length) {
-    // Each segment starts with 0xFF
     if (bytes[i] != 0xFF) break;
     final marker = bytes[i + 1];
 
-    // Skip standalone markers (no data segment)
     if (marker == 0xD8 || marker == 0xD9) {
       i += 2;
       continue;
     }
-    // RST markers
     if (marker >= 0xD0 && marker <= 0xD7) {
       i += 2;
       continue;
@@ -158,14 +489,12 @@ Future<Uint8List> _buildPdfBytes(
     final segLen = (bytes[i + 2] << 8) | bytes[i + 3];
     if (segLen < 2 || i + 2 + segLen > bytes.length) break;
 
-    // ── APP1: may contain EXIF with orientation ──
     if (marker == 0xE1 && segLen > 6) {
-      // Check for "Exif\0\0" signature
       if (i + 9 < bytes.length &&
-          bytes[i + 4] == 0x45 && // E
-          bytes[i + 5] == 0x78 && // x
-          bytes[i + 6] == 0x69 && // i
-          bytes[i + 7] == 0x66 && // f
+          bytes[i + 4] == 0x45 &&
+          bytes[i + 5] == 0x78 &&
+          bytes[i + 6] == 0x69 &&
+          bytes[i + 7] == 0x66 &&
           bytes[i + 8] == 0x00 &&
           bytes[i + 9] == 0x00) {
         final tiffStart = i + 10;
@@ -173,8 +502,6 @@ Future<Uint8List> _buildPdfBytes(
       }
     }
 
-    // ── SOF markers: contain image dimensions ──
-    // SOF0=C0, SOF1=C1, SOF2=C2 (progressive), SOF3=C3, SOF5-C7, SOF9-CB, SOF13-CF
     final isSOF = (marker == 0xC0 ||
         marker == 0xC1 ||
         marker == 0xC2 ||
@@ -184,12 +511,10 @@ Future<Uint8List> _buildPdfBytes(
         (marker >= 0xCD && marker <= 0xCF));
 
     if (isSOF && i + 8 < bytes.length) {
-      // SOF layout: marker(2) + length(2) + precision(1) + height(2) + width(2)
       height = (bytes[i + 5] << 8) | bytes[i + 6];
       width = (bytes[i + 7] << 8) | bytes[i + 8];
     }
 
-    // SOS (Start of Scan) — compressed image data starts, stop scanning
     if (marker == 0xDA) break;
 
     i += 2 + segLen;
@@ -199,12 +524,9 @@ Future<Uint8List> _buildPdfBytes(
   return (width: width, height: height, orientation: orientation);
 }
 
-/// Reads EXIF Orientation tag from a TIFF block inside JPEG APP1.
-/// Returns null if tag not found or block is malformed.
 int? _readTiffOrientation(Uint8List bytes, int tiffStart) {
   if (tiffStart + 8 > bytes.length) return null;
 
-  // Byte order mark: 'II' = little-endian, 'MM' = big-endian
   final isLE = bytes[tiffStart] == 0x49 && bytes[tiffStart + 1] == 0x49;
   final isBE = bytes[tiffStart] == 0x4D && bytes[tiffStart + 1] == 0x4D;
   if (!isLE && !isBE) return null;
@@ -229,10 +551,8 @@ int? _readTiffOrientation(Uint8List bytes, int tiffStart) {
               bytes[off + 3];
   }
 
-  // TIFF magic number must be 42
   if (u16(tiffStart + 2) != 42) return null;
 
-  // Offset of first IFD (IFD0), relative to TIFF start
   final ifd0Offset = u32(tiffStart + 4);
   final ifd0Start = tiffStart + ifd0Offset;
   if (ifd0Start + 2 > bytes.length) return null;
@@ -245,43 +565,32 @@ int? _readTiffOrientation(Uint8List bytes, int tiffStart) {
 
     final tag = u16(entryOff);
     if (tag == 0x0112) {
-      // Orientation tag — value is stored in bytes 8-9 of the entry
       return u16(entryOff + 8);
     }
   }
   return null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Image preparation
-// ─────────────────────────────────────────────────────────────────────────────
-
 const int _maxDimension = 2048;
 
 Future<_PreparedPdfImage> _safePrepareImage(
   String imagePath,
-  bool applyEnhancement,
-) async {
-  final prepareStopwatch = Stopwatch()..start();
-  debugPrint('[PdfBuilder] _safePrepareImage START for $imagePath');
-
-  final readStopwatch = Stopwatch()..start();
+  bool applyEnhancement, {
+  int? forceJpegQuality,
+  int maxDimension = _maxDimension,
+}) async {
   final originalBytes = await File(imagePath).readAsBytes();
-  debugPrint(
-    '[PdfBuilder] File read took ${readStopwatch.elapsedMilliseconds}ms (${originalBytes.length} bytes)',
-  );
 
-  // ── FAST PATH ─────────────────────────────────────────────────────────────
-  // Skip decode+re-encode when the image is already a valid JPEG
-  // with correct orientation and acceptable dimensions (<= 2048px).
+  // ── FAST PATH (Zero Decode) ───────────────────────────────────────────────
+  // Skip decode+re-encode when no forced compression is requested and the image
+  // is already a valid JPEG with orientation=1 and dimensions <= 2048px.
   final info = _peekJpegInfo(originalBytes);
-  if (info != null &&
+  if (forceJpegQuality == null &&
+      maxDimension >= _maxDimension &&
+      info != null &&
       info.orientation == 1 &&
       info.width <= _maxDimension &&
       info.height <= _maxDimension) {
-    debugPrint(
-      '[PdfBuilder] ✅ FAST PATH: ${info.width}x${info.height} — direct pass-through (${prepareStopwatch.elapsedMilliseconds}ms)',
-    );
     return _PreparedPdfImage(
       bytes: originalBytes,
       width: info.width,
@@ -289,12 +598,10 @@ Future<_PreparedPdfImage> _safePrepareImage(
     );
   }
 
-  // ── DOWNSCALE PATH (Only if image > 2048px or orientation != 1) ───────────
   img.Image? decoded;
   try {
     decoded = img.decodeImage(originalBytes);
   } catch (e) {
-    debugPrint('[PdfBuilder] Failed to decode image $imagePath: $e');
     throw Exception('فشل قراءة الصورة، قد تكون تالفة.');
   }
 
@@ -307,22 +614,17 @@ Future<_PreparedPdfImage> _safePrepareImage(
     decoded = img.bakeOrientation(decoded);
   }
 
-  if (decoded.width > _maxDimension || decoded.height > _maxDimension) {
-    debugPrint(
-      '[PdfBuilder] Downscaling ${decoded.width}x${decoded.height} to max $_maxDimension...',
-    );
+  if (decoded.width > maxDimension || decoded.height > maxDimension) {
     decoded = img.copyResize(
       decoded,
-      width: decoded.width > decoded.height ? _maxDimension : null,
-      height: decoded.height > decoded.width ? _maxDimension : null,
+      width: decoded.width > decoded.height ? maxDimension : null,
+      height: decoded.height >= decoded.width ? maxDimension : null,
       interpolation: img.Interpolation.linear,
     );
   }
 
-  final finalBytes = Uint8List.fromList(img.encodeJpg(decoded, quality: 85));
-
-  debugPrint(
-    '[PdfBuilder] Normalized in ${prepareStopwatch.elapsedMilliseconds}ms (${decoded.width}x${decoded.height})',
+  final finalBytes = Uint8List.fromList(
+    img.encodeJpg(decoded, quality: forceJpegQuality ?? 85),
   );
 
   return _PreparedPdfImage(

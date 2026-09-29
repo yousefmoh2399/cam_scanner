@@ -5,10 +5,11 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.SystemClock
+import com.googlecode.tesseract.android.TessBaseAPI
 import com.yourname.docscanner.scanner.DocumentDetector
 import com.yourname.docscanner.scanner.ImageFilters
 import com.yourname.docscanner.scanner.ScannerActivity
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
@@ -23,9 +24,10 @@ import org.opencv.core.MatOfInt
 import org.opencv.core.Point
 import org.opencv.imgcodecs.Imgcodecs
 import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.max
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val docScannerChannel = "ismart/doc_scanner"
     private val REQUEST_CODE_SCANNER = 0x534341
     private var pendingScannerResult: MethodChannel.Result? = null
@@ -181,6 +183,113 @@ class MainActivity : FlutterActivity() {
                                 nativeOpSemaphore.release()
                             }
                         }
+                    }
+                    "runTesseractOcr" -> {
+                        val imagePath = call.argument<String>("imagePath") ?: ""
+                        val dataPath = call.argument<String>("dataPath") ?: ""
+                        val language = call.argument<String>("language") ?: "ara+eng"
+                        val preprocess = call.argument<Boolean>("preprocess") ?: true
+                        if (imagePath.isBlank() || dataPath.isBlank()) {
+                            result.error("INVALID_ARGS", "imagePath and dataPath are required", null)
+                            return@setMethodCallHandler
+                        }
+                        mainScope.launch(Dispatchers.Default) {
+                            nativeOpSemaphore.acquire()
+                            var prepFile: File? = null
+                            val tess = TessBaseAPI()
+                            try {
+                                val targetPath = if (preprocess) {
+                                    val tempOut = File(cacheDir, "ocr_prep_${System.currentTimeMillis()}.jpg")
+                                    if (ImageFilters.preprocessForOcr(imagePath, tempOut.absolutePath)) {
+                                        prepFile = tempOut
+                                        tempOut.absolutePath
+                                    } else {
+                                        imagePath
+                                    }
+                                } else {
+                                    imagePath
+                                }
+
+                                val initialized = tess.init(dataPath, language, TessBaseAPI.OEM_LSTM_ONLY)
+                                if (!initialized) {
+                                    withContext(Dispatchers.Main) {
+                                        result.error("TESS_INIT_FAIL", "Failed to initialize Tesseract ($language) at $dataPath", null)
+                                    }
+                                    return@launch
+                                }
+                                tess.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO
+
+                                val bmpOpts = BitmapFactory.Options().apply {
+                                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+                                }
+                                val bitmap = BitmapFactory.decodeFile(targetPath, bmpOpts)
+                                if (bitmap == null) {
+                                    withContext(Dispatchers.Main) {
+                                        result.error("BMP_DECODE_FAIL", "Could not decode image for OCR: $targetPath", null)
+                                    }
+                                    return@launch
+                                }
+
+                                val imgW = bitmap.width.coerceAtLeast(1)
+                                val imgH = bitmap.height.coerceAtLeast(1)
+                                tess.setImage(bitmap)
+                                val fullText = tess.utF8Text ?: ""
+
+                                val blocksList = ArrayList<HashMap<String, Any>>()
+                                val iter = tess.resultIterator
+                                if (iter != null) {
+                                    val level = TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE
+                                    iter.begin()
+                                    do {
+                                        val lineText = iter.getUTF8Text(level)?.trim() ?: ""
+                                        val box = iter.getBoundingRect(level)
+                                        val conf = iter.confidence(level)
+                                        if (lineText.isNotEmpty() && box != null) {
+                                            val map = HashMap<String, Any>()
+                                            map["text"] = lineText
+                                            map["confidence"] = conf.toDouble()
+                                            map["left"] = box.left.toDouble() / imgW.toDouble()
+                                            map["top"] = box.top.toDouble() / imgH.toDouble()
+                                            map["right"] = box.right.toDouble() / imgW.toDouble()
+                                            map["bottom"] = box.bottom.toDouble() / imgH.toDouble()
+                                            map["pixelLeft"] = box.left
+                                            map["pixelTop"] = box.top
+                                            map["pixelWidth"] = box.width()
+                                            map["pixelHeight"] = box.height()
+                                            blocksList.add(map)
+                                        }
+                                    } while (iter.next(level))
+                                }
+                                bitmap.recycle()
+
+                                val response = HashMap<String, Any>()
+                                response["text"] = fullText
+                                response["width"] = imgW
+                                response["height"] = imgH
+                                response["blocks"] = blocksList
+
+                                withContext(Dispatchers.Main) {
+                                    result.success(response)
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    result.error("TESS_OCR_ERR", e.message, null)
+                                }
+                            } finally {
+                                try {
+                                    tess.recycle()
+                                } catch (_: Exception) {}
+                                try {
+                                    prepFile?.delete()
+                                } catch (_: Exception) {}
+                                nativeOpSemaphore.release()
+                            }
+                        }
+                    }
+                    "consumeIncomingFiles" -> {
+                        val files = extractIncomingFilesFromIntent(intent)
+                        intent = Intent(this@MainActivity, MainActivity::class.java)
+                        result.success(files)
                     }
                     "setSecureScreen" -> {
                         val enabled = call.argument<Boolean>("enabled") ?: false
@@ -392,6 +501,44 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+    }
+
+    private fun extractIncomingFilesFromIntent(incoming: Intent?): List<String> {
+        if (incoming == null) return emptyList()
+        val uris = ArrayList<android.net.Uri>()
+        when (incoming.action) {
+            Intent.ACTION_SEND -> {
+                @Suppress("DEPRECATION")
+                val single = incoming.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                if (single != null) uris.add(single)
+            }
+            Intent.ACTION_SEND_MULTIPLE -> {
+                @Suppress("DEPRECATION")
+                val list = incoming.getParcelableArrayListExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                if (list != null) uris.addAll(list)
+            }
+            Intent.ACTION_VIEW -> {
+                val dataUri = incoming.data
+                if (dataUri != null) uris.add(dataUri)
+            }
+        }
+        val copiedPaths = ArrayList<String>()
+        for ((idx, uri) in uris.withIndex()) {
+            try {
+                val mime = contentResolver.getType(uri) ?: ""
+                val ext = if (mime.contains("pdf")) ".pdf" else ".jpg"
+                val dest = File(cacheDir, "incoming_${System.currentTimeMillis()}_$idx$ext")
+                contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(dest).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                if (dest.exists() && dest.length() > 0) {
+                    copiedPaths.add(dest.absolutePath)
+                }
+            } catch (_: Exception) {}
+        }
+        return copiedPaths
     }
 
     override fun onDestroy() {

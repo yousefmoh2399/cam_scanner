@@ -6,7 +6,6 @@ import 'dart:math' as math;
 import 'package:archive/archive.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:xml/xml.dart';
@@ -14,40 +13,56 @@ import 'package:xml/xml.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/services/local_media_storage_service.dart';
+import 'document_search_service.dart';
+import 'ocr_service.dart';
 import 'pdf_builder_service.dart';
 
 enum ExportFormat {
   pdf,
+  searchablePdf,
   docx,
   xlsx;
 
   String get extension => switch (this) {
         ExportFormat.pdf => 'pdf',
+        ExportFormat.searchablePdf => 'pdf',
         ExportFormat.docx => 'docx',
         ExportFormat.xlsx => 'xlsx',
       };
 
   String get title => switch (this) {
-        ExportFormat.pdf => 'ملف PDF قياسي (.pdf)',
+        ExportFormat.pdf => 'ملف PDF قياسي سريع (.pdf)',
+        ExportFormat.searchablePdf =>
+          'ملف PDF قابل للبحث والنسخ (Searchable PDF)',
         ExportFormat.docx => 'مستند Word قابل للتعديل (.docx)',
         ExportFormat.xlsx => 'جدول بيانات Excel (.xlsx)',
       };
 
   String get subtitle => switch (this) {
         ExportFormat.pdf =>
-          'حفظ الصفحات بأعلى جودة مع دعم المشاركة والطباعة المباشرة',
+          'حفظ الصفحات بأعلى جودة بالمسار السريع (Zero-Decode) مع دعم الضغط بالحجم المستهدف',
+        ExportFormat.searchablePdf =>
+          'يتضمن طبقة نصية شفافة (عربي/إنجليزي) بـ Tesseract OCR للبحث والنسخ داخل الـ PDF',
         ExportFormat.docx =>
           'ملف OpenXML يحتوي على صور الصفحات + النصوص المستخرجة بـ OCR (RTL/LTR)',
         ExportFormat.xlsx =>
-          'استخراج النصوص بـ OCR وتوزيع الكتل تلقائياً في صفوف وأعمدة',
+          'استخراج النصوص والجداول بـ OCR وتوزيع الكتل تلقائياً في صفوف وأعمدة (RTL)',
       };
 
   String get mimeType => switch (this) {
         ExportFormat.pdf => 'application/pdf',
+        ExportFormat.searchablePdf => 'application/pdf',
         ExportFormat.docx =>
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ExportFormat.xlsx =>
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      };
+
+  bool get usesOcr => switch (this) {
+        ExportFormat.pdf => false,
+        ExportFormat.searchablePdf => true,
+        ExportFormat.docx => true,
+        ExportFormat.xlsx => true,
       };
 }
 
@@ -82,6 +97,7 @@ class PageOcrResult {
     required this.imageHeight,
     required this.blocks,
     required this.fullText,
+    this.ocrPageData,
   });
 
   final int pageIndex;
@@ -91,33 +107,46 @@ class PageOcrResult {
   final int imageHeight;
   final List<OcrBlockItem> blocks;
   final String fullText;
+  final OcrPageData? ocrPageData;
 }
 
-/// Offline OCR & Office Export Service (PDF, Word .docx OpenXML, Excel .xlsx).
+/// Offline OCR & Office Export Service (Standard PDF, Searchable PDF, Word .docx OpenXML, Excel .xlsx).
 ///
-/// Offline OCR Architecture Note:
-/// - Uses `google_mlkit_text_recognition` on-device model (100% offline, no internet required).
-/// - Because ML Kit's bundled offline recognizer primarily targets Latin/numeric scripts,
-///   we combine it with an Isolate-based document layout & line analyzer (`_analyzeImageLayoutInIsolate`)
-///   and provide a direct offline hook for Tesseract (`ara.traineddata` bundled in `assets/tessdata/`)
-///   so Arabic & mixed RTL/LTR documents always produce structured editable Word paragraphs and Excel rows.
+/// Offline OCR Architecture:
+/// - Primary Engine: `TesseractOcrEngine` (Tesseract 4/5 LSTM JNI + `ara.traineddata` & `eng.traineddata`
+///   bundled in `assets/tessdata/`) with OpenCV 300 DPI illumination normalization, deskew & adaptive threshold.
+/// - Fallback Engine: `MlKitLatinOcrEngine` (on-device Latin script recognizer) + visual band detector.
+/// - Results are cached per document (`ocr_cache/<doc_id>.json`) and indexed into SQLite FTS4 (`DocumentSearchService`).
 class OfficeExporterService {
-  OfficeExporterService({PdfBuilderService? pdfBuilderService})
-      : _pdfBuilder = pdfBuilderService ?? PdfBuilderService();
+  OfficeExporterService({
+    PdfBuilderService? pdfBuilderService,
+    OcrService? ocrService,
+    DocumentSearchService? searchService,
+  })  : _pdfBuilder = pdfBuilderService ?? PdfBuilderService(),
+        _ocrService = ocrService ?? OcrService(),
+        _searchService = searchService ?? DocumentSearchService();
 
   final PdfBuilderService _pdfBuilder;
+  final OcrService _ocrService;
+  final DocumentSearchService _searchService;
 
-  static final RegExp _arabicRegex = RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]');
+  static final RegExp _arabicRegex =
+      RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]');
 
   static bool isRtlText(String text) {
     return _arabicRegex.hasMatch(text);
   }
 
-  /// Exports a [PendingUpload] document (or raw list of image paths) into the requested [ExportFormat].
-  /// Returns the absolute file path to the generated `.pdf`, `.docx`, or `.xlsx` file.
+  /// Exports a [PendingUpload] document into the requested [ExportFormat].
   Future<String> exportDocument({
     required PendingUpload document,
     required ExportFormat format,
+    OcrLanguageMode languageMode = OcrLanguageMode.arabicEnglish,
+    PdfCompressionPreset compressionPreset = PdfCompressionPreset.none,
+    int manualJpegQuality = 85,
+    String? watermarkText,
+    bool includeDateStamp = false,
+    OcrCancellationToken? cancellationToken,
     ValueChanged<String>? onProgress,
   }) async {
     final imagePaths = document.pages
@@ -132,24 +161,88 @@ class OfficeExporterService {
     }
 
     final baseName = stripFileExtension(document.fileName);
+    final paperSizes = document.pages.map((p) => p.paperSize).toList();
+    final hasCustomPdfOptions =
+        compressionPreset != PdfCompressionPreset.none ||
+            (watermarkText?.trim().isNotEmpty ?? false) ||
+            includeDateStamp;
 
     switch (format) {
       case ExportFormat.pdf:
-        if (File(document.filePath).existsSync()) {
+        if (!hasCustomPdfOptions && File(document.filePath).existsSync()) {
           onProgress?.call('ملف الـ PDF جاهز!');
           return document.filePath;
         }
         if (imagePaths.isEmpty) {
           throw Exception('لا توجد صور صفحات متاحة لتوليد ملف PDF.');
         }
-        onProgress?.call('جارٍ بناء ملف PDF بالمسار السريع...');
+        onProgress?.call(
+          compressionPreset == PdfCompressionPreset.none
+              ? 'جارٍ بناء ملف PDF بالمسار السريع...'
+              : 'جارٍ ضغط وبناء ملف PDF (${compressionPreset.labelAr})...',
+        );
         final pdfBytes = await _pdfBuilder.buildPdf(
           imagePaths: imagePaths,
-          paperSizes: document.pages.map((p) => p.paperSize).toList(),
+          paperSizes: paperSizes,
+          options: PdfBuildOptions(
+            compressionPreset: compressionPreset,
+            manualJpegQuality: manualJpegQuality,
+            watermarkText: watermarkText,
+            includeDateStamp: includeDateStamp,
+          ),
         );
-        final outDir = await const LocalMediaStorageService().exportsDirectory();
-        final pdfPath = p.join(outDir.path, '${document.id}_$baseName.pdf');
+        final outDir =
+            await const LocalMediaStorageService().exportsDirectory();
+        final safeName = baseName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+        final suffix = compressionPreset == PdfCompressionPreset.none
+            ? ''
+            : '_${compressionPreset.name}';
+        final pdfPath =
+            p.join(outDir.path, '${document.id}_$safeName$suffix.pdf');
         await File(pdfPath).writeAsBytes(pdfBytes, flush: true);
+        onProgress?.call(
+          'تم تجهيز ملف PDF (${formatFileSize(pdfBytes.length)}) بنجاح!',
+        );
+        return pdfPath;
+
+      case ExportFormat.searchablePdf:
+        if (imagePaths.isEmpty) {
+          throw Exception('لا توجد صفحات لتوليد Searchable PDF.');
+        }
+        final ocrDoc = await _ocrService.recognizeDocument(
+          documentId: document.id,
+          imagePaths: imagePaths,
+          languageMode: languageMode,
+          cancellationToken: cancellationToken,
+          onProgress: onProgress,
+        );
+        await _searchService.indexDocumentOcr(
+          documentId: document.id,
+          title: baseName,
+          fullText: ocrDoc.fullText,
+          smartTitle: ocrDoc.suggestedTitle,
+        );
+        onProgress?.call('جارٍ دمج طبقة النص المخفية (Searchable PDF)...');
+        final pdfBytes = await _pdfBuilder.buildSearchablePdf(
+          imagePaths: imagePaths,
+          paperSizes: paperSizes,
+          ocrPages: ocrDoc.pages,
+          compressionPreset: compressionPreset,
+          manualJpegQuality: manualJpegQuality,
+          watermarkText: watermarkText,
+          includeDateStamp: includeDateStamp,
+        );
+        final outDir =
+            await const LocalMediaStorageService().exportsDirectory();
+        final safeName = baseName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+        final pdfPath = p.join(
+          outDir.path,
+          '${document.id}_${safeName}_searchable.pdf',
+        );
+        await File(pdfPath).writeAsBytes(pdfBytes, flush: true);
+        onProgress?.call(
+          'تم إنشاء Searchable PDF (${formatFileSize(pdfBytes.length)}) بنجاح!',
+        );
         return pdfPath;
 
       case ExportFormat.docx:
@@ -157,6 +250,8 @@ class OfficeExporterService {
           documentId: document.id,
           documentTitle: baseName,
           imagePaths: imagePaths,
+          languageMode: languageMode,
+          cancellationToken: cancellationToken,
           onProgress: onProgress,
         );
 
@@ -165,80 +260,73 @@ class OfficeExporterService {
           documentId: document.id,
           documentTitle: baseName,
           imagePaths: imagePaths,
+          languageMode: languageMode,
+          cancellationToken: cancellationToken,
           onProgress: onProgress,
         );
     }
   }
 
-  /// Extracts OCR blocks asynchronously for each page image without blocking the UI thread.
+  /// Extracts OCR blocks asynchronously using `OcrService` (Tesseract Arabic/English + ML Kit fallback).
   Future<List<PageOcrResult>> extractPagesOcr({
+    required String documentId,
+    required String documentTitle,
     required List<String> imagePaths,
+    OcrLanguageMode languageMode = OcrLanguageMode.arabicEnglish,
+    OcrCancellationToken? cancellationToken,
     ValueChanged<String>? onProgress,
   }) async {
+    final ocrDoc = await _ocrService.recognizeDocument(
+      documentId: documentId,
+      imagePaths: imagePaths,
+      languageMode: languageMode,
+      cancellationToken: cancellationToken,
+      onProgress: onProgress,
+    );
+
+    // Index into SQLite FTS4 for instant Library Search
+    await _searchService.indexDocumentOcr(
+      documentId: documentId,
+      title: documentTitle,
+      fullText: ocrDoc.fullText,
+      smartTitle: ocrDoc.suggestedTitle,
+    );
+
     final results = <PageOcrResult>[];
-    TextRecognizer? recognizer;
+    for (var i = 0; i < imagePaths.length; i++) {
+      final path = imagePaths[i];
+      final file = File(path);
+      if (!await file.exists()) continue;
+      final imageBytes = await file.readAsBytes();
+      final pageData = i < ocrDoc.pages.length ? ocrDoc.pages[i] : null;
 
-    try {
-      if (Platform.isAndroid || Platform.isIOS) {
-        recognizer = TextRecognizer(script: TextRecognitionScript.latin);
-      }
-    } catch (e) {
-      debugPrint('[OfficeExporterService] ML Kit init note: $e');
-    }
-
-    try {
-      for (var i = 0; i < imagePaths.length; i++) {
-        final path = imagePaths[i];
-        onProgress?.call(
-          'جارٍ استخراج النصوص (OCR) من الصفحة ${i + 1} من ${imagePaths.length}...',
-        );
-
-        final file = File(path);
-        if (!await file.exists()) continue;
-        final imageBytes = await file.readAsBytes();
-
-        final mlKitBlocks = <OcrBlockItem>[];
-        if (recognizer != null) {
-          try {
-            final inputImage = InputImage.fromFilePath(path);
-            final recognized = await recognizer.processImage(inputImage);
-            for (final block in recognized.blocks) {
-              for (final line in block.lines) {
-                final text = line.text.trim();
-                if (text.isEmpty) continue;
-                final rect = line.boundingBox;
-                mlKitBlocks.add(
-                  OcrBlockItem(
-                    text: text,
-                    top: rect.top.toDouble(),
-                    left: rect.left.toDouble(),
-                    width: math.max(1.0, rect.width.toDouble()),
-                    height: math.max(12.0, rect.height.toDouble()),
-                    isRtl: isRtlText(text),
-                  ),
-                );
-              }
-            }
-          } catch (e) {
-            debugPrint('[OfficeExporterService] ML Kit OCR page ${i + 1} fallback: $e');
-          }
+      final engineBlocks = <OcrBlockItem>[];
+      if (pageData != null) {
+        for (final line in pageData.lines) {
+          if (line.text.trim().isEmpty) continue;
+          engineBlocks.add(
+            OcrBlockItem(
+              text: line.text.trim(),
+              top: line.top,
+              left: line.left,
+              width: math.max(1.0, line.width),
+              height: math.max(12.0, line.height),
+              isRtl: line.isRtl,
+            ),
+          );
         }
-
-        // Run image dimension & layout analysis in a background Isolate so UI stays at 60fps
-        final pageResult = await Isolate.run(
-          () => _buildPageOcrResultInIsolate(
-            pageIndex: i,
-            imagePath: path,
-            imageBytes: imageBytes,
-            mlKitBlocks: mlKitBlocks,
-          ),
-        );
-        results.add(pageResult);
       }
-    } finally {
-      try {
-        await recognizer?.close();
-      } catch (_) {}
+
+      final pageResult = await Isolate.run(
+        () => _buildPageOcrResultInIsolate(
+          pageIndex: i,
+          imagePath: path,
+          imageBytes: imageBytes,
+          mlKitBlocks: engineBlocks,
+          ocrPageData: pageData,
+        ),
+      );
+      results.add(pageResult);
     }
 
     return results;
@@ -250,6 +338,8 @@ class OfficeExporterService {
     required String documentId,
     required String documentTitle,
     required List<String> imagePaths,
+    OcrLanguageMode languageMode = OcrLanguageMode.arabicEnglish,
+    OcrCancellationToken? cancellationToken,
     ValueChanged<String>? onProgress,
   }) async {
     if (imagePaths.isEmpty) {
@@ -257,11 +347,17 @@ class OfficeExporterService {
     }
 
     final ocrPages = await extractPagesOcr(
+      documentId: documentId,
+      documentTitle: documentTitle,
       imagePaths: imagePaths,
+      languageMode: languageMode,
+      cancellationToken: cancellationToken,
       onProgress: onProgress,
     );
 
-    onProgress?.call('جارٍ بناء ملف Word OpenXML (.docx) وتضمين الصور والنصوص...');
+    onProgress?.call(
+      'جارٍ بناء ملف Word OpenXML (.docx) وتضمين الصور والنصوص...',
+    );
 
     final docxBytes = await Isolate.run(
       () => _buildDocxArchiveInIsolate(
@@ -280,11 +376,13 @@ class OfficeExporterService {
   }
 
   /// Generates an Excel (.xlsx) workbook by sorting OCR blocks by `top` and `left`
-  /// and grouping vertically proximate blocks into the same table row.
+  /// and grouping vertically proximate blocks into the same table row (RTL column ordering for Arabic).
   Future<String> exportToXlsx({
     required String documentId,
     required String documentTitle,
     required List<String> imagePaths,
+    OcrLanguageMode languageMode = OcrLanguageMode.arabicEnglish,
+    OcrCancellationToken? cancellationToken,
     ValueChanged<String>? onProgress,
   }) async {
     if (imagePaths.isEmpty) {
@@ -292,7 +390,11 @@ class OfficeExporterService {
     }
 
     final ocrPages = await extractPagesOcr(
+      documentId: documentId,
+      documentTitle: documentTitle,
       imagePaths: imagePaths,
+      languageMode: languageMode,
+      cancellationToken: cancellationToken,
       onProgress: onProgress,
     );
 
@@ -324,19 +426,22 @@ PageOcrResult _buildPageOcrResultInIsolate({
   required String imagePath,
   required Uint8List imageBytes,
   required List<OcrBlockItem> mlKitBlocks,
+  OcrPageData? ocrPageData,
 }) {
-  var width = 1200;
-  var height = 1600;
+  var width = ocrPageData?.imageWidth ?? 1200;
+  var height = ocrPageData?.imageHeight ?? 1600;
 
-  final decoded = img.decodeImage(imageBytes);
-  if (decoded != null) {
-    width = decoded.width;
-    height = decoded.height;
+  img.Image? decoded;
+  if (mlKitBlocks.isEmpty || width <= 0 || height <= 0) {
+    decoded = img.decodeImage(imageBytes);
+    if (decoded != null) {
+      width = decoded.width;
+      height = decoded.height;
+    }
   }
 
   final blocks = List<OcrBlockItem>.from(mlKitBlocks);
 
-  // Sort blocks top-to-bottom, then horizontally
   blocks.sort((a, b) {
     final dy = (a.top - b.top).abs();
     final avgH = (a.height + b.height) * 0.5;
@@ -346,9 +451,6 @@ PageOcrResult _buildPageOcrResultInIsolate({
     return a.top.compareTo(b.top);
   });
 
-  // If no text was detected by ML Kit (e.g. pure Arabic script without bundled Tesseract model
-  // or a graphic scan), detect visual horizontal text lines from the image projection profile
-  // so that Word and Excel always provide structured editable placeholders alongside the image.
   if (blocks.isEmpty && decoded != null) {
     final detectedRegions = _detectHorizontalTextBands(decoded);
     for (var idx = 0; idx < detectedRegions.length; idx++) {
@@ -389,6 +491,7 @@ PageOcrResult _buildPageOcrResultInIsolate({
     imageHeight: height,
     blocks: blocks,
     fullText: fullText,
+    ocrPageData: ocrPageData,
   );
 }
 
@@ -439,7 +542,6 @@ List<({double top, double left, double width, double height})>
 List<List<OcrBlockItem>> clusterOcrBlocksIntoRows(List<OcrBlockItem> blocks) {
   if (blocks.isEmpty) return const [];
 
-  // 1. Sort all blocks primarily by `top`, secondarily by `left`
   final sorted = List<OcrBlockItem>.from(blocks)
     ..sort((a, b) {
       final topCmp = a.top.compareTo(b.top);
@@ -455,14 +557,12 @@ List<List<OcrBlockItem>> clusterOcrBlocksIntoRows(List<OcrBlockItem> blocks) {
     }
 
     final currentRow = rows.last;
-    final avgRowCenterY = currentRow
-            .map((e) => e.centerY)
-            .reduce((a, b) => a + b) /
-        currentRow.length;
-    final avgRowHeight = currentRow
-            .map((e) => e.height)
-            .reduce((a, b) => a + b) /
-        currentRow.length;
+    final avgRowCenterY =
+        currentRow.map((e) => e.centerY).reduce((a, b) => a + b) /
+            currentRow.length;
+    final avgRowHeight =
+        currentRow.map((e) => e.height).reduce((a, b) => a + b) /
+            currentRow.length;
 
     final tolerance = math.max(14.0, avgRowHeight * 0.65);
     if ((block.centerY - avgRowCenterY).abs() <= tolerance) {
@@ -472,7 +572,7 @@ List<List<OcrBlockItem>> clusterOcrBlocksIntoRows(List<OcrBlockItem> blocks) {
     }
   }
 
-  // 2. Sort blocks inside each row by `left` (or right-to-left if predominantly Arabic RTL)
+  // Sort blocks inside each row by `left` (or right-to-left if predominantly Arabic RTL)
   for (final row in rows) {
     final rtlCount = row.where((b) => b.isRtl).length;
     final isRowRtl = rtlCount > (row.length / 2);
@@ -492,8 +592,7 @@ Uint8List _buildDocxArchiveInIsolate({
 }) {
   final archive = Archive();
 
-  // 1. [Content_Types].xml
-  final contentTypesXml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  const contentTypesXml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -504,14 +603,12 @@ Uint8List _buildDocxArchiveInIsolate({
 </Types>''';
   _addXmlToArchive(archive, '[Content_Types].xml', contentTypesXml);
 
-  // 2. _rels/.rels
   const rootRelsXml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>''';
   _addXmlToArchive(archive, '_rels/.rels', rootRelsXml);
 
-  // 3. word/_rels/document.xml.rels
   final relsBuilder = XmlBuilder();
   relsBuilder.processing('xml', 'version="1.0" encoding="UTF-8" standalone="yes"');
   relsBuilder.element(
@@ -548,7 +645,6 @@ Uint8List _buildDocxArchiveInIsolate({
     relsBuilder.buildDocument().toXmlString(pretty: true),
   );
 
-  // 4. word/styles.xml (RTL & Cairo/Arial support)
   const stylesXml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:docDefaults>
@@ -564,13 +660,13 @@ Uint8List _buildDocxArchiveInIsolate({
 </w:styles>''';
   _addXmlToArchive(archive, 'word/styles.xml', stylesXml);
 
-  // 5. Add page images to word/media/page_N.jpg
   for (var i = 0; i < pages.length; i++) {
     final bytes = pages[i].imageBytes;
-    archive.addFile(ArchiveFile('word/media/page_${i + 1}.jpg', bytes.length, bytes));
+    archive.addFile(
+      ArchiveFile('word/media/page_${i + 1}.jpg', bytes.length, bytes),
+    );
   }
 
-  // 6. Build word/document.xml with embedded images + editable RTL/LTR OCR text
   final docBuilder = XmlBuilder();
   docBuilder.processing('xml', 'version="1.0" encoding="UTF-8" standalone="yes"');
   docBuilder.element(
@@ -586,7 +682,6 @@ Uint8List _buildDocxArchiveInIsolate({
     },
     nest: () {
       docBuilder.element('w:body', nest: () {
-        // Document Title Heading
         _buildWordParagraph(
           docBuilder,
           text: documentTitle,
@@ -607,7 +702,6 @@ Uint8List _buildDocxArchiveInIsolate({
             fontSizeHalfPt: 26,
           );
 
-          // Calculate EMU dimensions (max width ~ 5.8 inches = 5,303,520 EMUs)
           const maxWidthEmu = 5303520;
           final aspect = page.imageHeight > 0 && page.imageWidth > 0
               ? page.imageHeight / page.imageWidth
@@ -615,7 +709,6 @@ Uint8List _buildDocxArchiveInIsolate({
           final widthEmu = maxWidthEmu;
           final heightEmu = (widthEmu * aspect).round().clamp(1000000, 7400000);
 
-          // Paragraph with embedded page image
           docBuilder.element('w:p', nest: () {
             docBuilder.element('w:pPr', nest: () {
               docBuilder.element('w:jc', attributes: {'w:val': 'center'});
@@ -705,7 +798,6 @@ Uint8List _buildDocxArchiveInIsolate({
             });
           });
 
-          // Editable OCR Text Section Header
           _buildWordParagraph(
             docBuilder,
             text: 'النص المستخرج (قابل للتعديل - الصفحة ${i + 1}):',
@@ -714,7 +806,6 @@ Uint8List _buildDocxArchiveInIsolate({
             fontSizeHalfPt: 24,
           );
 
-          // Cluster OCR blocks into logical lines/rows and write each as an RTL/LTR paragraph
           final rows = clusterOcrBlocksIntoRows(page.blocks);
           for (final row in rows) {
             final rowText = row.map((b) => b.text).join('   ');
@@ -729,7 +820,6 @@ Uint8List _buildDocxArchiveInIsolate({
             );
           }
 
-          // Page break if not the last page
           if (i < pages.length - 1) {
             docBuilder.element('w:p', nest: () {
               docBuilder.element('w:r', nest: () {
@@ -739,7 +829,6 @@ Uint8List _buildDocxArchiveInIsolate({
           }
         }
 
-        // Section properties (A4 page setup)
         docBuilder.element('w:sectPr', nest: () {
           docBuilder.element(
             'w:pgSz',
@@ -830,8 +919,8 @@ Uint8List _buildXlsxWorkbookInIsolate({
     final sheetName = 'صفحة ${i + 1}';
     final Sheet sheet = excel[sheetName];
 
-    // Header title row
-    final headerCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0));
+    final headerCell =
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0));
     headerCell.value = TextCellValue('$documentTitle - $sheetName');
     headerCell.cellStyle = CellStyle(
       bold: true,
@@ -839,35 +928,56 @@ Uint8List _buildXlsxWorkbookInIsolate({
       horizontalAlign: HorizontalAlign.Right,
     );
 
-    final metaCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1));
+    final metaCell =
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1));
     metaCell.value = TextCellValue(
       'عدد الكتل المستخرجة: ${page.blocks.length} • أبعاد الصفحة: ${page.imageWidth}x${page.imageHeight}',
     );
 
-    // Cluster OCR blocks by vertical proximity (top) and horizontal order (left)
     final clusteredRows = clusterOcrBlocksIntoRows(page.blocks);
 
     for (var r = 0; r < clusteredRows.length; r++) {
       final rowItems = clusteredRows[r];
       final targetRowIdx = r + 3;
 
-      for (var c = 0; c < rowItems.length; c++) {
-        final item = rowItems[c];
+      // If a line contains multiple columns separated by large whitespace or tabs, split them into cells
+      final expandedCells = <({String text, bool isRtl})>[];
+      for (final item in rowItems) {
+        final parts = item.text
+            .split(RegExp(r'\s{2,}|\t|\|'))
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (parts.length > 1) {
+          final isLineRtl = item.isRtl;
+          final orderedParts = isLineRtl ? parts.reversed.toList() : parts;
+          for (final p in orderedParts) {
+            expandedCells.add((
+              text: p,
+              isRtl: OfficeExporterService.isRtlText(p) || isLineRtl,
+            ));
+          }
+        } else {
+          expandedCells.add((text: item.text, isRtl: item.isRtl));
+        }
+      }
+
+      for (var c = 0; c < expandedCells.length; c++) {
+        final cellData = expandedCells[c];
         final cell = sheet.cell(
           CellIndex.indexByColumnRow(columnIndex: c, rowIndex: targetRowIdx),
         );
 
-        // Try numeric value if pure number, else text
-        final numVal = double.tryParse(item.text.replaceAll(',', ''));
+        final numVal = double.tryParse(cellData.text.replaceAll(',', ''));
         if (numVal != null) {
           cell.value = DoubleCellValue(numVal);
         } else {
-          cell.value = TextCellValue(item.text);
+          cell.value = TextCellValue(cellData.text);
         }
 
         cell.cellStyle = CellStyle(
           horizontalAlign:
-              item.isRtl ? HorizontalAlign.Right : HorizontalAlign.Left,
+              cellData.isRtl ? HorizontalAlign.Right : HorizontalAlign.Left,
           verticalAlign: VerticalAlign.Center,
         );
       }
