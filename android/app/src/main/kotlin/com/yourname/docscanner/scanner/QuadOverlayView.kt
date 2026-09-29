@@ -1,4 +1,4 @@
-package com.example.cam_scanner.scanner
+package com.yourname.docscanner.scanner
 
 import android.content.Context
 import android.graphics.Canvas

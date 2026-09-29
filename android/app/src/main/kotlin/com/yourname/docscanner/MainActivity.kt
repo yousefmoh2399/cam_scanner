@@ -1,13 +1,13 @@
-package com.example.cam_scanner
+package com.yourname.docscanner
 
 import android.app.Activity
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.SystemClock
-import com.example.cam_scanner.scanner.DocumentDetector
-import com.example.cam_scanner.scanner.ImageFilters
-import com.example.cam_scanner.scanner.ScannerActivity
+import com.yourname.docscanner.scanner.DocumentDetector
+import com.yourname.docscanner.scanner.ImageFilters
+import com.yourname.docscanner.scanner.ScannerActivity
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -161,6 +161,37 @@ class MainActivity : FlutterActivity() {
                                 nativeOpSemaphore.release()
                             }
                         }
+                    }
+                    "preprocessForOcr" -> {
+                        val path = call.argument<String>("path")
+                        val outPath = call.argument<String>("outPath")
+                        if (path.isNullOrBlank() || outPath.isNullOrBlank()) {
+                            result.error("INVALID_ARGS", "path and outPath are required", null)
+                            return@setMethodCallHandler
+                        }
+                        mainScope.launch(Dispatchers.Default) {
+                            nativeOpSemaphore.acquire()
+                            try {
+                                val success = ImageFilters.preprocessForOcr(path, outPath)
+                                withContext(Dispatchers.Main) {
+                                    if (success) result.success(outPath)
+                                    else result.error("OCR_PREP_FAILED", "Failed to preprocess image for OCR", null)
+                                }
+                            } finally {
+                                nativeOpSemaphore.release()
+                            }
+                        }
+                    }
+                    "setSecureScreen" -> {
+                        val enabled = call.argument<Boolean>("enabled") ?: false
+                        runOnUiThread {
+                            if (enabled) {
+                                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                            } else {
+                                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                            }
+                        }
+                        result.success(true)
                     }
                     "rotateLeft" -> {
                         val path = call.argument<String>("path")

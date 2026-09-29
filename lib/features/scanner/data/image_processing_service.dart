@@ -356,6 +356,7 @@ Uint8List _processImageBytes(_ImageTransformRequest request) {
 
   switch (filter) {
     case ImageFilterType.enhance:
+    case ImageFilterType.magic:
       transformed = _applyDocumentScanLook(transformed, quality: quality);
       break;
     case ImageFilterType.original:
@@ -365,6 +366,7 @@ Uint8List _processImageBytes(_ImageTransformRequest request) {
     case ImageFilterType.gray:
       transformed = _applyGrayscaleScanLook(transformed, quality: quality);
       break;
+    case ImageFilterType.bw:
     case ImageFilterType.eco:
     case ImageFilterType.noHandwriting:
       transformed = _applyBlackWhiteDocumentLook(transformed, quality: quality);

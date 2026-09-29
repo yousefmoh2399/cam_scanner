@@ -1,0 +1,6 @@
+# Copy this file to android/key.properties and fill in your keystore values for production release signing.
+# Note: android/key.properties is ignored by .gitignore so credentials are never committed.
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=../upload-keystore.jks

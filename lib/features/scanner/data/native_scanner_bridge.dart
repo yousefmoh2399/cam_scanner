@@ -227,5 +227,30 @@ class NativeScannerBridge {
       return null;
     }
   }
+
+  /// Preprocesses a document image specifically for high-accuracy Arabic/English OCR
+  /// (upscaling to ~300 DPI, illumination flattening, denoise, deskew, adaptive binarization).
+  static Future<String> preprocessForOcr({
+    required String path,
+    required String outPath,
+  }) async {
+    try {
+      final result = await _channel.invokeMethod<String>('preprocessForOcr', {
+        'path': path,
+        'outPath': outPath,
+      }).timeout(const Duration(seconds: 20));
+      return result ?? outPath;
+    } catch (e) {
+      debugPrint('[NativeScannerBridge] preprocessForOcr fallback to original path: $e');
+      return path;
+    }
+  }
+
+  /// Enables or disables Android FLAG_SECURE to hide app screen in Recent Apps switcher.
+  static Future<void> setSecureScreen(bool enabled) async {
+    try {
+      await _channel.invokeMethod<bool>('setSecureScreen', {'enabled': enabled});
+    } catch (_) {}
+  }
 }
 

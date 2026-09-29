@@ -64,15 +64,17 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
 
   static const List<({String key, String label, IconData icon})> _filters = [
     (key: 'enhance', label: 'توضيح', icon: Icons.auto_fix_high_rounded),
+    (key: 'magic', label: 'لون سحري', icon: Icons.auto_awesome_rounded),
     (key: 'original', label: 'أصلي', icon: Icons.image_rounded),
     (key: 'lighten', label: 'تفتيح', icon: Icons.wb_sunny_rounded),
-    (key: 'gray', label: 'رمادي', icon: Icons.filter_b_and_w_rounded),
-    (key: 'eco', label: 'اقتصادي', icon: Icons.format_color_reset_rounded),
     (
       key: 'no_handwriting',
-      label: 'بدون كتابة يد',
+      label: 'إزالة خط اليد',
       icon: Icons.cleaning_services_rounded
     ),
+    (key: 'gray', label: 'رمادي', icon: Icons.filter_b_and_w_rounded),
+    (key: 'bw', label: 'أبيض وأسود', icon: Icons.contrast_rounded),
+    (key: 'eco', label: 'توفير الحبر', icon: Icons.format_color_reset_rounded),
   ];
 
   @override

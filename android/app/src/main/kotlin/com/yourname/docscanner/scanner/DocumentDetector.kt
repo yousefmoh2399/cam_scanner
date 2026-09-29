@@ -1,4 +1,4 @@
-package com.example.cam_scanner.scanner
+package com.yourname.docscanner.scanner
 
 import org.opencv.core.Core
 import org.opencv.core.Mat
