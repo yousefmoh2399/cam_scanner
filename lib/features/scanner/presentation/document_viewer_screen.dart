@@ -1,0 +1,394 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../shared/models/pending_upload.dart';
+import '../../../shared/models/scan_page.dart';
+import '../../../shared/providers/providers.dart';
+import '../data/native_scanner_bridge.dart';
+import 'scan_review_screen.dart';
+import 'signature_bottom_sheet.dart';
+import 'signature_placement_screen.dart';
+import 'widgets/export_format_sheet.dart';
+
+/// Screen for viewing a saved document's pages with Hero animation,
+/// allowing non-destructive re-cropping/filtering, adding signatures,
+/// rotating pages, printing, sharing, or exporting to PDF/Word/Excel at any time.
+class DocumentViewerScreen extends ConsumerStatefulWidget {
+  const DocumentViewerScreen({
+    super.key,
+    required this.document,
+  });
+
+  final PendingUpload document;
+
+  @override
+  ConsumerState<DocumentViewerScreen> createState() =>
+      _DocumentViewerScreenState();
+}
+
+class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
+  late PendingUpload _doc;
+  int _currentPageIndex = 0;
+  bool _isRebuildingPdf = false;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _doc = widget.document;
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _rebuildSavedPdf(List<ScanPage> updatedPages) async {
+    setState(() => _isRebuildingPdf = true);
+    try {
+      final pdfBytes = await ref.read(pdfBuilderServiceProvider).buildPdf(
+            imagePaths: updatedPages.map((p) => p.imagePath).toList(),
+            paperSizes: updatedPages.map((p) => p.paperSize).toList(),
+          );
+      final pdfFile = File(_doc.filePath);
+      await pdfFile.parent.create(recursive: true);
+      await pdfFile.writeAsBytes(pdfBytes, flush: true);
+
+      final updatedDoc = _doc.copyWith(
+        pages: updatedPages,
+        pageCount: updatedPages.length,
+        fileSize: await pdfFile.length(),
+        thumbnailPath:
+            updatedPages.isNotEmpty ? updatedPages.first.imagePath : null,
+      );
+      await ref
+          .read(pendingUploadsControllerProvider.notifier)
+          .updateDocument(updatedDoc);
+      if (mounted) {
+        setState(() {
+          _doc = updatedDoc;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ أثناء تحديث المستند: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRebuildingPdf = false);
+      }
+    }
+  }
+
+  Future<void> _editCurrentPage() async {
+    if (_doc.pages.isEmpty || _isRebuildingPdf) return;
+    final page = _doc.pages[_currentPageIndex];
+    final sourcePath = page.originalPath ?? page.imagePath;
+
+    final updatedPage = await Navigator.of(context).push<ScanPage>(
+      MaterialPageRoute(
+        builder: (_) => ScanReviewScreen(
+          rawImagePath: sourcePath,
+          sessionId: _doc.id,
+          pageId: page.id,
+          initialCorners: page.corners ?? const [],
+          initialFilter: page.filter.nativeKey,
+          initialQuarterRotations: page.quarterTurns,
+        ),
+      ),
+    );
+
+    if (updatedPage != null && mounted) {
+      final nextPages = List<ScanPage>.from(_doc.pages);
+      nextPages[_currentPageIndex] = updatedPage;
+      await _rebuildSavedPdf(nextPages);
+    }
+  }
+
+  Future<void> _signCurrentPage() async {
+    if (_doc.pages.isEmpty || _isRebuildingPdf) return;
+    final page = _doc.pages[_currentPageIndex];
+
+    final storageService = ref.read(signatureStorageServiceProvider);
+    final sigResult = await showSignatureBottomSheet(
+      context: context,
+      storageService: storageService,
+    );
+    if (sigResult == null || !mounted) return;
+
+    final compositedBytes = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute<Uint8List>(
+        builder: (_) => SignaturePlacementScreen(
+          pageImagePath: page.imagePath,
+          signatureBytes: sigResult.pngBytes,
+        ),
+        fullscreenDialog: true,
+      ),
+    );
+    if (compositedBytes == null || !mounted) return;
+
+    await File(page.imagePath).writeAsBytes(compositedBytes, flush: true);
+    await FileImage(File(page.imagePath)).evict();
+    await _rebuildSavedPdf(List<ScanPage>.from(_doc.pages));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ تم دمج التوقيع وتحديث المستند بنجاح')),
+      );
+    }
+  }
+
+  Future<void> _rotateCurrentPage() async {
+    if (_doc.pages.isEmpty || _isRebuildingPdf) return;
+    final page = _doc.pages[_currentPageIndex];
+    final tempRotated = '${page.imagePath}.rot.jpg';
+    await NativeScannerBridge.rotateLeft(
+      path: page.imagePath,
+      outPath: tempRotated,
+    );
+    final f = File(tempRotated);
+    if (await f.exists()) {
+      await f.rename(page.imagePath);
+    }
+    await FileImage(File(page.imagePath)).evict();
+    final nextPages = List<ScanPage>.from(_doc.pages);
+    nextPages[_currentPageIndex] = page.copyWith(
+      quarterTurns: (page.quarterTurns + 1) % 4,
+    );
+    await _rebuildSavedPdf(nextPages);
+  }
+
+  Future<void> _chooseExportFormat() async {
+    final choice = await showSaveAndExportBottomSheet(
+      context: context,
+      initialFileName: _doc.fileName,
+      pageCount: _doc.pageCount,
+      showNameInput: false,
+    );
+    if (choice == null || !mounted) return;
+    await executeDocumentExportWithUi(
+      context: context,
+      ref: ref,
+      document: _doc,
+      format: choice.format,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.appThemePalette;
+    final theme = Theme.of(context);
+    final pages = _doc.pages;
+    final title = stripFileExtension(_doc.fileName);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+            Text(
+              '${formatPageCount(_doc.pageCount)} • ${formatFileSize(_doc.fileSize)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 11.5,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'تصدير / تحويل الصيغة (PDF, Word, Excel)',
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: _chooseExportFormat,
+          ),
+          IconButton(
+            tooltip: 'طباعة المستند',
+            icon: const Icon(Icons.print_rounded),
+            onPressed: () async {
+              if (File(_doc.filePath).existsSync()) {
+                final bytes = await File(_doc.filePath).readAsBytes();
+                await Printing.layoutPdf(
+                  name: title,
+                  onLayout: (_) async => bytes,
+                );
+              }
+            },
+          ),
+          IconButton(
+            tooltip: 'فتح بعارض خارجي',
+            icon: const Icon(Icons.open_in_new_rounded),
+            onPressed: () => OpenFilex.open(_doc.filePath),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: pages.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.picture_as_pdf_rounded,
+                              size: 64,
+                              color: palette.accent,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _doc.fileName,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: () => OpenFilex.open(_doc.filePath),
+                              icon: const Icon(Icons.open_in_new_rounded),
+                              label: const Text('فتح ملف الـ PDF'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : PageView.builder(
+                        controller: _pageController,
+                        itemCount: pages.length,
+                        onPageChanged: (idx) =>
+                            setState(() => _currentPageIndex = idx),
+                        itemBuilder: (context, index) {
+                          final page = pages[index];
+                          final imageWidget = InteractiveViewer(
+                            minScale: 1.0,
+                            maxScale: 4.0,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Center(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Image.file(
+                                    File(page.imagePath),
+                                    key: ValueKey(
+                                      File(page.imagePath).existsSync()
+                                          ? File(page.imagePath)
+                                              .lastModifiedSync()
+                                              .millisecondsSinceEpoch
+                                          : index,
+                                    ),
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+
+                          if (index == 0) {
+                            return Hero(
+                              tag: 'doc_thumb_${_doc.id}',
+                              child: imageWidget,
+                            );
+                          }
+                          return imageWidget;
+                        },
+                      ),
+              ),
+              if (pages.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    border: Border(
+                      top: BorderSide(color: theme.colorScheme.outlineVariant),
+                    ),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'صفحة ${_currentPageIndex + 1} من ${pages.length}',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: palette.accent,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              FilledButton.tonalIcon(
+                                onPressed: _editCurrentPage,
+                                icon: const Icon(Icons.crop_rotate_rounded, size: 18),
+                                label: const Text('قص وفلاتر'),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton.tonalIcon(
+                                onPressed: _signCurrentPage,
+                                icon: const Icon(Icons.draw_rounded, size: 18),
+                                label: const Text('توقيع'),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton.tonalIcon(
+                                onPressed: _rotateCurrentPage,
+                                icon: const Icon(Icons.rotate_left_rounded, size: 18),
+                                label: const Text('تدوير'),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton.icon(
+                                onPressed: _chooseExportFormat,
+                                icon: const Icon(Icons.file_download_rounded, size: 18),
+                                label: const Text('تصدير (PDF/Word/Excel)'),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  Share.shareXFiles(
+                                    [XFile(_doc.filePath)],
+                                    subject: title,
+                                  );
+                                },
+                                icon: const Icon(Icons.share_rounded, size: 18),
+                                label: const Text('مشاركة'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (_isRebuildingPdf)
+            Container(
+              color: Colors.black45,
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

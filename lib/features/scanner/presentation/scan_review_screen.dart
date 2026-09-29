@@ -1,0 +1,721 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../../shared/models/image_filter_type.dart';
+import '../../../shared/models/scan_page.dart';
+import '../../../shared/providers/providers.dart';
+import '../data/native_scanner_bridge.dart';
+import 'widgets/quad_crop_editor.dart';
+
+/// Screen for interactive review, manual quadrilateral cropping, filter selection with live thumbnails, and rotation.
+///
+/// Execution pipeline:
+/// - Preview: Fast native warp (maxSide 1600 with in-memory quarterTurns) -> filter.
+/// - Thumbnails: Generates 200px thumbnails for all 6 filters asynchronously using OpenCV.
+/// - Rotation: Adjusts quarterTurns and re-generates preview without intermediate rotate files.
+/// - Final save: Full-resolution warp(quarterTurns) -> filter (exactly 2 encodes, 0 separate rotateLeft passes).
+class ScanReviewScreen extends ConsumerStatefulWidget {
+  const ScanReviewScreen({
+    super.key,
+    required this.rawImagePath,
+    required this.sessionId,
+    this.pageId,
+    this.initialCorners = const [],
+    this.initialFilter = 'enhance',
+    this.initialQuarterRotations = 0,
+    this.imageWidth = 0,
+    this.imageHeight = 0,
+  });
+
+  final String rawImagePath;
+  final String sessionId;
+  final String? pageId;
+  final List<double> initialCorners; // 8 normalized coordinates
+  final String initialFilter;
+  final int initialQuarterRotations;
+  final int imageWidth;
+  final int imageHeight;
+
+  @override
+  ConsumerState<ScanReviewScreen> createState() => _ScanReviewScreenState();
+}
+
+class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
+  late List<double> _corners;
+  bool _isEditingCrop = false;
+  late String _selectedFilter;
+  late int _quarterRotations;
+
+  bool _isBusy = false;
+  String? _statusText;
+
+  String? _warpedPreviewPath;
+  String? _currentPreviewPath;
+  final Map<String, String> _filterCache = {};
+  final Map<String, String> _filterThumbnails = {};
+
+  final Set<String> _tempFiles = {};
+  int _previewToken = 0;
+
+  final GlobalKey<State<QuadCropEditor>> _cropEditorKey = GlobalKey();
+
+  static const List<({String key, String label, IconData icon})> _filters = [
+    (key: 'enhance', label: 'توضيح', icon: Icons.auto_fix_high_rounded),
+    (key: 'original', label: 'أصلي', icon: Icons.image_rounded),
+    (key: 'lighten', label: 'تفتيح', icon: Icons.wb_sunny_rounded),
+    (key: 'gray', label: 'رمادي', icon: Icons.filter_b_and_w_rounded),
+    (key: 'eco', label: 'اقتصادي', icon: Icons.format_color_reset_rounded),
+    (
+      key: 'no_handwriting',
+      label: 'بدون كتابة يد',
+      icon: Icons.cleaning_services_rounded
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedFilter = widget.initialFilter;
+    _quarterRotations = widget.initialQuarterRotations % 4;
+
+    if (widget.initialCorners.length == 8) {
+      _corners = List<double>.from(widget.initialCorners);
+      _isEditingCrop = false;
+    } else {
+      _corners = [0.05, 0.05, 0.95, 0.05, 0.95, 0.95, 0.05, 0.95];
+      _isEditingCrop = true;
+    }
+
+    _preparePreview();
+  }
+
+  @override
+  void dispose() {
+    _cleanupTempFiles();
+    super.dispose();
+  }
+
+  void _cleanupTempFiles() {
+    for (final path in _tempFiles) {
+      try {
+        final f = File(path);
+        if (f.existsSync()) {
+          f.deleteSync();
+        }
+      } catch (e) {
+        debugPrint('[ScanReviewScreen] Error deleting temp file $path: $e');
+      }
+    }
+    _tempFiles.clear();
+  }
+
+  Future<void> _preparePreview() async {
+    final token = ++_previewToken;
+    setState(() {
+      _isBusy = true;
+      _statusText = 'جار تصحيح المنظور...';
+    });
+
+    try {
+      final draftsDir =
+          await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+      final tag = DateTime.now().millisecondsSinceEpoch;
+      final warpedPath = '${draftsDir.path}/preview_warp_$tag.jpg';
+      _tempFiles.add(warpedPath);
+
+      // Fast native warp at max 1600px for instant preview with rotation in-memory
+      await NativeScannerBridge.warp(
+        path: widget.rawImagePath,
+        corners: _corners,
+        outPath: warpedPath,
+        maxSide: 1600,
+        quarterTurns: _quarterRotations,
+      ).timeout(const Duration(seconds: 20));
+
+      if (token != _previewToken || !mounted) return;
+
+      _warpedPreviewPath = warpedPath;
+      _filterCache.clear();
+      _filterThumbnails.clear();
+
+      await _applyFilter(_selectedFilter, parentToken: token);
+      _generateFilterThumbnails(warpedPath, token);
+    } catch (e) {
+      if (token != _previewToken || !mounted) return;
+      setState(() {
+        _isBusy = false;
+        _statusText = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ أثناء تجهيز المعاينة: $e')),
+      );
+    }
+  }
+
+  Future<void> _generateFilterThumbnails(String warpedPath, int token) async {
+    try {
+      final draftsDir =
+          await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+      for (final f in _filters) {
+        if (token != _previewToken || !mounted) return;
+        final tag = DateTime.now().microsecondsSinceEpoch;
+        final thumbPath = '${draftsDir.path}/preview_thumb_${f.key}_$tag.jpg';
+        _tempFiles.add(thumbPath);
+        await NativeScannerBridge.applyFilter(
+          path: warpedPath,
+          filter: f.key,
+          outPath: thumbPath,
+          maxSide: 220,
+        );
+        if (token != _previewToken || !mounted) return;
+        if (File(thumbPath).existsSync()) {
+          setState(() {
+            _filterThumbnails[f.key] = thumbPath;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _applyFilter(String filterKey, {int? parentToken}) async {
+    final warped = _warpedPreviewPath;
+    if (warped == null) return;
+
+    if (_filterCache.containsKey(filterKey)) {
+      setState(() {
+        _selectedFilter = filterKey;
+        _currentPreviewPath = _filterCache[filterKey];
+        _isBusy = false;
+        _statusText = null;
+      });
+      return;
+    }
+
+    final token = parentToken ?? ++_previewToken;
+    setState(() {
+      _isBusy = true;
+      _statusText = 'جار تطبيق الفلتر...';
+      _selectedFilter = filterKey;
+    });
+
+    try {
+      final draftsDir =
+          await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+      final tag = DateTime.now().millisecondsSinceEpoch;
+      final filteredPath = '${draftsDir.path}/preview_${filterKey}_$tag.jpg';
+      _tempFiles.add(filteredPath);
+
+      await NativeScannerBridge.applyFilter(
+        path: warped,
+        filter: filterKey,
+        outPath: filteredPath,
+        maxSide: 1600,
+      ).timeout(const Duration(seconds: 20));
+
+      if (token != _previewToken || !mounted) return;
+
+      _filterCache[filterKey] = filteredPath;
+      setState(() {
+        _currentPreviewPath = filteredPath;
+        _isBusy = false;
+        _statusText = null;
+      });
+    } catch (e) {
+      if (token != _previewToken || !mounted) return;
+      setState(() {
+        _isBusy = false;
+        _statusText = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ أثناء تطبيق الفلتر: $e')),
+      );
+    }
+  }
+
+  Future<void> _rotateLeft() async {
+    if (_isBusy) return;
+    _quarterRotations = (_quarterRotations + 1) % 4;
+    await _preparePreview();
+  }
+
+  Future<void> _confirmAndSave() async {
+    setState(() {
+      _isBusy = true;
+      _statusText = 'جار حفظ المستند بجودة كاملة...';
+    });
+
+    final intermediateFiles = <String>[];
+    try {
+      final pageId = widget.pageId ?? const Uuid().v4();
+      final draftsDir =
+          await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+      final fullWarpPath = '${draftsDir.path}/full_warp_$pageId.jpg';
+      final fullFilteredPath = '${draftsDir.path}/full_filtered_$pageId.jpg';
+      intermediateFiles.addAll([fullWarpPath, fullFilteredPath]);
+
+      // 1. Hardware-accelerated warp (+ in-memory rotation before single encode)
+      // Capped at 2048px (200 DPI A4) so PdfBuilderService hits its 0ms fast path directly!
+      await NativeScannerBridge.warp(
+        path: widget.rawImagePath,
+        corners: _corners,
+        outPath: fullWarpPath,
+        maxSide: 2048,
+        quarterTurns: _quarterRotations,
+      ).timeout(const Duration(seconds: 20));
+
+      // 2. Native OpenCV filter directly on the rotated warped document
+      await NativeScannerBridge.applyFilter(
+        path: fullWarpPath,
+        filter: _selectedFilter,
+        outPath: fullFilteredPath,
+        maxSide: 2048,
+      ).timeout(const Duration(seconds: 20));
+
+      // 3. Save directly into session files without memory overhead
+      final savedPath = await ref.read(localDocumentStoreProvider).savePageFile(
+            sessionId: widget.sessionId,
+            pageId: pageId,
+            sourcePath: fullFilteredPath,
+          );
+
+      // 4. Preserve raw capture inside session directory for non-destructive re-warps
+      String preservedRawPath = widget.rawImagePath;
+      if (!preservedRawPath.contains(widget.sessionId)) {
+        preservedRawPath =
+            await ref.read(localDocumentStoreProvider).importRawScanFile(
+                  sessionId: widget.sessionId,
+                  sourcePath: widget.rawImagePath,
+                );
+      }
+
+      // Clean up intermediate full-res files immediately
+      for (final p in intermediateFiles) {
+        try {
+          final f = File(p);
+          if (f.existsSync()) f.deleteSync();
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pop(
+        ScanPage(
+          id: pageId,
+          imagePath: savedPath,
+          createdAt: DateTime.now(),
+          originalPath: preservedRawPath,
+          corners: _corners,
+          filter: ImageFilterType.fromKey(_selectedFilter),
+          quarterTurns: _quarterRotations,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isBusy = false;
+        _statusText = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ أثناء حفظ الصفحة: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F1115),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF16181F),
+        elevation: 0,
+        title: Text(
+          _isEditingCrop ? 'تحديد حدود المستند' : 'مراجعة وتحسين المسح',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          if (!_isEditingCrop)
+            TextButton.icon(
+              icon: const Icon(Icons.crop_rounded, size: 18),
+              label: const Text('تعديل الحواف'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white70,
+                textStyle: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              onPressed: _isBusy
+                  ? null
+                  : () {
+                      setState(() => _isEditingCrop = true);
+                    },
+            ),
+          TextButton(
+            onPressed: _isBusy
+                ? null
+                : () {
+                    if (_isEditingCrop) {
+                      setState(() => _isEditingCrop = false);
+                      _preparePreview();
+                    } else {
+                      _confirmAndSave();
+                    }
+                  },
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF00E676),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+            child: Text(_isEditingCrop ? 'معاينة' : 'حفظ'),
+          ),
+        ],
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Center(
+                    child: _isEditingCrop
+                        ? QuadCropEditor(
+                            key: _cropEditorKey,
+                            imagePath: widget.rawImagePath,
+                            initialCorners: _corners,
+                            imageWidth: widget.imageWidth,
+                            imageHeight: widget.imageHeight,
+                            onCornersChanged: (newCorners) {
+                              _corners = newCorners;
+                            },
+                          )
+                        : _buildPreviewDisplay(),
+                  ),
+                ),
+              ),
+              if (_isEditingCrop)
+                _buildCropToolbar()
+              else
+                _buildReviewToolbar(theme),
+            ],
+          ),
+          if (_isBusy)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E222D),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black38, blurRadius: 16),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF00E676),
+                        ),
+                        strokeWidth: 3,
+                      ),
+                      if (_statusText != null) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          _statusText!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewDisplay() {
+    final preview = _currentPreviewPath;
+    if (preview == null) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.file(
+        File(preview),
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const Center(
+          child: Icon(
+            Icons.broken_image_rounded,
+            size: 48,
+            color: Colors.white38,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCropToolbar() {
+    return Container(
+      color: const Color(0xFF16181F),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.restore_rounded, size: 18),
+                label: const Text('الحدود المكتشفة'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _corners = List<double>.from(
+                      widget.initialCorners.length == 8
+                          ? widget.initialCorners
+                          : [0.05, 0.05, 0.95, 0.05, 0.95, 0.95, 0.05, 0.95],
+                    );
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.fullscreen_rounded, size: 18),
+                label: const Text('كامل الصورة'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _corners = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
+                  });
+                },
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_rounded, size: 20),
+                label: const Text('تطبيق القص'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00E676),
+                  foregroundColor: Colors.black,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  setState(() => _isEditingCrop = false);
+                  _preparePreview();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewToolbar(ThemeData theme) {
+    return Container(
+      color: const Color(0xFF16181F),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Filter Thumbnails Horizontal List
+            SizedBox(
+              height: 88,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _filters.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final filter = _filters[index];
+                  final isSelected = filter.key == _selectedFilter;
+                  final thumbPath =
+                      _filterThumbnails[filter.key] ?? _warpedPreviewPath;
+
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: _isBusy ? null : () => _applyFilter(filter.key),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 72,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF00E676).withValues(alpha: 0.16)
+                            : const Color(0xFF222631),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF00E676)
+                              : Colors.white12,
+                          width: isSelected ? 2.0 : 1.0,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(9),
+                              child: thumbPath != null &&
+                                      File(thumbPath).existsSync()
+                                  ? Image.file(
+                                      File(thumbPath),
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      cacheWidth: 160,
+                                    )
+                                  : Center(
+                                      child: Icon(
+                                        filter.icon,
+                                        size: 20,
+                                        color: isSelected
+                                            ? const Color(0xFF00E676)
+                                            : Colors.white70,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            filter.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? const Color(0xFF00E676)
+                                  : Colors.white,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Actions row: Rotate & Edit Crop & Save Page
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton.filledTonal(
+                      tooltip: 'تدوير 90 درجة لليسار',
+                      icon: const Icon(Icons.rotate_left_rounded, size: 22),
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF222631),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _isBusy ? null : _rotateLeft,
+                    ),
+                    const SizedBox(width: 10),
+                    TextButton.icon(
+                      icon: const Icon(Icons.crop_free_rounded, size: 20),
+                      label: const Text('إعادة ضبط حدود القص'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        backgroundColor: const Color(0xFF222631),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: _isBusy
+                          ? null
+                          : () {
+                              setState(() => _isEditingCrop = true);
+                            },
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.done_all_rounded, size: 20),
+                      label: const Text('حفظ الصفحة'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00E676),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 11,
+                        ),
+                        textStyle: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: _isBusy ? null : _confirmAndSave,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,58 @@
+name: cam_scanner
+description: "تطبيق المسح الضوئي الاحترافي - يعمل بدون إنترنت 100%"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.6.1
+  shared_preferences: ^2.3.3
+  path_provider: ^2.1.5
+  path: ^1.9.0
+  uuid: ^4.5.1
+  open_filex: ^4.5.0
+  share_plus: ^10.1.2
+  printing: ^5.13.4
+  pdf: ^3.11.1
+  excel: ^4.0.6
+  archive: ^3.6.1
+  xml: ^6.5.0
+  google_mlkit_text_recognition: ^0.14.0
+  image: ^4.3.0
+  permission_handler: ^11.3.1
+  intl: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/fonts/
+
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Cairo-Regular.ttf
+          weight: 500
+        - asset: assets/fonts/Cairo-Regular.ttf
+          weight: 600
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 800
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 900
