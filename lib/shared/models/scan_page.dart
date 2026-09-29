@@ -1,17 +1,27 @@
 import 'document_paper_size.dart';
 import 'image_filter_type.dart';
 
+typedef ScannedPage = ScanPage;
+
 class ScanPage {
-  const ScanPage({
-    required this.id,
+  ScanPage({
+    String? id,
     required this.imagePath,
-    required this.createdAt,
+    DateTime? createdAt,
     this.paperSize = DocumentPaperSize.auto,
-    this.originalPath,
+    String? originalPath,
+    String? originalImagePath,
     this.corners,
-    this.filter = ImageFilterType.enhance,
+    ImageFilterType? filter,
+    String? filterName,
     this.quarterTurns = 0,
-  });
+  })  : id = id ?? 'pg_${DateTime.now().microsecondsSinceEpoch}',
+        createdAt = createdAt ?? DateTime.now(),
+        originalPath = originalPath ?? originalImagePath ?? imagePath,
+        filter = filter ??
+            (filterName != null
+                ? ImageFilterType.fromKey(filterName)
+                : ImageFilterType.enhance);
 
   final String id;
   final String imagePath;
@@ -20,6 +30,8 @@ class ScanPage {
 
   /// Path to the untouched raw camera capture file.
   final String? originalPath;
+
+  String? get originalImagePath => originalPath;
 
   /// 8 normalized corner coordinates [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y].
   final List<double>? corners;
@@ -36,6 +48,7 @@ class ScanPage {
     DateTime? createdAt,
     DocumentPaperSize? paperSize,
     String? originalPath,
+    String? originalImagePath,
     List<double>? corners,
     ImageFilterType? filter,
     int? quarterTurns,
@@ -45,7 +58,7 @@ class ScanPage {
       imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
       paperSize: paperSize ?? this.paperSize,
-      originalPath: originalPath ?? this.originalPath,
+      originalPath: originalPath ?? originalImagePath ?? this.originalPath,
       corners: corners ?? this.corners,
       filter: filter ?? this.filter,
       quarterTurns: quarterTurns ?? this.quarterTurns,
@@ -66,16 +79,28 @@ class ScanPage {
   }
 
   factory ScanPage.fromJson(Map<String, dynamic> json) {
+    final imgPath =
+        (json['imagePath'] ?? json['image_path'] ?? '') as String;
+    final origPath =
+        (json['originalPath'] ?? json['original_image_path']) as String?;
     return ScanPage(
-      id: json['id'] as String,
-      imagePath: json['imagePath'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      paperSize: DocumentPaperSizeLabels.fromName(json['paperSize'] as String?),
-      originalPath: json['originalPath'] as String?,
+      id: (json['id'] as String?) ??
+          'pg_${DateTime.now().microsecondsSinceEpoch}',
+      imagePath: imgPath,
+      createdAt: DateTime.tryParse(
+            (json['createdAt'] ?? json['created_at'] ?? '') as String,
+          ) ??
+          DateTime.now(),
+      paperSize: DocumentPaperSizeLabels.fromName(
+        (json['paperSize'] ?? json['paper_size']) as String?,
+      ),
+      originalPath: origPath ?? imgPath,
       corners: (json['corners'] as List<dynamic>?)
           ?.map((e) => (e as num).toDouble())
           .toList(),
-      filter: ImageFilterType.fromKey(json['filter'] as String?),
+      filter: ImageFilterType.fromKey(
+        (json['filter'] ?? json['filterName']) as String?,
+      ),
       quarterTurns: (json['quarterTurns'] as num?)?.toInt() ?? 0,
     );
   }

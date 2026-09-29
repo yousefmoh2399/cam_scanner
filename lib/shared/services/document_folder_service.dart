@@ -107,6 +107,10 @@ class DocumentFolderService {
     await _saveFolders(folders);
   }
 
+  Future<void> saveFolders(List<DocumentFolder> folders) async {
+    await _saveFolders(folders);
+  }
+
   Future<void> assignDocumentToFolder(
     String documentId,
     String? folderId,

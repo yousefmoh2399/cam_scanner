@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../../core/utils/formatters.dart';
 import 'scan_page.dart';
 
@@ -22,24 +24,28 @@ enum LocalDocumentStatus {
 }
 
 /// Represents a locally stored scanned document (replaces PendingUpload & RemoteDocument).
-/// Preserves full metadata, PDF path, first-page thumbnail path, folder assignment, and
-/// individual [ScanPage] items so any document can be reopened, edited, signed, or
-/// exported to PDF/Word/Excel at any time.
 class PendingUpload {
-  const PendingUpload({
+  PendingUpload({
     required this.id,
     required this.fileName,
     required this.filePath,
     required this.pageCount,
-    required this.fileSize,
+    int? fileSize,
     required this.createdAt,
     this.pages = const [],
     this.thumbnailPath,
     this.docxPath,
     this.xlsxPath,
     this.folderId,
-    this.status = LocalDocumentStatus.saved,
-  });
+    String? fileType,
+    Object? status = LocalDocumentStatus.saved,
+  })  : fileSize = fileSize ??
+            (filePath.isNotEmpty && File(filePath).existsSync()
+                ? File(filePath).lengthSync()
+                : 0),
+        status = status is LocalDocumentStatus
+            ? status
+            : LocalDocumentStatus.fromName(status?.toString());
 
   final String id;
   final String fileName;
@@ -57,6 +63,9 @@ class PendingUpload {
   String get title => stripFileExtension(fileName);
 
   int get fileSizeBytes => fileSize;
+
+  int get effectivePageCount =>
+      pageCount > 0 ? pageCount : (pages.isNotEmpty ? pages.length : 1);
 
   String? get effectiveThumbnailPath {
     if (thumbnailPath != null && thumbnailPath!.isNotEmpty) {
@@ -123,18 +132,25 @@ class PendingUpload {
             ?.map((e) => ScanPage.fromJson(e as Map<String, dynamic>))
             .toList() ??
         const <ScanPage>[];
+    final fPath =
+        (json['filePath'] ?? json['file_path'] ?? '') as String;
     return PendingUpload(
       id: json['id'] as String,
-      fileName: json['fileName'] as String,
-      filePath: json['filePath'] as String,
-      pageCount: json['pageCount'] as int? ?? parsedPages.length,
-      fileSize: json['fileSize'] as int? ?? 0,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      fileName: (json['fileName'] ?? json['file_name'] ?? 'document.pdf') as String,
+      filePath: fPath,
+      pageCount: (json['pageCount'] ?? json['page_count']) as int? ??
+          parsedPages.length,
+      fileSize: (json['fileSize'] ?? json['file_size']) as int? ?? 0,
+      createdAt: DateTime.tryParse(
+            (json['createdAt'] ?? json['created_at'] ?? '') as String,
+          ) ??
+          DateTime.now(),
       pages: parsedPages,
-      thumbnailPath: json['thumbnailPath'] as String?,
-      docxPath: json['docxPath'] as String?,
-      xlsxPath: json['xlsxPath'] as String?,
-      folderId: json['folderId'] as String?,
+      thumbnailPath:
+          (json['thumbnailPath'] ?? json['thumbnail_path']) as String?,
+      docxPath: (json['docxPath'] ?? json['docx_path']) as String?,
+      xlsxPath: (json['xlsxPath'] ?? json['xlsx_path']) as String?,
+      folderId: (json['folderId'] ?? json['folder_id']) as String?,
       status: LocalDocumentStatus.fromName(json['status'] as String?),
     );
   }

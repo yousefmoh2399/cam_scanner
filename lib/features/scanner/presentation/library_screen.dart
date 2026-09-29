@@ -1,7 +1,11 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image/image.dart' as img;
+import 'package:path/path.dart' as p;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -9,10 +13,16 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/document_folder.dart';
 import '../../../shared/models/pending_upload.dart';
+import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
+import '../../../shared/services/local_media_storage_service.dart';
+import '../data/document_search_service.dart';
+import '../data/ocr_service.dart';
 import 'document_viewer_screen.dart';
+import 'pdf_tools_screen.dart';
 import 'scanner_session_screen.dart';
 import 'signature_bottom_sheet.dart';
+import 'vault_screen.dart';
 import 'widgets/export_format_sheet.dart';
 
 enum LibrarySortOption {
@@ -32,12 +42,16 @@ class LibraryScreen extends ConsumerStatefulWidget {
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+class _LibraryScreenState extends ConsumerState<LibraryScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  Map<String, DocumentSearchHit> _ocrSearchHits = const {};
   bool _isGridView = true;
   LibrarySortOption _sortOption = LibrarySortOption.newest;
   String? _activeFolderId;
+  DateTime? _backgroundedAt;
+  bool _isAppLockedOverlay = false;
 
   List<DocumentFolder> _folders = const [];
   bool _isLoadingFolders = true;
@@ -48,13 +62,207 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadFolders();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkInitialSecurityAndIntents();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _backgroundedAt = DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      _onAppResumed();
+    }
+  }
+
+  Future<void> _checkInitialSecurityAndIntents() async {
+    final sec = ref.read(vaultSecurityServiceProvider);
+    final settings = await sec.loadSettings();
+    if (settings.appLockEnabled && settings.hasPinConfigured) {
+      await _promptAppUnlock();
+    }
+    await _consumeSharedIncomingFiles();
+  }
+
+  Future<void> _onAppResumed() async {
+    await _consumeSharedIncomingFiles();
+    final bgTime = _backgroundedAt;
+    if (bgTime == null) return;
+    _backgroundedAt = null;
+
+    final sec = ref.read(vaultSecurityServiceProvider);
+    final settings = await sec.loadSettings();
+    if (!settings.appLockEnabled || !settings.hasPinConfigured) return;
+
+    final elapsed = DateTime.now().difference(bgTime);
+    if (elapsed >= settings.autoLockTimeout.duration) {
+      await _promptAppUnlock();
+    }
+  }
+
+  Future<void> _promptAppUnlock() async {
+    if (_isAppLockedOverlay || !mounted) return;
+    setState(() => _isAppLockedOverlay = true);
+
+    final sec = ref.read(vaultSecurityServiceProvider);
+    final settings = await sec.loadSettings();
+    if (settings.biometricsEnabled) {
+      final ok = await sec.authenticateWithBiometrics(
+        reason: 'الرجاء تأكيد هويتك لفتح التطبيق',
+      );
+      if (ok && mounted) {
+        setState(() => _isAppLockedOverlay = false);
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    final pinCtrl = TextEditingController();
+    String? err;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('التطبيق مقفل للحماية'),
+            content: TextField(
+              controller: pinCtrl,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'أدخل الرمز السري',
+                errorText: err,
+              ),
+            ),
+            actions: [
+              if (settings.biometricsEnabled)
+                TextButton.icon(
+                  onPressed: () async {
+                    final ok = await sec.authenticateWithBiometrics();
+                    if (ok && ctx.mounted) Navigator.of(ctx).pop();
+                  },
+                  icon: const Icon(Icons.fingerprint_rounded),
+                  label: const Text('البصمة'),
+                ),
+              FilledButton(
+                onPressed: () async {
+                  final ok = await sec.verifyPin(pinCtrl.text.trim());
+                  if (ok && ctx.mounted) {
+                    Navigator.of(ctx).pop();
+                  } else {
+                    setDialogState(() => err = 'الرمز غير صحيح');
+                  }
+                },
+                child: const Text('فتح'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (mounted) {
+      setState(() => _isAppLockedOverlay = false);
+    }
+  }
+
+  Future<void> _consumeSharedIncomingFiles() async {
+    if (!Platform.isAndroid) return;
+    try {
+      const channel = MethodChannel('com.yourname.docscanner/scanner');
+      final rawList =
+          await channel.invokeMethod<List<dynamic>>('consumeIncomingFiles');
+      if (rawList == null || rawList.isEmpty) return;
+
+      const storage = LocalMediaStorageService();
+      final pagesDir = await storage.pagesDirectory();
+      final docsDir = await storage.documentsDirectory();
+      final now = DateTime.now();
+      final docId = 'sh_${now.millisecondsSinceEpoch}';
+      final importedPages = <ScannedPage>[];
+
+      for (final item in rawList.whereType<String>()) {
+        final f = File(item);
+        if (!await f.exists()) continue;
+        final ext = p.extension(item).toLowerCase();
+        if (ext == '.pdf') {
+          final pdfBytes = await f.readAsBytes();
+          var idx = 0;
+          await for (final raster in Printing.raster(pdfBytes, dpi: 180)) {
+            final png = await raster.toPng();
+            final decoded = img.decodePng(png);
+            if (decoded != null) {
+              final jpg = img.encodeJpg(decoded, quality: 90);
+              final pagePath = p.join(pagesDir.path, '${docId}_p$idx.jpg');
+              await File(pagePath).writeAsBytes(jpg, flush: true);
+              importedPages.add(ScannedPage(imagePath: pagePath, originalImagePath: pagePath));
+              idx++;
+            }
+          }
+        } else {
+          final decoded = img.decodeImage(await f.readAsBytes());
+          if (decoded != null) {
+            final jpg = img.encodeJpg(decoded, quality: 90);
+            final pagePath =
+                p.join(pagesDir.path, '${docId}_img${importedPages.length}.jpg');
+            await File(pagePath).writeAsBytes(jpg, flush: true);
+            importedPages.add(ScannedPage(imagePath: pagePath, originalImagePath: pagePath));
+          }
+        }
+      }
+
+      if (importedPages.isEmpty) return;
+      final title = 'ملف_مستورد_${now.millisecondsSinceEpoch % 10000}';
+      final pdfBytes = await ref.read(pdfBuilderServiceProvider).buildPdf(
+            imagePaths: importedPages.map((e) => e.imagePath).toList(),
+            paperSizes: importedPages.map((e) => e.paperSize).toList(),
+          );
+      final pdfPath = p.join(docsDir.path, '${docId}_$title.pdf');
+      await File(pdfPath).writeAsBytes(pdfBytes, flush: true);
+
+      await ref.read(pendingUploadsControllerProvider.notifier).addDocument(
+            PendingUpload(
+              id: docId,
+              filePath: pdfPath,
+              fileName: '$title.pdf',
+              fileType: 'pdf',
+              createdAt: now,
+              status: 'saved',
+              pageCount: importedPages.length,
+              thumbnailPath: importedPages.first.imagePath,
+              pages: importedPages,
+            ),
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تم استيراد "$title" (${importedPages.length} صفحة) تلقائياً!')),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _onSearchQueryChanged(String val) async {
+    setState(() => _searchQuery = val);
+    final trimmed = val.trim();
+    if (trimmed.isEmpty) {
+      setState(() => _ocrSearchHits = const {});
+      return;
+    }
+    final hits = await ref.read(documentSearchServiceProvider).search(trimmed);
+    if (mounted && _searchQuery.trim() == trimmed) {
+      setState(() => _ocrSearchHits = hits);
+    }
   }
 
   Future<void> _loadFolders() async {
@@ -515,6 +723,42 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   _exportDocumentSheet(doc);
                 },
               ),
+              ListTile(
+                leading: const Icon(
+                  Icons.document_scanner_rounded,
+                  color: Color(0xFF9333EA),
+                ),
+                title: const Text(
+                  'استخراج النص وتسمية ذكية (Tesseract OCR)',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'نسخ النص العربي/الإنجليزي، اقتراح عنوان ذكي، وفهرسة للبحث الفوري',
+                  style: TextStyle(fontSize: 11.5),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showOcrAndSmartRenameDialog(doc);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.enhanced_encryption_rounded,
+                  color: Color(0xFF059669),
+                ),
+                title: const Text(
+                  'نقل إلى الخزنة السرية المشفرة (AES-256-GCM)',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'تشفير الملف فعلياً على القرص وإخفاؤه من المكتبة والبحث',
+                  style: TextStyle(fontSize: 11.5),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _moveSingleDocToSecretVault(doc);
+                },
+              ),
               if (doc.pages.isNotEmpty)
                 ListTile(
                   leading: Icon(
@@ -616,6 +860,343 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
+  Future<void> _showOcrAndSmartRenameDialog(PendingUpload doc) async {
+    final imagePaths = doc.pages
+        .map((p) => p.imagePath)
+        .where((path) => path.isNotEmpty && File(path).existsSync())
+        .toList();
+    if (imagePaths.isEmpty &&
+        doc.effectiveThumbnailPath != null &&
+        File(doc.effectiveThumbnailPath!).existsSync()) {
+      imagePaths.add(doc.effectiveThumbnailPath!);
+    }
+    if (imagePaths.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا توجد صور صفحات لاستخراج النص منها.')),
+      );
+      return;
+    }
+
+    final statusNotifier = ValueNotifier<String>(
+      'جارٍ تشغيل محرك Tesseract OCR (عربي + إنجليزي)...',
+    );
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        content: ValueListenableBuilder<String>(
+          valueListenable: statusNotifier,
+          builder: (_, msg, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                msg,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final ocrService = ref.read(ocrServiceProvider);
+      final ocrResult = await ocrService.recognizeDocument(
+        documentId: doc.id,
+        imagePaths: imagePaths,
+        languageMode: OcrLanguageMode.arabicEnglish,
+        onProgress: (m) => statusNotifier.value = m,
+      );
+
+      await ref.read(documentSearchServiceProvider).indexDocumentOcr(
+            documentId: doc.id,
+            title: doc.title,
+            fullText: ocrResult.fullText,
+            smartTitle: ocrResult.suggestedTitle,
+          );
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      final suggested = ocrResult.suggestedTitle;
+      final fullText = ocrResult.fullText.trim().isEmpty
+          ? 'لم يتم العثور على نص مقروء واضح في هذه الصفحة.'
+          : ocrResult.fullText.trim();
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (sheetCtx) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'النص المستخرج بـ OCR (${doc.title})',
+                style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              if (suggested != null && suggested.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF9333EA).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Color(0xFF9333EA),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'العنوان الذكي المقترح: $suggested',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          await ref
+                              .read(pendingUploadsControllerProvider.notifier)
+                              .renameDocument(doc.id, suggested.trim());
+                          if (sheetCtx.mounted) {
+                            Navigator.of(sheetCtx).pop();
+                          }
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'تمت إعادة تسمية المستند إلى "$suggested"!',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('اعتماد الاسم'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 280),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(sheetCtx).colorScheme.outlineVariant,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      fullText,
+                      style: const TextStyle(height: 1.6, fontSize: 13.5),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: fullText));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('تم نسخ النص إلى الحافظة!'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.copy_rounded),
+                      label: const Text('نسخ النص'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(sheetCtx).pop(),
+                      child: const Text('إغلاق'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر استخراج النص: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _moveSingleDocToSecretVault(PendingUpload doc) async {
+    final sec = ref.read(vaultSecurityServiceProvider);
+    final settings = await sec.loadSettings();
+    if (!settings.hasPinConfigured) {
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const VaultScreen()),
+      );
+      return;
+    }
+
+    try {
+      await sec.moveDocumentToVault(doc);
+      await ref
+          .read(pendingUploadsControllerProvider.notifier)
+          .deleteDocument(doc.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'تم تشفير "${doc.title}" بمعيار AES-256-GCM ونقله للخزنة السرية!',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر النقل للخزنة: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showBackupRestoreDialog(List<PendingUpload> allDocs) async {
+    final passwordCtrl = TextEditingController();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetCtx) {
+        final bottomInset = MediaQuery.of(sheetCtx).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'النسخ الاحتياطي والاستعادة الشاملة (.ZIP)',
+                style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'تصدير كل المستندات والمجلدات وفهرس البحث في ملف .zip محلي أو استعادتها ودمجها بدون تكرار.',
+                style: TextStyle(fontSize: 12.5),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'كلمة مرور لتشفير النسخة الاحتياطية (اختياري AES-256)',
+                  prefixIcon: Icon(Icons.lock_outline_rounded),
+                ),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () async {
+                  final pwd = passwordCtrl.text.trim();
+                  Navigator.of(sheetCtx).pop();
+                  try {
+                    final backupSvc = ref.read(backupRestoreServiceProvider);
+                    final zipPath = await backupSvc.createBackupZip(
+                      documents: allDocs,
+                      folders: _folders,
+                      password: pwd.isEmpty ? null : pwd,
+                    );
+                    if (mounted) {
+                      await Share.shareXFiles(
+                        [XFile(zipPath)],
+                        subject: 'نسخة احتياطية للمستندات',
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('فشل إنشاء النسخة الاحتياطية: $e')),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.archive_rounded),
+                label: Text('تصدير ومشاركة نسخة احتياطية (${allDocs.length} مستند)'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final pwd = passwordCtrl.text.trim();
+                  Navigator.of(sheetCtx).pop();
+                  final picked = await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: const ['zip'],
+                  );
+                  final path = picked?.files.firstOrNull?.path;
+                  if (path == null) return;
+
+                  try {
+                    final backupSvc = ref.read(backupRestoreServiceProvider);
+                    final res = await backupSvc.restoreFromBackupFile(
+                      zipFilePath: path,
+                      currentDocuments: allDocs,
+                      currentFolders: _folders,
+                      password: pwd.isEmpty ? null : pwd,
+                    );
+                    await ref
+                        .read(documentFolderServiceProvider)
+                        .saveFolders(res.mergedFolders);
+                    await ref
+                        .read(pendingUploadsControllerProvider.notifier)
+                        .replaceAllDocuments(res.mergedDocuments);
+                    await _loadFolders();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'تمت الاستعادة بنجاح! (${res.stats.restoredDocuments} مستند جديد، ${res.stats.restoredFolders} مجلد، تم تخطي ${res.stats.skippedDuplicates} مكرر)',
+                          ),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('فشل استعادة النسخة: $e')),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.restore_page_rounded),
+                label: const Text('استعادة ودمج من ملف .ZIP'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   List<PendingUpload> _filterAndSortDocuments(List<PendingUpload> allDocs) {
     final query = _searchQuery.trim().toLowerCase();
     final filtered = allDocs.where((doc) {
@@ -623,8 +1204,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         if (doc.folderId != _activeFolderId) return false;
       }
       if (query.isNotEmpty) {
-        return doc.title.toLowerCase().contains(query) ||
+        final matchesMeta = doc.title.toLowerCase().contains(query) ||
             doc.fileName.toLowerCase().contains(query);
+        final matchesOcr = _ocrSearchHits.containsKey(doc.id);
+        return matchesMeta || matchesOcr;
       }
       return true;
     }).toList();
@@ -914,22 +1497,22 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // ── Search Bar ──
+            // ── Search Bar (Title + Full-Text SQLite FTS4 OCR Search) ──
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                 child: TextField(
                   controller: _searchController,
-                  onChanged: (val) => setState(() => _searchQuery = val),
+                  onChanged: _onSearchQueryChanged,
                   decoration: InputDecoration(
-                    hintText: 'ابحث باسم المستند أو المجلد...',
+                    hintText: 'ابحث باسم المستند أو داخل نصوص الصفحات (OCR)...',
                     prefixIcon: Icon(Icons.search_rounded, color: palette.accent),
                     suffixIcon: _searchQuery.isEmpty
                         ? null
                         : IconButton(
                             onPressed: () {
                               _searchController.clear();
-                              setState(() => _searchQuery = '');
+                              _onSearchQueryChanged('');
                             },
                             icon: const Icon(Icons.close_rounded, size: 18),
                           ),
@@ -948,6 +1531,109 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       ),
                     ),
                   ),
+                ),
+              ),
+            ),
+
+            // ── Highlighted OCR Snippets when searching inside pages ──
+            if (_searchQuery.trim().isNotEmpty && _ocrSearchHits.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: palette.accent.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: palette.accent.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'تطابقات داخل نصوص الصفحات (OCR FTS):',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: palette.accent,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      ..._ocrSearchHits.values.take(3).map(
+                            (hit) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                '• ${hit.title}: "${hit.snippet}"',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // ── Quick Feature Pills: PDF Tools, Secret Vault, ZIP Backup ──
+            SliverToBoxAdapter(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: Row(
+                  children: [
+                    ActionChip(
+                      avatar: const Icon(
+                        Icons.handyman_rounded,
+                        size: 17,
+                        color: Color(0xFF2563EB),
+                      ),
+                      label: const Text(
+                        'أدوات PDF (دمج • تقسيم • ضغط • استيراد)',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PdfToolsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ActionChip(
+                      avatar: const Icon(
+                        Icons.enhanced_encryption_rounded,
+                        size: 17,
+                        color: Color(0xFF059669),
+                      ),
+                      label: const Text(
+                        'الخزنة السرية والحماية (AES-256)',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const VaultScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ActionChip(
+                      avatar: const Icon(
+                        Icons.folder_zip_rounded,
+                        size: 17,
+                        color: Color(0xFF9333EA),
+                      ),
+                      label: const Text(
+                        'نسخ احتياطي واستعادة (.ZIP)',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                      onPressed: () => _showBackupRestoreDialog(allDocs),
+                    ),
+                  ],
                 ),
               ),
             ),

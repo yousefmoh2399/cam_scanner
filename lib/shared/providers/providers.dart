@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/scanner/data/backup_restore_service.dart';
+import '../../features/scanner/data/document_search_service.dart';
 import '../../features/scanner/data/local_document_store.dart';
+import '../../features/scanner/data/ocr_service.dart';
 import '../../features/scanner/data/office_exporter_service.dart';
 import '../../features/scanner/data/pdf_builder_service.dart';
 import '../../features/scanner/data/signature_storage_service.dart';
+import '../../features/scanner/data/vault_security_service.dart';
 import '../../features/scanner/presentation/scan_session_controller.dart';
 import '../models/pending_upload.dart';
 import '../models/scan_session.dart';
@@ -25,9 +29,30 @@ final pdfBuilderServiceProvider = Provider<PdfBuilderService>(
   (ref) => PdfBuilderService(),
 );
 
+final ocrServiceProvider = Provider<OcrService>(
+  (ref) => OcrService(),
+);
+
+final documentSearchServiceProvider = Provider<DocumentSearchService>(
+  (ref) => DocumentSearchService(),
+);
+
+final vaultSecurityServiceProvider = Provider<VaultSecurityService>(
+  (ref) => VaultSecurityService(),
+);
+
+final backupRestoreServiceProvider = Provider<BackupRestoreService>(
+  (ref) => BackupRestoreService(
+    securityService: ref.read(vaultSecurityServiceProvider),
+    searchService: ref.read(documentSearchServiceProvider),
+  ),
+);
+
 final officeExporterServiceProvider = Provider<OfficeExporterService>(
   (ref) => OfficeExporterService(
     pdfBuilderService: ref.read(pdfBuilderServiceProvider),
+    ocrService: ref.read(ocrServiceProvider),
+    searchService: ref.read(documentSearchServiceProvider),
   ),
 );
 
@@ -64,16 +89,35 @@ class PendingUploadsController extends AsyncNotifier<List<PendingUpload>> {
     state = AsyncData(await store.loadPendingUploads());
   }
 
+  Future<void> addDocument(PendingUpload doc) async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.savePendingUpload(doc);
+    await refresh();
+  }
+
+  Future<void> deleteDocument(String id) => removeById(id);
+
   Future<void> removeById(String id) async {
     final store = ref.read(localDocumentStoreProvider);
     await store.removePendingUpload(id);
+    await ref.read(documentSearchServiceProvider).removeDocument(id);
     await refresh();
   }
 
   Future<void> removeMultiple(Iterable<String> ids) async {
     final store = ref.read(localDocumentStoreProvider);
+    final search = ref.read(documentSearchServiceProvider);
     for (final id in ids) {
       await store.removePendingUpload(id);
+      await search.removeDocument(id);
+    }
+    await refresh();
+  }
+
+  Future<void> replaceAllDocuments(List<PendingUpload> docs) async {
+    final store = ref.read(localDocumentStoreProvider);
+    for (final doc in docs) {
+      await store.savePendingUpload(doc);
     }
     await refresh();
   }

@@ -12,6 +12,15 @@ class LocalMediaStorageService {
     return dir;
   }
 
+  Future<Directory> documentsDirectory() => scansDirectory();
+
+  Future<Directory> pagesDirectory() async {
+    final appDir = await path_provider.getApplicationDocumentsDirectory();
+    final dir = Directory(path.join(appDir.path, 'Pages'));
+    await dir.create(recursive: true);
+    return dir;
+  }
+
   Future<Directory> exportsDirectory() async {
     final appDir = await path_provider.getApplicationDocumentsDirectory();
     final dir = Directory(path.join(appDir.path, 'Exports'));

@@ -95,6 +95,12 @@ class LocalDocumentStore {
     );
   }
 
+  Future<void> savePendingUpload(PendingUpload doc) async {
+    final current = await loadPendingUploads();
+    final filtered = current.where((u) => u.id != doc.id).toList();
+    await _savePendingUploads([doc, ...filtered]);
+  }
+
   Future<PendingUpload> createPendingUpload({
     required String fileName,
     required Uint8List pdfBytes,
