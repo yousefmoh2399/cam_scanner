@@ -29,6 +29,7 @@ import kotlin.math.max
 
 class MainActivity : FlutterFragmentActivity() {
     private val docScannerChannel = "ismart/doc_scanner"
+    private val altScannerChannel = "com.yourname.docscanner/scanner"
     private val REQUEST_CODE_SCANNER = 0x534341
     private var pendingScannerResult: MethodChannel.Result? = null
     private val mainScope = CoroutineScope(Dispatchers.Main)
@@ -41,8 +42,7 @@ class MainActivity : FlutterFragmentActivity() {
             android.util.Log.e("MainActivity", "OpenCV init failed")
         }
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, docScannerChannel)
-            .setMethodCallHandler { call, result ->
+        val handler = MethodChannel.MethodCallHandler setMethodCallHandler@{ call, result ->
                 when (call.method) {
                     "startScan" -> {
                         if (pendingScannerResult != null) {
@@ -452,6 +452,8 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, docScannerChannel).setMethodCallHandler(handler)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, altScannerChannel).setMethodCallHandler(handler)
     }
 
     private fun replyScannerResult(block: (MethodChannel.Result) -> Unit) {
