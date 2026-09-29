@@ -17,6 +17,9 @@
 -keep class com.googlecode.tesseract.android.** { *; }
 -keepclassmembers class com.googlecode.tesseract.android.** { *; }
 -dontwarn com.googlecode.tesseract.android.**
+-keep class cz.adaptech.tesseract4android.** { *; }
+-keepclassmembers class cz.adaptech.tesseract4android.** { *; }
+-dontwarn cz.adaptech.tesseract4android.**
 
 # ─── Google ML Kit Text Recognition & Play Services JNI ─────────────────────
 -keep class com.google.mlkit.** { *; }

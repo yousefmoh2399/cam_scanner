@@ -259,6 +259,7 @@ class MainActivity : FlutterFragmentActivity() {
                                             blocksList.add(map)
                                         }
                                     } while (iter.next(level))
+                                    iter.delete()
                                 }
                                 bitmap.recycle()
 
@@ -277,7 +278,7 @@ class MainActivity : FlutterFragmentActivity() {
                                 }
                             } finally {
                                 try {
-                                    tess.end()
+                                    tess.recycle()
                                 } catch (_: Exception) {}
                                 try {
                                     prepFile?.delete()
