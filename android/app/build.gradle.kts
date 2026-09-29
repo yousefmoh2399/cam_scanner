@@ -80,8 +80,8 @@ dependencies {
     // OpenCV 4.9.0
     implementation("org.opencv:opencv:4.9.0")
 
-    // Offline Arabic + English Tesseract 4/5 LSTM OCR JNI
-    implementation("cz.adaptech.tesseract4android:tesseract4android:4.7.0")
+    // Offline Arabic + English Tesseract 4 LSTM OCR JNI
+    implementation("com.rmtheis:tess-two:9.1.0")
 
     // CameraX 1.3.4
     val cameraxVersion = "1.3.4"

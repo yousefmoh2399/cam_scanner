@@ -210,7 +210,7 @@ class MainActivity : FlutterFragmentActivity() {
                                     imagePath
                                 }
 
-                                val initialized = tess.init(dataPath, language, TessBaseAPI.OEM_LSTM_ONLY)
+                                val initialized = tess.init(dataPath, language, TessBaseAPI.OEM_DEFAULT)
                                 if (!initialized) {
                                     withContext(Dispatchers.Main) {
                                         result.error("TESS_INIT_FAIL", "Failed to initialize Tesseract ($language) at $dataPath", null)
@@ -277,7 +277,7 @@ class MainActivity : FlutterFragmentActivity() {
                                 }
                             } finally {
                                 try {
-                                    tess.recycle()
+                                    tess.end()
                                 } catch (_: Exception) {}
                                 try {
                                     prepFile?.delete()
