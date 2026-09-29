@@ -199,7 +199,7 @@ class MainActivity : FlutterFragmentActivity() {
                             val tess = TessBaseAPI()
                             try {
                                 val targetPath = if (preprocess) {
-                                    val tempOut = File(cacheDir, "ocr_prep_${System.currentTimeMillis()}.jpg")
+                                    val tempOut = File(cacheDir, "ocr_prep_${System.currentTimeMillis()}.png")
                                     if (ImageFilters.preprocessForOcr(imagePath, tempOut.absolutePath)) {
                                         prepFile = tempOut
                                         tempOut.absolutePath
@@ -210,7 +210,7 @@ class MainActivity : FlutterFragmentActivity() {
                                     imagePath
                                 }
 
-                                val initialized = tess.init(dataPath, language, TessBaseAPI.OEM_DEFAULT)
+                                val initialized = tess.init(dataPath, language, TessBaseAPI.OEM_LSTM_ONLY)
                                 if (!initialized) {
                                     withContext(Dispatchers.Main) {
                                         result.error("TESS_INIT_FAIL", "Failed to initialize Tesseract ($language) at $dataPath", null)
@@ -218,6 +218,8 @@ class MainActivity : FlutterFragmentActivity() {
                                     return@launch
                                 }
                                 tess.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO
+                                tess.setVariable("user_defined_dpi", "300")
+                                tess.setVariable("preserve_interword_spaces", "1")
 
                                 val bmpOpts = BitmapFactory.Options().apply {
                                     inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
@@ -540,6 +542,169 @@ class MainActivity : FlutterFragmentActivity() {
             } catch (_: Exception) {}
         }
         return copiedPaths
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (intent?.getBooleanExtra("run_ocr_benchmark", false) == true) {
+            runOcrDeviceBenchmark()
+        }
+    }
+
+    override fun onNewIntent(newIntent: Intent) {
+        super.onNewIntent(newIntent)
+        intent = newIntent
+        if (newIntent.getBooleanExtra("run_ocr_benchmark", false)) {
+            runOcrDeviceBenchmark()
+        }
+    }
+
+    private fun normalizeOcrText(raw: String): String {
+        return raw
+            .replace(Regex("[\\u064B-\\u065F\\u0670\\u0640]"), "")
+            .replace(Regex("[إأآا]"), "ا")
+            .replace("ى", "ي")
+            .replace("ة", "ه")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
+
+    private fun levenshteinDistance(a: List<String>, b: List<String>): Int {
+        val n = a.size
+        val m = b.size
+        if (n == 0) return m
+        if (m == 0) return n
+        var prev = IntArray(m + 1) { it }
+        var curr = IntArray(m + 1)
+        for (i in 1..n) {
+            curr[0] = i
+            for (j in 1..m) {
+                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                curr[j] = minOf(
+                    prev[j] + 1,
+                    curr[j - 1] + 1,
+                    prev[j - 1] + cost
+                )
+            }
+            val tmp = prev
+            prev = curr
+            curr = tmp
+        }
+        return prev[m]
+    }
+
+    private fun runOcrDeviceBenchmark() {
+        mainScope.launch(Dispatchers.Default) {
+            try {
+                val extBench = File(getExternalFilesDir(null), "ocr_bench")
+                val benchRoot = if (extBench.exists()) extBench else File("/sdcard/Download/ocr_bench")
+                if (!benchRoot.exists()) {
+                    android.util.Log.e("OcrBenchmark", "Bench directory not found: ${benchRoot.absolutePath}")
+                    return@launch
+                }
+                val workDir = File(cacheDir, "ocr_bench_work").apply { mkdirs() }
+                val fastDir = File(workDir, "fast").apply { File(this, "tessdata").mkdirs() }
+                val bestDir = File(workDir, "best").apply { File(this, "tessdata").mkdirs() }
+
+                // Copy tessdata files from /sdcard/Download/ocr_bench/
+                File(benchRoot, "fast_ara.traineddata").copyTo(File(fastDir, "tessdata/ara.traineddata"), overwrite = true)
+                File(benchRoot, "eng.traineddata").copyTo(File(fastDir, "tessdata/eng.traineddata"), overwrite = true)
+                File(benchRoot, "best_ara.traineddata").copyTo(File(bestDir, "tessdata/ara.traineddata"), overwrite = true)
+                File(benchRoot, "eng.traineddata").copyTo(File(bestDir, "tessdata/eng.traineddata"), overwrite = true)
+
+                val samples = listOf(
+                    "sample1_arabic_clean" to "ara",
+                    "sample2_arabic_skewed_noisy" to "ara",
+                    "sample3_english_clean" to "eng",
+                    "sample4_mixed_ara_eng_numbers" to "ara+eng",
+                    "sample5_table_invoice" to "ara+eng"
+                )
+
+                val configs = listOf(
+                    Triple("fast_no_prep", fastDir.absolutePath, "NONE"),
+                    Triple("fast_legacy_prep", fastDir.absolutePath, "LEGACY"),
+                    Triple("fast_improved_prep", fastDir.absolutePath, "IMPROVED"),
+                    Triple("best_improved_prep", bestDir.absolutePath, "IMPROVED")
+                )
+
+                android.util.Log.i("OcrBenchmark", "=== OCR_BENCHMARK_START ===")
+                for ((cfgName, dataPath, prepMode) in configs) {
+                    var sumCer = 0.0
+                    var sumWer = 0.0
+                    var sumMs = 0L
+                    for ((sampleName, lang) in samples) {
+                        val imgFile = File(benchRoot, "$sampleName.png")
+                        val gtFile = File(benchRoot, "$sampleName.txt")
+                        val gtRaw = gtFile.readText(Charsets.UTF_8)
+                        val gtNorm = normalizeOcrText(gtRaw)
+
+                        val t0 = SystemClock.elapsedRealtime()
+                        val targetImgPath = when (prepMode) {
+                            "LEGACY" -> {
+                                val out = File(workDir, "${sampleName}_legacy.jpg")
+                                ImageFilters.preprocessForOcrLegacy(imgFile.absolutePath, out.absolutePath)
+                                out.absolutePath
+                            }
+                            "IMPROVED" -> {
+                                val out = File(workDir, "${sampleName}_improved.png")
+                                ImageFilters.preprocessForOcr(imgFile.absolutePath, out.absolutePath)
+                                out.absolutePath
+                            }
+                            else -> imgFile.absolutePath
+                        }
+
+                        val tess = TessBaseAPI()
+                        tess.init(dataPath, lang, TessBaseAPI.OEM_LSTM_ONLY)
+                        tess.pageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO
+                        if (prepMode == "IMPROVED") {
+                            tess.setVariable("user_defined_dpi", "300")
+                            tess.setVariable("preserve_interword_spaces", "1")
+                        }
+                        val bmp = BitmapFactory.decodeFile(targetImgPath)
+                        tess.setImage(bmp)
+                        val predRaw = tess.utF8Text ?: ""
+                        bmp?.recycle()
+                        tess.recycle()
+                        val elapsedMs = SystemClock.elapsedRealtime() - t0
+
+                        val predNorm = normalizeOcrText(predRaw)
+                        val gtChars = gtNorm.map { it.toString() }
+                        val predChars = predNorm.map { it.toString() }
+                        val charDist = levenshteinDistance(gtChars, predChars)
+                        val cer = (charDist.toDouble() / gtChars.size.coerceAtLeast(1).toDouble()) * 100.0
+
+                        val gtWords = gtNorm.split(" ").filter { it.isNotEmpty() }
+                        val predWords = predNorm.split(" ").filter { it.isNotEmpty() }
+                        val wordDist = levenshteinDistance(gtWords, predWords)
+                        val wer = (wordDist.toDouble() / gtWords.size.coerceAtLeast(1).toDouble()) * 100.0
+
+                        sumCer += cer
+                        sumWer += wer
+                        sumMs += elapsedMs
+
+                        android.util.Log.i(
+                            "OcrBenchmark",
+                            String.format(
+                                java.util.Locale.US,
+                                "ROW | %s | %s | CER=%.2f%% | WER=%.2f%% | TIME=%dms | GT_LEN=%d | PRED_PREVIEW=%s",
+                                cfgName, sampleName, cer, wer, elapsedMs, gtChars.size, predNorm.take(60)
+                            )
+                        )
+                    }
+                    android.util.Log.i(
+                        "OcrBenchmark",
+                        String.format(
+                            java.util.Locale.US,
+                            "AVG | %s | AVG_CER=%.2f%% | AVG_WER=%.2f%% | AVG_TIME=%dms",
+                            cfgName, sumCer / samples.size, sumWer / samples.size, sumMs / samples.size
+                        )
+                    )
+                }
+                android.util.Log.i("OcrBenchmark", "=== OCR_BENCHMARK_DONE ===")
+            } catch (e: Exception) {
+                android.util.Log.e("OcrBenchmark", "Benchmark failed", e)
+            }
+        }
     }
 
     override fun onDestroy() {

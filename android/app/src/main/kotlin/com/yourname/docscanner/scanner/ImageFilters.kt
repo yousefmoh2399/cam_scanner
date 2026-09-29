@@ -125,42 +125,33 @@ object ImageFilters {
      * 4. Deskew text tilt (-12..+12 degrees) via morphological text line detection & minAreaRect.
      * 5. Sauvola-like adaptive thresholding for crisp glyphs.
      */
-    fun preprocessForOcr(inPath: String, outPath: String): Boolean {
+    /**
+     * Legacy OCR preprocessing (retained for before/after CER & WER benchmark comparison).
+     */
+    fun preprocessForOcrLegacy(inPath: String, outPath: String): Boolean {
         val src = Imgcodecs.imread(inPath, Imgcodecs.IMREAD_COLOR)
         if (src.empty()) return false
 
         var working = src
         try {
-            // 1. Upscale small images so Arabic diacritics and ligatures have sufficient pixels (~300 DPI)
             val longer = max(working.cols(), working.rows())
             if (longer < 2200) {
                 val scale = (2200.0 / longer.toDouble()).coerceAtMost(2.5)
                 val upscaled = Mat()
-                Imgproc.resize(
-                    working,
-                    upscaled,
-                    Size(working.cols() * scale, working.rows() * scale),
-                    0.0,
-                    0.0,
-                    Imgproc.INTER_CUBIC
-                )
+                Imgproc.resize(working, upscaled, Size(working.cols() * scale, working.rows() * scale), 0.0, 0.0, Imgproc.INTER_CUBIC)
                 if (working !== src) working.release()
                 working = upscaled
             }
-
-            // 2. Flatten illumination & convert to grayscale
             val flattened = flatten(working)
             val gray = Mat()
             Imgproc.cvtColor(flattened, gray, Imgproc.COLOR_BGR2GRAY)
             flattened.release()
 
-            // 3. Denoise while keeping character edges sharp
             val denoised = Mat()
             Imgproc.GaussianBlur(gray, denoised, Size(3.0, 3.0), 0.0)
             gray.release()
 
-            // 4. Estimate skew angle and deskew if tilt is between 0.4 and 12 degrees
-            val skewAngle = estimateSkewAngle(denoised)
+            val skewAngle = estimateSkewAngleLegacy(denoised)
             val deskewed = if (abs(skewAngle) in 0.4..12.0) {
                 rotateKeepBounds(denoised, skewAngle)
             } else {
@@ -168,7 +159,6 @@ object ImageFilters {
             }
             denoised.release()
 
-            // 5. Adaptive thresholding tuned for Arabic connected script
             val w = deskewed.cols()
             val h = deskewed.rows()
             var blockSize = (min(w, h) / 28) or 1
@@ -193,12 +183,135 @@ object ImageFilters {
             binary.release()
             return ok
         } catch (e: Exception) {
+            Log.e(TAG, "preprocessForOcrLegacy error", e)
+            return false
+        } finally {
+            if (working !== src) working.release()
+            src.release()
+        }
+    }
+
+    /**
+     * Improved OCR preprocessing pipeline tuned for Tesseract 5.5.1 LSTM (Arabic + English):
+     * 1. Upscale low-resolution images to ~300 DPI (target longer side >= 2000px).
+     * 2. Morphological illumination flattening (removes uneven camera shadow gradients).
+     * 3. Edge-preserving 3x3 median filter (eliminates salt-and-pepper grain without blurring Arabic dots).
+     * 4. OpenCV 4.5+ corrected minAreaRect skew angle estimation (-12..+12 deg) & deskew.
+     * 5. CLAHE local contrast enhancement + stretch to [0..255] + 24px white border (preserves anti-aliased gray strokes for Tesseract's internal Leptonica Otsu/LSTM engine instead of destructive hard binary thresholding).
+     */
+    fun preprocessForOcr(inPath: String, outPath: String): Boolean {
+        val src = Imgcodecs.imread(inPath, Imgcodecs.IMREAD_COLOR)
+        if (src.empty()) return false
+
+        var working = src
+        try {
+            // 1. Upscale small images so Arabic diacritics and ligatures have sufficient pixels (~300 DPI)
+            val longer = max(working.cols(), working.rows())
+            if (longer < 2000) {
+                val scale = (2000.0 / longer.toDouble()).coerceAtMost(2.2)
+                val upscaled = Mat()
+                Imgproc.resize(
+                    working,
+                    upscaled,
+                    Size(working.cols() * scale, working.rows() * scale),
+                    0.0,
+                    0.0,
+                    Imgproc.INTER_CUBIC
+                )
+                if (working !== src) working.release()
+                working = upscaled
+            }
+
+            // 2. Flatten illumination & convert to grayscale
+            val flattened = flatten(working)
+            val gray = Mat()
+            Imgproc.cvtColor(flattened, gray, Imgproc.COLOR_BGR2GRAY)
+            flattened.release()
+
+            // 3. Edge-preserving median denoise (removes sensor grain while keeping Arabic dots crisp)
+            val denoised = Mat()
+            Imgproc.medianBlur(gray, denoised, 3)
+            gray.release()
+
+            // 4. Estimate skew angle (OpenCV 4.5+ corrected) and deskew if tilt is between 0.4 and 12 degrees
+            val skewAngle = estimateSkewAngle(denoised)
+            val deskewed = if (abs(skewAngle) in 0.4..12.0) {
+                rotateKeepBounds(denoised, skewAngle)
+            } else {
+                denoised.clone()
+            }
+            denoised.release()
+
+            // 5. CLAHE + intensity normalization + 24px white border for Tesseract 5 LSTM
+            val clahe = Imgproc.createCLAHE(2.0, Size(8.0, 8.0))
+            val enhanced = Mat()
+            clahe.apply(deskewed, enhanced)
+            deskewed.release()
+
+            val normalized = Mat()
+            Core.normalize(enhanced, normalized, 0.0, 255.0, Core.NORM_MINMAX)
+            enhanced.release()
+
+            val bordered = Mat()
+            Core.copyMakeBorder(
+                normalized,
+                bordered,
+                24, 24, 24, 24,
+                Core.BORDER_CONSTANT,
+                org.opencv.core.Scalar(255.0)
+            )
+            normalized.release()
+
+            File(outPath).parentFile?.mkdirs()
+            val ok = Imgcodecs.imwrite(outPath, bordered)
+            bordered.release()
+            return ok
+        } catch (e: Exception) {
             Log.e(TAG, "preprocessForOcr error", e)
             return false
         } finally {
             if (working !== src) working.release()
             src.release()
         }
+    }
+
+    private fun estimateSkewAngleLegacy(gray: Mat): Double {
+        val small = Mat()
+        val scale = 800.0 / max(gray.cols(), gray.rows()).toDouble()
+        if (scale < 1.0) {
+            Imgproc.resize(gray, small, Size(gray.cols() * scale, gray.rows() * scale), 0.0, 0.0, Imgproc.INTER_AREA)
+        } else {
+            gray.copyTo(small)
+        }
+        val inv = Mat()
+        Imgproc.threshold(small, inv, 0.0, 255.0, Imgproc.THRESH_BINARY_INV or Imgproc.THRESH_OTSU)
+        val kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(25.0, 3.0))
+        val connected = Mat()
+        Imgproc.dilate(inv, connected, kernel)
+        val contours = ArrayList<MatOfPoint>()
+        val hierarchy = Mat()
+        Imgproc.findContours(connected, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE)
+        val angles = ArrayList<Double>()
+        for (c in contours) {
+            val rect = Imgproc.boundingRect(c)
+            if (rect.width > 40 && rect.height in 6..80 && rect.width > rect.height * 2) {
+                val pts2f = MatOfPoint2f(*c.toArray())
+                val minRect = Imgproc.minAreaRect(pts2f)
+                pts2f.release()
+                var angle = minRect.angle
+                if (minRect.size.width < minRect.size.height) {
+                    angle += 90.0
+                }
+                if (abs(angle) <= 12.0) {
+                    angles.add(angle)
+                }
+            }
+            c.release()
+        }
+        small.release(); inv.release(); kernel.release(); connected.release(); hierarchy.release()
+        if (angles.isEmpty()) return 0.0
+        angles.sort()
+        return angles[angles.size / 2]
     }
 
     private fun estimateSkewAngle(gray: Mat): Double {
@@ -228,8 +341,12 @@ object ImageFilters {
                 val minRect = Imgproc.minAreaRect(pts2f)
                 pts2f.release()
                 var angle = minRect.angle
+                // OpenCV 4.5+ minAreaRect returns angle in [0, 90]:
+                // When width < height, subtract 90 degrees to recover negative tilt angle in [-45, 0].
                 if (minRect.size.width < minRect.size.height) {
-                    angle += 90.0
+                    angle -= 90.0
+                } else if (angle > 45.0) {
+                    angle -= 90.0
                 }
                 if (abs(angle) <= 12.0) {
                     angles.add(angle)

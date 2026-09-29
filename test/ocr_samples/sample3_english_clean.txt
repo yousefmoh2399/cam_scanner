@@ -1,0 +1,5 @@
+﻿OFFLINE DOCUMENT SCANNER TECHNICAL SPECIFICATION
+All image enhancement and perspective correction run locally on device.
+Zero network packets are transmitted during OCR or PDF generation.
+Supported document formats include searchable PDF and encrypted vault archives.
+Verified compatibility with Android 15 and 16KB memory page alignment.
