@@ -31,10 +31,38 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        if (!project.hasProperty("target-platform")) {
+        val targetPlatformProp = project.findProperty("target-platform")?.toString() ?: ""
+        val isX86Only = targetPlatformProp == "android-x64" || targetPlatformProp == "android-x86"
+        val isSplitPerAbi = project.findProperty("split-per-abi")?.toString() == "true"
+        if (!isSplitPerAbi && !isX86Only) {
             ndk {
-                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+                abiFilters.clear()
+                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
             }
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            val targetPlatformProp = project.findProperty("target-platform")?.toString() ?: ""
+            val isX86Only = targetPlatformProp == "android-x64" || targetPlatformProp == "android-x86"
+            if (!isX86Only) {
+                excludes += listOf(
+                    "**/x86/**",
+                    "**/x86_64/**",
+                    "**/mips/**",
+                    "**/mips64/**"
+                )
+            }
+        }
+        resources {
+            excludes += listOf(
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+                "META-INF/*.kotlin_module",
+                "DebugProbesKt.bin"
+            )
         }
     }
 
@@ -59,6 +87,15 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            val targetPlatformProp = project.findProperty("target-platform")?.toString() ?: ""
+            val isX86Only = targetPlatformProp == "android-x64" || targetPlatformProp == "android-x86"
+            val isSplitPerAbi = project.findProperty("split-per-abi")?.toString() == "true"
+            if (!isSplitPerAbi && !isX86Only) {
+                ndk {
+                    abiFilters.clear()
+                    abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+                }
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -66,6 +103,16 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+}
+
+afterEvaluate {
+    val targetPlatformProp = project.findProperty("target-platform")?.toString() ?: ""
+    val isX86Only = targetPlatformProp == "android-x64" || targetPlatformProp == "android-x86"
+    val isSplitPerAbi = project.findProperty("split-per-abi")?.toString() == "true"
+    if (!isSplitPerAbi && !isX86Only) {
+        android.defaultConfig.ndk.abiFilters.clear()
+        android.defaultConfig.ndk.abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
     }
 }
 
