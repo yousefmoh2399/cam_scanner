@@ -501,6 +501,7 @@ class LocalDocumentStore {
     try {
       final draftsDir = await getDraftsDirectory();
       if (!await draftsDir.exists()) return;
+      final now = DateTime.now();
       final entities = draftsDir.listSync(recursive: false);
       for (final entity in entities) {
         if (entity is File) {
@@ -512,6 +513,12 @@ class LocalDocumentStore {
               name.startsWith('rot_') ||
               name.startsWith('raw_')) {
             try {
+              // Safety: Never delete files created or modified in the last 2 hours.
+              // This protects in-progress scans, batch items, and active review sessions.
+              final stat = entity.statSync();
+              if (now.difference(stat.modified).inHours < 2) {
+                continue;
+              }
               entity.deleteSync();
             } catch (_) {}
           }

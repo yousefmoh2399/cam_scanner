@@ -10,13 +10,17 @@ import '../../../shared/providers/providers.dart';
 import '../data/native_scanner_bridge.dart';
 import 'widgets/quad_crop_editor.dart';
 
+class ScanReviewResult {
+  const ScanReviewResult({
+    required this.page,
+    this.saveAllRemaining = false,
+  });
+
+  final ScanPage page;
+  final bool saveAllRemaining;
+}
+
 /// Screen for interactive review, manual quadrilateral cropping, filter selection with live thumbnails, and rotation.
-///
-/// Execution pipeline:
-/// - Preview: Fast native warp (maxSide 1600 with in-memory quarterTurns) -> filter.
-/// - Thumbnails: Generates 200px thumbnails for all 6 filters asynchronously using OpenCV.
-/// - Rotation: Adjusts quarterTurns and re-generates preview without intermediate rotate files.
-/// - Final save: Full-resolution warp(quarterTurns) -> filter (exactly 2 encodes, 0 separate rotateLeft passes).
 class ScanReviewScreen extends ConsumerStatefulWidget {
   const ScanReviewScreen({
     super.key,
@@ -28,6 +32,8 @@ class ScanReviewScreen extends ConsumerStatefulWidget {
     this.initialQuarterRotations = 0,
     this.imageWidth = 0,
     this.imageHeight = 0,
+    this.pageIndex,
+    this.totalPages,
   });
 
   final String rawImagePath;
@@ -38,6 +44,8 @@ class ScanReviewScreen extends ConsumerStatefulWidget {
   final int initialQuarterRotations;
   final int imageWidth;
   final int imageHeight;
+  final int? pageIndex;
+  final int? totalPages;
 
   @override
   ConsumerState<ScanReviewScreen> createState() => _ScanReviewScreenState();
@@ -243,7 +251,7 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
     await _preparePreview();
   }
 
-  Future<void> _confirmAndSave() async {
+  Future<void> _confirmAndSave({bool saveAllRemaining = false}) async {
     setState(() {
       _isBusy = true;
       _statusText = 'جار حفظ المستند بجودة كاملة...';
@@ -302,16 +310,19 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
       }
 
       if (!mounted) return;
+      final scanPage = ScanPage(
+        id: pageId,
+        imagePath: savedPath,
+        createdAt: DateTime.now(),
+        originalPath: preservedRawPath,
+        corners: _corners,
+        filter: ImageFilterType.fromKey(_selectedFilter),
+        quarterTurns: _quarterRotations,
+      );
       Navigator.of(context).pop(
-        ScanPage(
-          id: pageId,
-          imagePath: savedPath,
-          createdAt: DateTime.now(),
-          originalPath: preservedRawPath,
-          corners: _corners,
-          filter: ImageFilterType.fromKey(_selectedFilter),
-          quarterTurns: _quarterRotations,
-        ),
+        saveAllRemaining
+            ? ScanReviewResult(page: scanPage, saveAllRemaining: true)
+            : scanPage,
       );
     } catch (e) {
       if (!mounted) return;
@@ -325,60 +336,144 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
     }
   }
 
+  Future<void> _handleBackPress() async {
+    if (_isBusy) return;
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'الخروج من مراجعة الصفحة؟',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+        ),
+        content: const Text(
+          'هل تريد حفظ هذه الصفحة وإضافتها للمستند، أم إلغاء هذه اللقطة فقط؟',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('discard'),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('إلغاء الصفحة'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: const Text('متابعة التعديل'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop('save'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF00E676),
+              foregroundColor: Colors.black,
+            ),
+            child: const Text(
+              'حفظ ومتابعة',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || action == null || action == 'cancel') return;
+    if (action == 'save') {
+      await _confirmAndSave();
+    } else if (action == 'discard') {
+      Navigator.of(context).pop(null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1115),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF16181F),
-        elevation: 0,
-        title: Text(
-          _isEditingCrop ? 'تحديد حدود المستند' : 'مراجعة وتحسين المسح',
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          if (!_isEditingCrop)
-            TextButton.icon(
-              icon: const Icon(Icons.crop_rounded, size: 18),
-              label: const Text('تعديل الحواف'),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white70,
-                textStyle: const TextStyle(fontWeight: FontWeight.w600),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_isEditingCrop) {
+          setState(() => _isEditingCrop = false);
+          return;
+        }
+        await _handleBackPress();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0F1115),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF16181F),
+          elevation: 0,
+          title: Text(
+            _isEditingCrop
+                ? (widget.totalPages != null && widget.totalPages! > 1
+                    ? 'تحديد حدود المستند (${widget.pageIndex ?? 1} من ${widget.totalPages})'
+                    : 'تحديد حدود المستند')
+                : (widget.totalPages != null && widget.totalPages! > 1
+                    ? 'مراجعة الصفحة (${widget.pageIndex ?? 1} من ${widget.totalPages})'
+                    : 'مراجعة وتحسين المسح'),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () {
+              if (_isEditingCrop) {
+                setState(() => _isEditingCrop = false);
+              } else {
+                _handleBackPress();
+              }
+            },
+          ),
+          actions: [
+            if (!_isEditingCrop &&
+                widget.totalPages != null &&
+                widget.totalPages! > 1)
+              TextButton(
+                onPressed: _isBusy
+                    ? null
+                    : () => _confirmAndSave(saveAllRemaining: true),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                child: const Text('حفظ الكل'),
               ),
+            if (!_isEditingCrop)
+              TextButton.icon(
+                icon: const Icon(Icons.crop_rounded, size: 18),
+                label: const Text('تعديل الحواف'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                onPressed: _isBusy
+                    ? null
+                    : () {
+                        setState(() => _isEditingCrop = true);
+                      },
+              ),
+            TextButton(
               onPressed: _isBusy
                   ? null
                   : () {
-                      setState(() => _isEditingCrop = true);
+                      if (_isEditingCrop) {
+                        setState(() => _isEditingCrop = false);
+                        _preparePreview();
+                      } else {
+                        _confirmAndSave();
+                      }
                     },
-            ),
-          TextButton(
-            onPressed: _isBusy
-                ? null
-                : () {
-                    if (_isEditingCrop) {
-                      setState(() => _isEditingCrop = false);
-                      _preparePreview();
-                    } else {
-                      _confirmAndSave();
-                    }
-                  },
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF00E676),
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF00E676),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
               ),
+              child: Text(_isEditingCrop ? 'معاينة' : 'حفظ'),
             ),
-            child: Text(_isEditingCrop ? 'معاينة' : 'حفظ'),
-          ),
-        ],
-      ),
+          ],
+        ),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -455,8 +550,9 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPreviewDisplay() {
     final preview = _currentPreviewPath;

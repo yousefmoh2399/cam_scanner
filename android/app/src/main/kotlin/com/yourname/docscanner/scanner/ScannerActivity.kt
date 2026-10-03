@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
@@ -12,6 +13,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -33,6 +35,7 @@ import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.exifinterface.media.ExifInterface
 import org.opencv.android.OpenCVLoader
+import org.opencv.android.Utils
 import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
@@ -68,11 +71,13 @@ class ScannerActivity : ComponentActivity() {
     private var imageCapture: ImageCapture? = null
     private var previewView: PreviewView? = null
     private var overlayView: QuadOverlayView? = null
+    private var flashOverlayView: View? = null
     private var flashButton: ImageButton? = null
     private var modeToggleButton: TextView? = null
     private var autoShutterButton: TextView? = null
     private var hintBanner: TextView? = null
     private var doneButton: TextView? = null
+    private var shutterButton: View? = null
 
     private var destinationDir: String? = null
     private var isTorchOn = false
@@ -81,6 +86,7 @@ class ScannerActivity : ComponentActivity() {
     private var stableFrameCount = 0
     private val batchItems = ArrayList<Bundle>()
     private val isCapturing = AtomicBoolean(false)
+    private val pendingCaptureRequest = AtomicBoolean(false)
     @Volatile
     private var lastShutterTime = 0L
     @Volatile
@@ -177,6 +183,17 @@ class ScannerActivity : ComponentActivity() {
             )
         }
         aspectContainer.addView(overlayView)
+
+        flashOverlayView = View(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.WHITE)
+            alpha = 0f
+            visibility = View.GONE
+        }
+        aspectContainer.addView(flashOverlayView)
         root.addView(aspectContainer)
 
         // Top control bar
@@ -326,7 +343,7 @@ class ScannerActivity : ComponentActivity() {
         }
         bottomBar.addView(galleryButton)
 
-        val shutterButton = View(this).apply {
+        shutterButton = View(this).apply {
             val size = dp(74)
             layoutParams = FrameLayout.LayoutParams(size, size, Gravity.CENTER)
             val outerBorder = android.graphics.drawable.GradientDrawable().apply {
@@ -719,16 +736,41 @@ class ScannerActivity : ComponentActivity() {
 
     private fun takeShutterPicture() {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastShutterTime < 600) {
-            return // Shutter debounce 600ms
+        if (now - lastShutterTime < 250) {
+            return // Shutter debounce 250ms
         }
         if (!isCapturing.compareAndSet(false, true)) {
-            return // Already capturing
+            // If already capturing previous shot, queue this tap so it's NEVER lost
+            pendingCaptureRequest.set(true)
+            runOnUiThread {
+                shutterButton?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                shutterButton?.animate()?.scaleX(0.88f)?.scaleY(0.88f)?.setDuration(60)?.withEndAction {
+                    shutterButton?.animate()?.scaleX(1.0f)?.scaleY(1.0f)?.setDuration(80)?.start()
+                }?.start()
+                updateHintBanner("جارٍ حفظ اللقطة...")
+            }
+            return
         }
         lastShutterTime = now
         shutterTapTime = now
         stableFrameCount = 0
         overlayView?.setAutoShutterProgress(0f)
+
+        // Haptic feedback & button bounce animation
+        runOnUiThread {
+            shutterButton?.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            shutterButton?.animate()?.scaleX(0.85f)?.scaleY(0.85f)?.setDuration(60)?.withEndAction {
+                shutterButton?.animate()?.scaleX(1.0f)?.scaleY(1.0f)?.setDuration(80)?.start()
+            }?.start()
+            // White shutter flash
+            flashOverlayView?.apply {
+                alpha = 0.65f
+                visibility = View.VISIBLE
+                animate().alpha(0f).setDuration(120).withEndAction {
+                    visibility = View.GONE
+                }.start()
+            }
+        }
 
         val capture = imageCapture ?: run {
             isCapturing.set(false)
@@ -749,9 +791,52 @@ class ScannerActivity : ComponentActivity() {
                 override fun onError(exception: ImageCaptureException) {
                     Log.e(TAG, "Capture failed: ${exception.message}", exception)
                     isCapturing.set(false)
+                    if (pendingCaptureRequest.compareAndSet(true, false)) {
+                        takeShutterPicture()
+                    }
                 }
             }
         )
+    }
+
+    private fun detectCornersFromDownsampledImage(filePath: String): List<Point>? {
+        return try {
+            val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(filePath, boundsOptions)
+            val origW = boundsOptions.outWidth
+            val origH = boundsOptions.outHeight
+            if (origW <= 0 || origH <= 0) return null
+
+            val maxTarget = 1024
+            var sampleSize = 1
+            while ((origW / sampleSize) > maxTarget || (origH / sampleSize) > maxTarget) {
+                sampleSize *= 2
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            val bmp = BitmapFactory.decodeFile(filePath, decodeOptions) ?: return null
+            val bmpW = bmp.width.toDouble()
+            val bmpH = bmp.height.toDouble()
+
+            val matBgra = Mat()
+            Utils.bitmapToMat(bmp, matBgra)
+            bmp.recycle()
+
+            val gray = Mat()
+            Imgproc.cvtColor(matBgra, gray, Imgproc.COLOR_BGRA2GRAY)
+            matBgra.release()
+
+            val quad = DocumentDetector.findQuad(gray)
+            gray.release()
+
+            quad?.map { Point(it.x / bmpW, it.y / bmpH) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Fast downsampled corner detection fallback failed", e)
+            null
+        }
     }
 
     @SuppressLint("UnsafeOptInUsageError")
@@ -809,17 +894,7 @@ class ScannerActivity : ComponentActivity() {
             val finalNormalizedCorners: List<Point> = if (liveNormalizedQuad != null) {
                 liveNormalizedQuad
             } else {
-                val src = Imgcodecs.imread(outputFile.absolutePath, Imgcodecs.IMREAD_COLOR)
-                val detected = if (!src.empty()) {
-                    val gray = Mat()
-                    Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY)
-                    val quad = DocumentDetector.findQuad(gray)
-                    gray.release()
-                    src.release()
-                    quad?.map { Point(it.x / uprightWidth.toDouble(), it.y / uprightHeight.toDouble()) }
-                } else {
-                    null
-                }
+                val detected = detectCornersFromDownsampledImage(outputFile.absolutePath)
                 detected ?: listOf(
                     Point(0.05, 0.05),
                     Point(0.95, 0.05),
@@ -861,6 +936,9 @@ class ScannerActivity : ComponentActivity() {
                         }?.start()
                 }
                 isCapturing.set(false)
+                if (pendingCaptureRequest.compareAndSet(true, false)) {
+                    takeShutterPicture()
+                }
             } else {
                 val resultIntent = Intent().apply {
                     putExtra(RESULT_PATH, outputFile.absolutePath)
@@ -877,6 +955,9 @@ class ScannerActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error processing captured photo", e)
             isCapturing.set(false)
+            if (pendingCaptureRequest.compareAndSet(true, false)) {
+                takeShutterPicture()
+            }
         } finally {
             imageProxy.close()
         }

@@ -16,6 +16,8 @@ import '../../../shared/services/permission_request_coordinator.dart';
 import '../../../shared/widgets/shimmer_skeleton.dart';
 import '../data/native_scanner_bridge.dart';
 import '../data/office_exporter_service.dart';
+import 'package:uuid/uuid.dart';
+import '../../../shared/models/image_filter_type.dart';
 import 'scan_review_screen.dart';
 import 'signature_bottom_sheet.dart';
 import 'signature_placement_screen.dart';
@@ -140,9 +142,29 @@ class _ScannerSessionScreenState extends ConsumerState<ScannerSessionScreen> {
 
     if (!mounted || scanResults.isEmpty) return;
 
-    for (final result in scanResults) {
+    var saveAllRemaining = false;
+    for (var i = 0; i < scanResults.length; i++) {
       if (!mounted) break;
-      final scanPage = await Navigator.of(context).push<ScanPage>(
+      final result = scanResults[i];
+
+      if (saveAllRemaining) {
+        final autoPage = await _autoProcessBatchResult(
+          result: result,
+          sessionId: session.id,
+          pageId: replacePageId,
+        );
+        if (autoPage != null && mounted) {
+          if (replacePageId != null) {
+            await sessionController.replacePage(replacePageId, autoPage);
+            break;
+          } else {
+            await sessionController.addPage(autoPage);
+          }
+        }
+        continue;
+      }
+
+      final dynamic reviewResult = await Navigator.of(context).push<dynamic>(
         MaterialPageRoute(
           builder: (_) => ScanReviewScreen(
             rawImagePath: result.path,
@@ -151,18 +173,94 @@ class _ScannerSessionScreenState extends ConsumerState<ScannerSessionScreen> {
             initialCorners: result.corners,
             imageWidth: result.width,
             imageHeight: result.height,
+            pageIndex: i + 1,
+            totalPages: scanResults.length,
           ),
         ),
       );
 
-      if (scanPage != null && mounted) {
-        if (replacePageId != null) {
-          await sessionController.replacePage(replacePageId, scanPage);
-          break;
-        } else {
-          await sessionController.addPage(scanPage);
+      if (reviewResult != null && mounted) {
+        ScanPage? scanPage;
+        if (reviewResult is ScanReviewResult) {
+          scanPage = reviewResult.page;
+          saveAllRemaining = reviewResult.saveAllRemaining;
+        } else if (reviewResult is ScanPage) {
+          scanPage = reviewResult;
+        }
+
+        if (scanPage != null) {
+          if (replacePageId != null) {
+            await sessionController.replacePage(replacePageId, scanPage);
+            break;
+          } else {
+            await sessionController.addPage(scanPage);
+          }
         }
       }
+    }
+  }
+
+  Future<ScanPage?> _autoProcessBatchResult({
+    required NativeScannerResult result,
+    required String sessionId,
+    String? pageId,
+  }) async {
+    try {
+      final pid = pageId ?? const Uuid().v4();
+      final draftsDir =
+          await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+      final fullWarpPath = '${draftsDir.path}/full_warp_$pid.jpg';
+      final fullFilteredPath = '${draftsDir.path}/full_filtered_$pid.jpg';
+
+      await NativeScannerBridge.warp(
+        path: result.path,
+        corners: result.corners,
+        outPath: fullWarpPath,
+        maxSide: 2048,
+        quarterTurns: 0,
+      ).timeout(const Duration(seconds: 20));
+
+      await NativeScannerBridge.applyFilter(
+        path: fullWarpPath,
+        filter: 'enhance',
+        outPath: fullFilteredPath,
+        maxSide: 2048,
+      ).timeout(const Duration(seconds: 20));
+
+      final savedPath = await ref.read(localDocumentStoreProvider).savePageFile(
+            sessionId: sessionId,
+            pageId: pid,
+            sourcePath: fullFilteredPath,
+          );
+
+      String preservedRawPath = result.path;
+      if (!preservedRawPath.contains(sessionId)) {
+        preservedRawPath =
+            await ref.read(localDocumentStoreProvider).importRawScanFile(
+                  sessionId: sessionId,
+                  sourcePath: result.path,
+                );
+      }
+
+      for (final p in [fullWarpPath, fullFilteredPath]) {
+        try {
+          final f = File(p);
+          if (f.existsSync()) f.deleteSync();
+        } catch (_) {}
+      }
+
+      return ScanPage(
+        id: pid,
+        imagePath: savedPath,
+        createdAt: DateTime.now(),
+        originalPath: preservedRawPath,
+        corners: result.corners,
+        filter: ImageFilterType.enhance,
+        quarterTurns: 0,
+      );
+    } catch (e) {
+      debugPrint('[ScannerSessionScreen] _autoProcessBatchResult error: $e');
+      return null;
     }
   }
 

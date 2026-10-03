@@ -277,8 +277,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
   DocumentFolder? get _activeFolder {
     if (_activeFolderId == null) return null;
+    return _findFolderById(_activeFolderId);
+  }
+
+  DocumentFolder? _findFolderById(String? folderId) {
+    if (folderId == null || folderId.isEmpty) return null;
     for (final f in _folders) {
-      if (f.id == _activeFolderId) return f;
+      if (f.id == folderId) return f;
     }
     return null;
   }
@@ -1202,6 +1207,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final filtered = allDocs.where((doc) {
       if (_activeFolderId != null) {
         if (doc.folderId != _activeFolderId) return false;
+      } else {
+        // In root view: only show unfiled documents unless an active search query matches
+        if (query.isEmpty) {
+          if (doc.folderId != null && doc.folderId!.isNotEmpty) {
+            return false;
+          }
+        }
       }
       if (query.isNotEmpty) {
         final matchesMeta = doc.title.toLowerCase().contains(query) ||
@@ -1710,7 +1722,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     Text(
                       activeFolder != null
                           ? 'مستندات المجلد (${visibleDocs.length})'
-                          : 'المستندات الممسوحة (${visibleDocs.length})',
+                          : (_searchQuery.trim().isNotEmpty
+                              ? 'نتائج البحث (${visibleDocs.length})'
+                              : 'المستندات (${visibleDocs.length})'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
@@ -1734,7 +1748,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             if (visibleDocs.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _buildEmptyState(palette, isDark),
+                child: _buildEmptyState(
+                  palette,
+                  isDark,
+                  hasTotalDocs: allDocs.isNotEmpty,
+                ),
               )
             else if (_isGridView)
               SliverPadding(
@@ -2290,6 +2308,39 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      if (_activeFolderId == null && doc.folderId != null) ...[
+                        Builder(
+                          builder: (context) {
+                            final folder = _findFolderById(doc.folderId);
+                            if (folder == null) return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.folder_rounded,
+                                    size: 11,
+                                    color: palette.warning,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Expanded(
+                                    child: Text(
+                                      folder.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: palette.warning,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -2444,14 +2495,48 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              formatDate(doc.createdAt),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  formatDate(doc.createdAt),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (_activeFolderId == null && doc.folderId != null) ...[
+                                  Builder(
+                                    builder: (context) {
+                                      final folder = _findFolderById(doc.folderId);
+                                      if (folder == null) return const SizedBox.shrink();
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.folder_rounded,
+                                              size: 12,
+                                              color: palette.warning,
+                                            ),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              folder.name,
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: palette.warning,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -2478,7 +2563,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
   }
 
-  Widget _buildEmptyState(AppThemePalette palette, bool isDark) {
+  Widget _buildEmptyState(
+    AppThemePalette palette,
+    bool isDark, {
+    bool hasTotalDocs = false,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(28, 24, 28, 110),
@@ -2508,7 +2597,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ? 'لا توجد نتائج مطابقة للبحث'
                   : (_activeFolderId != null
                         ? 'هذا المجلد فارغ حالياً'
-                        : 'مكتبة المستندات جاهزة لأول مسحة ضوئية'),
+                        : (hasTotalDocs && _folders.isNotEmpty
+                            ? 'كل مستنداتك منظمة داخل المجلدات'
+                            : 'مكتبة المستندات جاهزة لأول مسحة ضوئية')),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
@@ -2519,7 +2610,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             Text(
               _searchQuery.isNotEmpty
                   ? 'جرّب البحث بكلمات أخرى أو مسح نص البحث.'
-                  : 'امسح الوثائق والفواتير والعقود بالكاميرا الذكية مع الكشف التلقائي للحواف والفلاتر الاحترافية، وصدّرها فوراً إلى PDF أو Word أو Excel بدون إنترنت.',
+                  : (_activeFolderId != null
+                        ? 'يمكنك سحب مستندات إلى هذا المجلد أو بدء مسح جديد بداخله.'
+                        : (hasTotalDocs && _folders.isNotEmpty
+                            ? 'افتح أي مجلد أعلاه لتصفح مستنداته، أو ابدأ مسحاً ضوئياً جديداً.'
+                            : 'امسح الوثائق والفواتير والعقود بالكاميرا الذكية مع الكشف التلقائي للحواف والفلاتر الاحترافية، وصدّرها فوراً إلى PDF أو Word أو Excel بدون إنترنت.')),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
