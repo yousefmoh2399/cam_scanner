@@ -35,7 +35,7 @@ enum ExportFormat {
         ExportFormat.searchablePdf =>
           'ملف PDF قابل للبحث والنسخ (Searchable PDF)',
         ExportFormat.docx => 'مستند Word قابل للتعديل (.docx)',
-        ExportFormat.xlsx => 'جدول بيانات Excel (.xlsx)',
+        ExportFormat.xlsx => 'جدول بيانات Excel ذكي (.xlsx)',
       };
 
   String get subtitle => switch (this) {
@@ -46,7 +46,7 @@ enum ExportFormat {
         ExportFormat.docx =>
           'ملف OpenXML يحتوي على صور الصفحات + النصوص المستخرجة بـ OCR (RTL/LTR)',
         ExportFormat.xlsx =>
-          'استخراج النصوص والجداول بـ OCR وتوزيع الكتل تلقائياً في صفوف وأعمدة (RTL)',
+          'إعادة بناء الجداول المطبوعة داخل ملف Excel احترافي مع شبكة خلايا حقيقية، تنسيق كامل، ودعم الأرقام والعربي RTL',
       };
 
   String get mimeType => switch (this) {
@@ -136,6 +136,123 @@ class OfficeExporterService {
   static bool isRtlText(String text) {
     return _arabicRegex.hasMatch(text);
   }
+
+  static const Map<String, String> _easternToArabicDigits = {
+    '٠': '0',
+    '١': '1',
+    '٢': '2',
+    '٣': '3',
+    '٤': '4',
+    '٥': '5',
+    '٦': '6',
+    '٧': '7',
+    '٨': '8',
+    '٩': '9',
+    '٫': '.',
+    '٬': '',
+  };
+
+  /// Normalizes Eastern Arabic numerals (٠-٩) and Arabic decimal/thousands separators.
+  static String normalizeArabicDigits(String input) {
+    var s = input;
+    _easternToArabicDigits.forEach((ar, en) {
+      s = s.replaceAll(ar, en);
+    });
+    return s;
+  }
+
+  /// Parses numeric strings including Eastern Arabic digits, currencies, and percentages.
+  /// Preserves phone numbers, codes with leading zeros, and dates by returning null.
+  static num? parseFlexibleNumber(String rawText) {
+    final trimmed = rawText.trim();
+    if (trimmed.isEmpty) return null;
+
+    final normalized = normalizeArabicDigits(trimmed);
+
+    // Keep dates as text (e.g. 2026/10/03 or 15-05-2024 or 01.01.2025)
+    if (RegExp(r'^\d{1,4}[/\-.]\d{1,2}[/\-.]\d{1,4}$').hasMatch(normalized)) {
+      return null;
+    }
+
+    // Strip currency symbols and percentage signs
+    var cleaned = normalized
+        .replaceAll(
+          RegExp(
+            r'(ج\.م|ر\.س|د\.إ|د\.ك|د\.أ|جنيه|ريال|دولار|\$|€|£|¥|LE|EGP|SAR|USD|EUR)',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .replaceAll('%', '')
+        .replaceAll('٪', '')
+        .trim();
+
+    // Check for negative signs (accounting parentheses or trailing/leading minus)
+    var isNegative = false;
+    if (cleaned.endsWith('-')) {
+      isNegative = true;
+      cleaned = cleaned.substring(0, cleaned.length - 1).trim();
+    } else if (cleaned.startsWith('-')) {
+      isNegative = true;
+      cleaned = cleaned.substring(1).trim();
+    } else if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      isNegative = true;
+      cleaned = cleaned.substring(1, cleaned.length - 1).trim();
+    }
+
+    if (cleaned.isEmpty) return null;
+
+    // Preserve codes/phone numbers with leading zeros (e.g. "01012345678" or "0025")
+    if (cleaned.length > 1 &&
+        cleaned.startsWith('0') &&
+        !cleaned.startsWith('0.') &&
+        !cleaned.startsWith('0,')) {
+      return null;
+    }
+
+    // Handle European/Arabic comma format vs US comma thousands
+    final lastDot = cleaned.lastIndexOf('.');
+    final lastComma = cleaned.lastIndexOf(',');
+    if (lastDot != -1 && lastComma != -1) {
+      if (lastComma > lastDot) {
+        cleaned = cleaned.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        cleaned = cleaned.replaceAll(',', '');
+      }
+    } else if (lastComma != -1) {
+      final parts = cleaned.split(',');
+      if (parts.length == 2 && parts[1].length <= 2) {
+        cleaned = '${parts[0]}.${parts[1]}';
+      } else {
+        cleaned = cleaned.replaceAll(',', '');
+      }
+    }
+
+    if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(cleaned)) {
+      return null;
+    }
+
+    final parsed = double.tryParse(cleaned);
+    if (parsed == null) return null;
+
+    final finalVal = isNegative ? -parsed : parsed;
+    if (finalVal % 1 == 0 &&
+        finalVal >= -9007199254740991 &&
+        finalVal <= 9007199254740991) {
+      return finalVal.toInt();
+    }
+    return finalVal;
+  }
+
+  /// Builds a complete Excel (.xlsx) workbook directly from OCR page results.
+  static Uint8List buildXlsxWorkbook({
+    required String documentTitle,
+    required List<PageOcrResult> pages,
+  }) =>
+      _buildXlsxWorkbookInIsolate(
+        documentTitle: documentTitle,
+        pages: pages,
+      );
 
   /// Exports a [PendingUpload] document into the requested [ExportFormat].
   Future<String> exportDocument({
@@ -907,6 +1024,307 @@ void _addXmlToArchive(Archive archive, String fileName, String content) {
   archive.addFile(ArchiveFile(fileName, bytes.length, bytes));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Intelligent Table Recognition & Excel (.xlsx) Rebuilding
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TableCellCandidate {
+  const _TableCellCandidate({
+    required this.text,
+    required this.left,
+    required this.right,
+    required this.top,
+    required this.bottom,
+    required this.isRtl,
+  });
+
+  final String text;
+  final double left;
+  final double right;
+  final double top;
+  final double bottom;
+  final bool isRtl;
+
+  double get width => math.max(1.0, right - left);
+  double get height => math.max(1.0, bottom - top);
+  double get centerX => left + width / 2.0;
+  double get centerY => top + height / 2.0;
+}
+
+class _ColumnBand {
+  _ColumnBand({
+    required this.left,
+    required this.right,
+    required this.centerX,
+  });
+
+  double left;
+  double right;
+  double centerX;
+  int sampleCount = 1;
+}
+
+List<_TableCellCandidate> _extractCellCandidates(OcrBlockItem block) {
+  final text = block.text.trim();
+  if (text.isEmpty) return const [];
+
+  final delimiterRegex = RegExp(r'(\t|\||\s{2,})');
+  final matches = delimiterRegex.allMatches(text).toList();
+
+  if (matches.isEmpty) {
+    return [
+      _TableCellCandidate(
+        text: text,
+        left: block.left,
+        right: block.right,
+        top: block.top,
+        bottom: block.bottom,
+        isRtl: block.isRtl,
+      ),
+    ];
+  }
+
+  final candidates = <_TableCellCandidate>[];
+  var lastEnd = 0;
+  final totalChars = math.max(1, text.length);
+
+  void addSlice(int start, int end) {
+    final slice = text.substring(start, end).trim();
+    if (slice.isEmpty) return;
+
+    final startRatio = start / totalChars;
+    final endRatio = end / totalChars;
+
+    final cellLeft = block.left + startRatio * block.width;
+    final cellRight = block.left + endRatio * block.width;
+
+    candidates.add(
+      _TableCellCandidate(
+        text: slice,
+        left: cellLeft,
+        right: math.max(cellLeft + 8.0, cellRight),
+        top: block.top,
+        bottom: block.bottom,
+        isRtl: OfficeExporterService.isRtlText(slice) || block.isRtl,
+      ),
+    );
+  }
+
+  for (final match in matches) {
+    if (match.start > lastEnd) {
+      addSlice(lastEnd, match.start);
+    }
+    lastEnd = match.end;
+  }
+  if (lastEnd < text.length) {
+    addSlice(lastEnd, text.length);
+  }
+
+  return candidates.isEmpty
+      ? [
+          _TableCellCandidate(
+            text: text,
+            left: block.left,
+            right: block.right,
+            top: block.top,
+            bottom: block.bottom,
+            isRtl: block.isRtl,
+          ),
+        ]
+      : candidates;
+}
+
+List<List<_TableCellCandidate>> _clusterCandidatesIntoRows(
+  List<_TableCellCandidate> candidates,
+) {
+  if (candidates.isEmpty) return const [];
+
+  final sorted = List<_TableCellCandidate>.from(candidates)
+    ..sort((a, b) {
+      final topCmp = a.top.compareTo(b.top);
+      if (topCmp != 0) return topCmp;
+      return a.left.compareTo(b.left);
+    });
+
+  final rows = <List<_TableCellCandidate>>[];
+  for (final item in sorted) {
+    if (rows.isEmpty) {
+      rows.add([item]);
+      continue;
+    }
+
+    final currentRow = rows.last;
+    final avgRowCenterY =
+        currentRow.map((e) => e.centerY).reduce((a, b) => a + b) /
+            currentRow.length;
+    final avgRowHeight =
+        currentRow.map((e) => e.height).reduce((a, b) => a + b) /
+            currentRow.length;
+
+    final tolerance = math.max(14.0, avgRowHeight * 0.65);
+    if ((item.centerY - avgRowCenterY).abs() <= tolerance) {
+      currentRow.add(item);
+    } else {
+      rows.add([item]);
+    }
+  }
+
+  for (final row in rows) {
+    row.sort((a, b) => a.left.compareTo(b.left));
+  }
+
+  return rows;
+}
+
+List<_ColumnBand> _detectColumnBands(List<List<_TableCellCandidate>> rows) {
+  final multiItemRows = rows.where((r) => r.length >= 2).toList();
+  if (multiItemRows.isEmpty) {
+    return const [];
+  }
+
+  final maxCols = multiItemRows.map((r) => r.length).reduce(math.max);
+  if (maxCols <= 1) {
+    return const [];
+  }
+
+  final templateRows = multiItemRows.where((r) => r.length == maxCols).toList();
+
+  final bands = <_ColumnBand>[];
+  for (var c = 0; c < maxCols; c++) {
+    var sumLeft = 0.0;
+    var sumRight = 0.0;
+    var sumCenter = 0.0;
+    for (final row in templateRows) {
+      final cell = row[c];
+      sumLeft += cell.left;
+      sumRight += cell.right;
+      sumCenter += cell.centerX;
+    }
+    final count = templateRows.length;
+    bands.add(
+      _ColumnBand(
+        left: sumLeft / count,
+        right: sumRight / count,
+        centerX: sumCenter / count,
+      )..sampleCount = count,
+    );
+  }
+
+  final avgWidth = bands.isEmpty
+      ? 100.0
+      : (bands.last.centerX - bands.first.centerX) / math.max(1, bands.length);
+  final gapThreshold = avgWidth * 0.8;
+
+  for (final row in multiItemRows) {
+    for (final cell in row) {
+      final minDistance = bands
+          .map((b) => (b.centerX - cell.centerX).abs())
+          .reduce(math.min);
+      if (minDistance > gapThreshold) {
+        bands.add(
+          _ColumnBand(
+            left: cell.left,
+            right: cell.right,
+            centerX: cell.centerX,
+          ),
+        );
+      }
+    }
+  }
+
+  bands.sort((a, b) => a.centerX.compareTo(b.centerX));
+  return bands;
+}
+
+Map<int, _TableCellCandidate> _alignRowToBands({
+  required List<_TableCellCandidate> row,
+  required List<_ColumnBand> bands,
+  required double tableWidth,
+}) {
+  final result = <int, _TableCellCandidate>{};
+  if (row.isEmpty || bands.isEmpty) {
+    return result;
+  }
+
+  if (row.length == 1) {
+    final item = row.first;
+    if (item.width >= tableWidth * 0.45) {
+      result[0] = item;
+      return result;
+    }
+    var bestBand = 0;
+    var bestDist = double.infinity;
+    for (var b = 0; b < bands.length; b++) {
+      final dist = (item.centerX - bands[b].centerX).abs();
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestBand = b;
+      }
+    }
+    result[bestBand] = item;
+    return result;
+  }
+
+  final m = row.length;
+  final M = bands.length;
+
+  if (m > M) {
+    for (var i = 0; i < m; i++) {
+      result[math.min(i, M - 1)] = row[i];
+    }
+    return result;
+  }
+
+  final dp = List.generate(m, (_) => List<double>.filled(M, double.infinity));
+  final parent = List.generate(m, (_) => List<int>.filled(M, -1));
+
+  for (var j = 0; j <= M - m; j++) {
+    dp[0][j] = (row[0].centerX - bands[j].centerX).abs();
+  }
+
+  for (var i = 1; i < m; i++) {
+    for (var j = i; j <= M - (m - i); j++) {
+      var minPrevCost = double.infinity;
+      var bestPrevBand = -1;
+      for (var k = i - 1; k < j; k++) {
+        if (dp[i - 1][k] < minPrevCost) {
+          minPrevCost = dp[i - 1][k];
+          bestPrevBand = k;
+        }
+      }
+      if (minPrevCost < double.infinity) {
+        final dist = (row[i].centerX - bands[j].centerX).abs();
+        dp[i][j] = minPrevCost + dist;
+        parent[i][j] = bestPrevBand;
+      }
+    }
+  }
+
+  var bestLastBand = -1;
+  var minTotalCost = double.infinity;
+  for (var j = m - 1; j < M; j++) {
+    if (dp[m - 1][j] < minTotalCost) {
+      minTotalCost = dp[m - 1][j];
+      bestLastBand = j;
+    }
+  }
+
+  if (bestLastBand == -1) {
+    for (var i = 0; i < m; i++) {
+      result[i] = row[i];
+    }
+    return result;
+  }
+
+  var currBand = bestLastBand;
+  for (var i = m - 1; i >= 0; i--) {
+    result[currBand] = row[i];
+    currBand = parent[i][currBand];
+  }
+
+  return result;
+}
+
 Uint8List _buildXlsxWorkbookInIsolate({
   required String documentTitle,
   required List<PageOcrResult> pages,
@@ -914,85 +1332,389 @@ Uint8List _buildXlsxWorkbookInIsolate({
   final excel = Excel.createExcel();
   final defaultSheet = excel.getDefaultSheet();
 
-  for (var i = 0; i < pages.length; i++) {
-    final page = pages[i];
-    final sheetName = 'صفحة ${i + 1}';
-    final Sheet sheet = excel[sheetName];
+  final headerBgColor = ExcelColor.fromHexString('#1B5E20'); // Emerald Green
+  final whiteColor = ExcelColor.fromHexString('#FFFFFF');
+  final zebraTintBgColor = ExcelColor.fromHexString('#F8FAF8');
+  final summaryBgColor = ExcelColor.fromHexString('#E8F5E9');
+  final summaryTextColor = ExcelColor.fromHexString('#1B5E20');
+  final gridBorderColor = ExcelColor.fromHexString('#CBD5E1');
+  final headerBorderColor = ExcelColor.fromHexString('#144A19');
+  final subTitleBgColor = ExcelColor.fromHexString('#F1F5F9');
+  final subTitleTextColor = ExcelColor.fromHexString('#475569');
 
-    final headerCell =
+  final thinGridBorder = Border(
+    borderStyle: BorderStyle.Thin,
+    borderColorHex: gridBorderColor,
+  );
+  final headerBorder = Border(
+    borderStyle: BorderStyle.Thin,
+    borderColorHex: headerBorderColor,
+  );
+  final doubleBottomBorder = Border(
+    borderStyle: BorderStyle.Double,
+    borderColorHex: summaryTextColor,
+  );
+
+  var isAnySheetRtl = false;
+
+  for (var pageIdx = 0; pageIdx < pages.length; pageIdx++) {
+    final page = pages[pageIdx];
+    final sheetName = 'صفحة ${pageIdx + 1}';
+    final Sheet sheet;
+    if (pageIdx == 0 && defaultSheet != null && defaultSheet != sheetName) {
+      excel.rename(defaultSheet, sheetName);
+      sheet = excel[sheetName];
+    } else {
+      sheet = excel[sheetName];
+    }
+
+    // Extract all candidate cells across blocks
+    final allCandidates = <_TableCellCandidate>[];
+    for (final block in page.blocks) {
+      allCandidates.addAll(_extractCellCandidates(block));
+    }
+
+    // Determine Sheet RTL direction based on language content
+    final rtlCount = allCandidates.where((c) => c.isRtl).length;
+    final isSheetRtl = rtlCount >= (allCandidates.length * 0.35);
+    sheet.isRTL = isSheetRtl;
+    if (isSheetRtl) isAnySheetRtl = true;
+
+    final clusteredRows = _clusterCandidatesIntoRows(allCandidates);
+
+    // Compute bounding table width
+    var minTableLeft = double.infinity;
+    var maxTableRight = 0.0;
+    for (final c in allCandidates) {
+      if (c.left < minTableLeft) minTableLeft = c.left;
+      if (c.right > maxTableRight) maxTableRight = c.right;
+    }
+    final tableWidth = math.max(100.0, maxTableRight - minTableLeft);
+
+    // Detect column bands
+    final bands = _detectColumnBands(clusteredRows);
+    final totalColumns = math.max(1, bands.length);
+
+    int toExcelCol(int bandIndex) {
+      if (totalColumns <= 1) return 0;
+      return isSheetRtl ? (totalColumns - 1 - bandIndex) : bandIndex;
+    }
+
+    final maxCharsPerColumn = <int, int>{};
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Row 0: Document Title Banner
+    // ─────────────────────────────────────────────────────────────────────────
+    final titleCell =
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0));
-    headerCell.value = TextCellValue('$documentTitle - $sheetName');
-    headerCell.cellStyle = CellStyle(
+    titleCell.value = TextCellValue('$documentTitle - $sheetName');
+    titleCell.cellStyle = CellStyle(
       bold: true,
       fontSize: 13,
-      horizontalAlign: HorizontalAlign.Right,
+      fontFamily: 'Cairo',
+      fontColorHex: whiteColor,
+      backgroundColorHex: headerBgColor,
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+      leftBorder: headerBorder,
+      rightBorder: headerBorder,
+      topBorder: headerBorder,
+      bottomBorder: headerBorder,
     );
+    sheet.setRowHeight(0, 30.0);
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Row 1: Page Metadata Banner
+    // ─────────────────────────────────────────────────────────────────────────
     final metaCell =
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1));
     metaCell.value = TextCellValue(
-      'عدد الكتل المستخرجة: ${page.blocks.length} • أبعاد الصفحة: ${page.imageWidth}x${page.imageHeight}',
+      'تحويل ذكي بـ CamScanner Offline • جدول بيانات كامل قابل للتعديل • الكتل المستخرجة: ${page.blocks.length} • الأبعاد: ${page.imageWidth}x${page.imageHeight}',
     );
+    metaCell.cellStyle = CellStyle(
+      fontSize: 9,
+      fontFamily: 'Cairo',
+      fontColorHex: subTitleTextColor,
+      backgroundColorHex: subTitleBgColor,
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+      leftBorder: thinGridBorder,
+      rightBorder: thinGridBorder,
+      topBorder: thinGridBorder,
+      bottomBorder: thinGridBorder,
+    );
+    sheet.setRowHeight(1, 20.0);
 
-    final clusteredRows = clusterOcrBlocksIntoRows(page.blocks);
+    if (totalColumns > 1) {
+      sheet.merge(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
+        CellIndex.indexByColumnRow(
+          columnIndex: totalColumns - 1,
+          rowIndex: 0,
+        ),
+      );
+      sheet.merge(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1),
+        CellIndex.indexByColumnRow(
+          columnIndex: totalColumns - 1,
+          rowIndex: 1,
+        ),
+      );
+    }
+
+    // Row 2: Spacer
+    sheet.setRowHeight(2, 10.0);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Detect Header Row & Process Table Rows
+    // ─────────────────────────────────────────────────────────────────────────
+    int? detectedHeaderRowIdx;
+    for (var r = 0; r < clusteredRows.length; r++) {
+      final row = clusteredRows[r];
+      if (row.length >= 2 || (bands.isNotEmpty && row.length >= bands.length - 1)) {
+        final numericCount = row
+            .where(
+              (c) => OfficeExporterService.parseFlexibleNumber(c.text) != null,
+            )
+            .length;
+        if (numericCount <= (row.length * 0.4)) {
+          detectedHeaderRowIdx = r;
+          break;
+        }
+      }
+    }
+    detectedHeaderRowIdx ??= clusteredRows.isNotEmpty ? 0 : null;
+
+    final summaryKeywords = [
+      'المجموع',
+      'الإجمالي',
+      'المجموع الكلي',
+      'الصافي',
+      'صافي',
+      'total',
+      'grand total',
+      'sum',
+      'net',
+      'subtotal',
+    ];
+
+    var excelRowOffset = 3;
 
     for (var r = 0; r < clusteredRows.length; r++) {
       final rowItems = clusteredRows[r];
-      final targetRowIdx = r + 3;
+      final targetRowIdx = excelRowOffset++;
 
-      // If a line contains multiple columns separated by large whitespace or tabs, split them into cells
-      final expandedCells = <({String text, bool isRtl})>[];
-      for (final item in rowItems) {
-        final parts = item.text
-            .split(RegExp(r'\s{2,}|\t|\|'))
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .toList();
-        if (parts.length > 1) {
-          final isLineRtl = item.isRtl;
-          final orderedParts = isLineRtl ? parts.reversed.toList() : parts;
-          for (final p in orderedParts) {
-            expandedCells.add((
-              text: p,
-              isRtl: OfficeExporterService.isRtlText(p) || isLineRtl,
-            ));
+      final isHeaderRow = (r == detectedHeaderRowIdx);
+      final isSingleWideItem = (rowItems.length == 1 &&
+          rowItems.first.width >= tableWidth * 0.45);
+
+      final rowFullText =
+          rowItems.map((e) => e.text.toLowerCase()).join(' ');
+      final isSummaryRow = summaryKeywords.any(
+        (kw) => rowFullText.contains(kw),
+      );
+
+      final isEvenDataRow = (targetRowIdx % 2 == 0);
+      final rowBgColor = isHeaderRow
+          ? headerBgColor
+          : isSummaryRow
+              ? summaryBgColor
+              : isEvenDataRow
+                  ? whiteColor
+                  : zebraTintBgColor;
+
+      sheet.setRowHeight(
+        targetRowIdx,
+        isHeaderRow || isSummaryRow ? 26.0 : 22.0,
+      );
+
+      // Initialize all grid cells in this table row with borders
+      if (totalColumns > 1 && !isSingleWideItem) {
+        for (var col = 0; col < totalColumns; col++) {
+          final cell = sheet.cell(
+            CellIndex.indexByColumnRow(
+              columnIndex: col,
+              rowIndex: targetRowIdx,
+            ),
+          );
+          cell.cellStyle = CellStyle(
+            backgroundColorHex: rowBgColor,
+            leftBorder: isHeaderRow ? headerBorder : thinGridBorder,
+            rightBorder: isHeaderRow ? headerBorder : thinGridBorder,
+            topBorder: isHeaderRow ? headerBorder : thinGridBorder,
+            bottomBorder: isHeaderRow
+                ? headerBorder
+                : isSummaryRow
+                    ? doubleBottomBorder
+                    : thinGridBorder,
+          );
+        }
+      }
+
+      if (isSingleWideItem) {
+        final item = rowItems.first;
+        final cell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: targetRowIdx),
+        );
+        cell.value = TextCellValue(item.text);
+        cell.cellStyle = CellStyle(
+          bold: true,
+          fontSize: 11,
+          fontFamily: 'Cairo',
+          fontColorHex: ExcelColor.fromHexString('#0F172A'),
+          backgroundColorHex: subTitleBgColor,
+          horizontalAlign:
+              item.isRtl ? HorizontalAlign.Right : HorizontalAlign.Left,
+          verticalAlign: VerticalAlign.Center,
+          leftBorder: thinGridBorder,
+          rightBorder: thinGridBorder,
+          topBorder: thinGridBorder,
+          bottomBorder: thinGridBorder,
+        );
+
+        if (totalColumns > 1) {
+          sheet.merge(
+            CellIndex.indexByColumnRow(
+              columnIndex: 0,
+              rowIndex: targetRowIdx,
+            ),
+            CellIndex.indexByColumnRow(
+              columnIndex: totalColumns - 1,
+              rowIndex: targetRowIdx,
+            ),
+          );
+        }
+        continue;
+      }
+
+      // Align cells to column bands
+      final alignment = bands.isEmpty
+          ? {for (var i = 0; i < rowItems.length; i++) i: rowItems[i]}
+          : _alignRowToBands(
+              row: rowItems,
+              bands: bands,
+              tableWidth: tableWidth,
+            );
+
+      for (final entry in alignment.entries) {
+        final bandIndex = entry.key;
+        final cellItem = entry.value;
+        final colIdx = toExcelCol(bandIndex);
+
+        final cell = sheet.cell(
+          CellIndex.indexByColumnRow(
+            columnIndex: colIdx,
+            rowIndex: targetRowIdx,
+          ),
+        );
+
+        final numVal = OfficeExporterService.parseFlexibleNumber(cellItem.text);
+        final isNumber = (numVal != null && !isHeaderRow);
+
+        if (isNumber) {
+          if (numVal is int) {
+            cell.value = IntCellValue(numVal);
+          } else {
+            cell.value = DoubleCellValue(numVal.toDouble());
           }
         } else {
-          expandedCells.add((text: item.text, isRtl: item.isRtl));
+          cell.value = TextCellValue(cellItem.text);
         }
-      }
 
-      for (var c = 0; c < expandedCells.length; c++) {
-        final cellData = expandedCells[c];
-        final cell = sheet.cell(
-          CellIndex.indexByColumnRow(columnIndex: c, rowIndex: targetRowIdx),
-        );
-
-        final numVal = double.tryParse(cellData.text.replaceAll(',', ''));
-        if (numVal != null) {
-          cell.value = DoubleCellValue(numVal);
-        } else {
-          cell.value = TextCellValue(cellData.text);
+        // Track max characters for auto-fit column width
+        final charLength = cellItem.text.trim().length;
+        if (charLength > (maxCharsPerColumn[colIdx] ?? 0)) {
+          maxCharsPerColumn[colIdx] = charLength;
         }
+
+        final cellHorizontalAlign = isHeaderRow
+            ? HorizontalAlign.Center
+            : isNumber
+                ? HorizontalAlign.Center
+                : cellItem.isRtl
+                    ? HorizontalAlign.Right
+                    : HorizontalAlign.Left;
 
         cell.cellStyle = CellStyle(
-          horizontalAlign:
-              cellData.isRtl ? HorizontalAlign.Right : HorizontalAlign.Left,
+          bold: isHeaderRow || isSummaryRow,
+          fontSize: isHeaderRow || isSummaryRow ? 11 : 10,
+          fontFamily: 'Cairo',
+          fontColorHex: isHeaderRow
+              ? whiteColor
+              : isSummaryRow
+                  ? summaryTextColor
+                  : ExcelColor.fromHexString('#0F172A'),
+          backgroundColorHex: rowBgColor,
+          horizontalAlign: cellHorizontalAlign,
           verticalAlign: VerticalAlign.Center,
+          textWrapping: TextWrapping.WrapText,
+          leftBorder: isHeaderRow ? headerBorder : thinGridBorder,
+          rightBorder: isHeaderRow ? headerBorder : thinGridBorder,
+          topBorder: isHeaderRow ? headerBorder : thinGridBorder,
+          bottomBorder: isHeaderRow
+              ? headerBorder
+              : isSummaryRow
+                  ? doubleBottomBorder
+                  : thinGridBorder,
         );
       }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Proportional Auto-Fit Column Widths
+    // ─────────────────────────────────────────────────────────────────────────
+    for (var c = 0; c < totalColumns; c++) {
+      final maxLen = maxCharsPerColumn[c] ?? 8;
+      final calculatedWidth =
+          math.max(14.0, math.min(48.0, (maxLen * 1.45) + 4.0));
+      sheet.setColumnWidth(c, calculatedWidth);
     }
   }
 
   if (defaultSheet != null &&
       defaultSheet != 'صفحة 1' &&
+      excel.tables.containsKey(defaultSheet) &&
       excel.tables.length > 1) {
     excel.delete(defaultSheet);
   }
 
-  final bytes = excel.save();
+  var bytes = excel.save();
   if (bytes == null) {
     throw Exception('فشل إنشاء ملف Excel (.xlsx).');
   }
+
+  if (isAnySheetRtl) {
+    final decoded = ZipDecoder().decodeBytes(bytes);
+    final newArchive = Archive();
+    var modified = false;
+    for (final file in decoded.files) {
+      file.decompress();
+      if (file.name.contains('worksheets/sheet') && file.name.endsWith('.xml')) {
+        final contentStr = utf8.decode(file.content as List<int>);
+        if (!contentStr.contains('rightToLeft="1"')) {
+          final updated = contentStr.replaceFirst(
+            '<sheetView ',
+            '<sheetView rightToLeft="1" ',
+          );
+          if (updated != contentStr) {
+            final newBytes = utf8.encode(updated);
+            newArchive.addFile(
+              ArchiveFile(file.name, newBytes.length, newBytes),
+            );
+            modified = true;
+            continue;
+          }
+        }
+      }
+      newArchive.addFile(file);
+    }
+    if (modified) {
+      final encoded = ZipEncoder().encode(newArchive);
+      if (encoded != null) {
+        bytes = encoded;
+      }
+    }
+  }
+
   return Uint8List.fromList(bytes);
 }

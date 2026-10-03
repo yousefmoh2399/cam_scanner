@@ -13,6 +13,7 @@ import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/native_scanner_bridge.dart';
+import '../data/office_exporter_service.dart';
 import 'scan_review_screen.dart';
 import 'signature_bottom_sheet.dart';
 import 'signature_placement_screen.dart';
@@ -185,6 +186,15 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     );
   }
 
+  Future<void> _exportToExcelDirectly() async {
+    await executeDocumentExportWithUi(
+      context: context,
+      ref: ref,
+      document: _doc,
+      format: ExportFormat.xlsx,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = context.appThemePalette;
@@ -213,6 +223,14 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'تحويل الجداول إلى Excel (.xlsx)',
+            icon: const Icon(
+              Icons.table_chart_rounded,
+              color: Color(0xFF059669),
+            ),
+            onPressed: _exportToExcelDirectly,
+          ),
           IconButton(
             tooltip: 'تصدير / تحويل الصيغة (PDF, Word, Excel)',
             icon: const Icon(Icons.ios_share_rounded),
@@ -353,6 +371,16 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                 onPressed: _rotateCurrentPage,
                                 icon: const Icon(Icons.rotate_left_rounded, size: 18),
                                 label: const Text('تدوير'),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton.tonalIcon(
+                                onPressed: _exportToExcelDirectly,
+                                icon: const Icon(
+                                  Icons.table_chart_rounded,
+                                  size: 18,
+                                  color: Color(0xFF059669),
+                                ),
+                                label: const Text('تحويل لـ Excel'),
                               ),
                               const SizedBox(width: 8),
                               FilledButton.icon(

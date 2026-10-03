@@ -308,7 +308,7 @@ class _SaveAndExportSheetContentState
               context: context,
               format: ExportFormat.xlsx,
               icon: Icons.table_chart_rounded,
-              badgeText: 'Excel جداول RTL',
+              badgeText: 'جداول ذكية + أرقام + RTL',
               color: const Color(0xFF059669),
             ),
 

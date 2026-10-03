@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:cam_scanner/shared/models/pending_upload.dart';
-import 'package:cam_scanner/features/scanner/data/local_document_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

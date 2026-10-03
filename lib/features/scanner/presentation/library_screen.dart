@@ -18,6 +18,7 @@ import '../../../shared/providers/providers.dart';
 import '../../../shared/services/local_media_storage_service.dart';
 import '../data/document_search_service.dart';
 import '../data/ocr_service.dart';
+import '../data/office_exporter_service.dart';
 import 'document_viewer_screen.dart';
 import 'pdf_tools_screen.dart';
 import 'scanner_session_screen.dart';
@@ -633,6 +634,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
   }
 
+  Future<void> _exportToExcelDirectly(PendingUpload doc) async {
+    await executeDocumentExportWithUi(
+      context: context,
+      ref: ref,
+      document: doc,
+      format: ExportFormat.xlsx,
+    );
+  }
+
   Future<void> _reopenDocumentForEditing(PendingUpload doc) async {
     if (doc.pages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -726,6 +736,24 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 onTap: () {
                   Navigator.pop(ctx);
                   _exportDocumentSheet(doc);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.table_chart_rounded,
+                  color: Color(0xFF059669),
+                ),
+                title: const Text(
+                  'تحويل الجداول إلى Excel احترافي (.xlsx)',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'إعادة بناء شبكة الجداول والخلايا وتنسيق الأرقام والعربي RTL',
+                  style: TextStyle(fontSize: 11.5),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _exportToExcelDirectly(doc);
                 },
               ),
               ListTile(
