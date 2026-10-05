@@ -122,17 +122,17 @@ class _SmartDataExtractionSheetState
     final palette = context.appThemePalette;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.88,
-      ),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E22) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
+    return Material(
+      color: isDark ? const Color(0xFF1E1E22) : Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
           children: [
             // Handle bar
             Container(
@@ -258,15 +258,21 @@ class _SmartDataExtractionSheetState
                           children: [
                             Row(
                               children: [
-                                Text(
-                                  idInfo.id,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.5,
+                                Expanded(
+                                  child: FittedBox(
+                                    alignment: Alignment.centerRight,
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      idInfo.id,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                const Spacer(),
+                                const SizedBox(width: 8),
                                 IconButton(
                                   tooltip: 'نسخ الرقم القومي',
                                   icon: const Icon(Icons.copy_rounded, size: 18),
@@ -309,10 +315,22 @@ class _SmartDataExtractionSheetState
                       }).toList(),
                     ),
                     const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.contact_page_rounded, size: 18),
-                      label: const Text('تصدير كارت شخصي لجهات الاتصال (.vcf)'),
+                    OutlinedButton(
                       onPressed: () => _exportVCard(_fields.phones.first),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.contact_page_rounded, size: 18),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'حفظ كجهة اتصال (.vcf)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -422,8 +440,9 @@ class _SmartDataExtractionSheetState
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSectionHeader(String title, IconData icon, Color color) {
     return Padding(
@@ -432,12 +451,16 @@ class _SmartDataExtractionSheetState
         children: [
           Icon(icon, size: 18, color: color),
           const SizedBox(width: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: color,
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: color,
+              ),
             ),
           ),
         ],
@@ -455,9 +478,11 @@ class _SmartDataExtractionSheetState
             style: const TextStyle(fontSize: 12.5, color: Colors.grey),
           ),
           const SizedBox(width: 8),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),

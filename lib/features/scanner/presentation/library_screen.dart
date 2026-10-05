@@ -1474,7 +1474,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   Text(
                     activeFolder != null
                         ? activeFolder.name
-                        : 'الماسح الضوئي الذكي',
+                        : 'الماسح الذكي',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
@@ -1482,8 +1484,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ),
                   Text(
                     activeFolder != null
-                        ? '${visibleDocs.length} مستند داخل المجلد'
-                        : '${allDocs.length} مستند محفوظ محلياً • بدون إنترنت 100%',
+                        ? '${visibleDocs.length} مستند بالمجلد'
+                        : '${allDocs.length} مستند محلياً • بدون إنترنت',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -1563,60 +1567,71 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
-        height: 66,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                _BottomBarActionButton(
-                  icon: Icons.library_books_rounded,
-                  label: 'المكتبة',
-                  isActive: _activeFolderId == null,
-                  onTap: () => setState(() => _activeFolderId = null),
-                ),
-                const SizedBox(width: 8),
-                _BottomBarActionButton(
-                  icon: Icons.create_new_folder_rounded,
-                  label: 'مجلد جديد',
-                  isActive: false,
-                  onTap: _createFolderDialog,
-                ),
-              ],
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: _BottomBarActionButton(
+                      icon: Icons.library_books_rounded,
+                      label: 'المكتبة',
+                      isActive: _activeFolderId == null,
+                      onTap: () => setState(() => _activeFolderId = null),
+                    ),
+                  ),
+                  Expanded(
+                    child: _BottomBarActionButton(
+                      icon: Icons.create_new_folder_rounded,
+                      label: 'مجلد جديد',
+                      isActive: false,
+                      onTap: _createFolderDialog,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Row(
-              children: [
-                _BottomBarActionButton(
-                  icon: Icons.draw_rounded,
-                  label: 'التوقيعات',
-                  isActive: false,
-                  onTap: () async {
-                    final storage = ref.read(signatureStorageServiceProvider);
-                    await showSignatureBottomSheet(
-                      context: context,
-                      storageService: storage,
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                _BottomBarActionButton(
-                  icon: Icons.transform_rounded,
-                  label: 'تصدير سريع',
-                  isActive: false,
-                  onTap: () {
-                    if (visibleDocs.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('امسح مستنداً أولاً لتصديره إلى PDF أو Word أو Excel'),
-                        ),
-                      );
-                      return;
-                    }
-                    _exportDocumentSheet(visibleDocs.first);
-                  },
-                ),
-              ],
+            const SizedBox(width: 72),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: _BottomBarActionButton(
+                      icon: Icons.draw_rounded,
+                      label: 'التوقيعات',
+                      isActive: false,
+                      onTap: () async {
+                        final storage = ref.read(signatureStorageServiceProvider);
+                        await showSignatureBottomSheet(
+                          context: context,
+                          storageService: storage,
+                        );
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: _BottomBarActionButton(
+                      icon: Icons.transform_rounded,
+                      label: 'تصدير سريع',
+                      isActive: false,
+                      onTap: () {
+                        if (visibleDocs.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('امسح مستنداً أولاً لتصديره إلى PDF أو Word أو Excel'),
+                            ),
+                          );
+                          return;
+                        }
+                        _exportDocumentSheet(visibleDocs.first);
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -2857,7 +2872,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 24, 28, 110),
+        padding: const EdgeInsets.fromLTRB(28, 16, 28, 160),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -2984,18 +2999,22 @@ class _BottomBarActionButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 22, color: color),
             const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                color: color,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                  color: color,
+                ),
               ),
             ),
           ],

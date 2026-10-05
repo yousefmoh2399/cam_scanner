@@ -398,38 +398,31 @@ class _GovernmentDocumentsScreenState
                       },
                     ),
                     const SizedBox(height: 12),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Center(
-                              child: Text('3×4 سم (8 صور) - للبطاقة والشهادات'),
-                            ),
-                            selected: _selectedPhotoType ==
-                                GovDocType.personalPhoto3x4,
-                            onSelected: (val) {
-                              if (val) {
-                                setState(() => _selectedPhotoType =
-                                    GovDocType.personalPhoto3x4);
-                              }
-                            },
-                          ),
+                        ChoiceChip(
+                          label: const Text('3×4 سم (8 صور) - بطاقة وشهادات'),
+                          selected: _selectedPhotoType ==
+                              GovDocType.personalPhoto3x4,
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _selectedPhotoType =
+                                  GovDocType.personalPhoto3x4);
+                            }
+                          },
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Center(
-                              child: Text('4×6 سم (4 صور) - لجواز السفر'),
-                            ),
-                            selected: _selectedPhotoType ==
-                                GovDocType.personalPhoto4x6,
-                            onSelected: (val) {
-                              if (val) {
-                                setState(() => _selectedPhotoType =
-                                    GovDocType.personalPhoto4x6);
-                              }
-                            },
-                          ),
+                        ChoiceChip(
+                          label: const Text('4×6 سم (4 صور) - جواز السفر'),
+                          selected: _selectedPhotoType ==
+                              GovDocType.personalPhoto4x6,
+                          onSelected: (val) {
+                            if (val) {
+                              setState(() => _selectedPhotoType =
+                                  GovDocType.personalPhoto4x6);
+                            }
+                          },
                         ),
                       ],
                     ),

@@ -9,6 +9,6 @@ void main() {
   ) async {
     await tester.pumpWidget(const ProviderScope(child: CamScannerApp()));
     await tester.pump();
-    expect(find.text('الماسح الضوئي الذكي'), findsOneWidget);
+    expect(find.text('الماسح الذكي'), findsOneWidget);
   });
 }
