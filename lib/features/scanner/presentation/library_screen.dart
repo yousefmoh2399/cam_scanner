@@ -680,7 +680,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) => SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1048,7 +1048,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (sheetCtx) => Padding(
+        builder: (sheetCtx) => SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
