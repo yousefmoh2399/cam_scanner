@@ -8,11 +8,14 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/models/document_paper_size.dart';
 import '../../../shared/models/pending_upload.dart';
+import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
 import '../../../shared/services/local_media_storage_service.dart';
 import '../data/native_scanner_bridge.dart';
 import '../data/office_exporter_service.dart';
+import '../data/pdf_builder_service.dart';
 import 'government_documents_screen.dart';
 import 'pdf_tools_screen.dart';
 import 'signature_bottom_sheet.dart';
@@ -397,16 +400,36 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
+  Future<void> _processImageToExcel(String imagePath, String title) async {
+    final now = DateTime.now();
+    final tempDoc = PendingUpload(
+      id: 'excel_temp_${now.millisecondsSinceEpoch}',
+      filePath: imagePath,
+      fileName: '$title.jpg',
+      fileType: 'image',
+      createdAt: now,
+      pageCount: 1,
+      thumbnailPath: imagePath,
+      pages: [
+        ScannedPage(
+          imagePath: imagePath,
+          originalImagePath: imagePath,
+          filterName: 'original',
+          paperSize: DocumentPaperSize.a4,
+        ),
+      ],
+    );
+
+    await executeDocumentExportWithUi(
+      context: context,
+      ref: ref,
+      document: tempDoc,
+      format: ExportFormat.xlsx,
+    );
+  }
+
   Future<void> _showExcelActionDialog() async {
     final docs = ref.read(pendingUploadsControllerProvider).valueOrNull ?? [];
-    if (docs.isEmpty) {
-      _showSimpleInfoDialog(
-        title: 'تحويل الجداول إلى Excel (.xlsx)',
-        message:
-            'لا توجد مستندات ممسوحة ضوئياً بعد في مكتبتك.\nقم بمسح ورقة تحتوي على جدول بالكاميرا أولاً، أو استورد ملفاً من قائمة الأدوات لتصديره فوراً إلى ملف Excel احترافي.',
-      );
-      return;
-    }
 
     await showModalBottomSheet<void>(
       context: context,
@@ -448,7 +471,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           ),
                         ),
                         Text(
-                          'اختر المستند المراد تحويله إلى جدول .xlsx يدعم العربية RTL',
+                          'استخراج الجداول بصيغة .xlsx مع شبكة خلايا ودعم RTL',
                           style: TextStyle(fontSize: 11.5, color: Colors.grey),
                         ),
                       ],
@@ -458,44 +481,113 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               ),
               const SizedBox(height: 16),
               const Divider(height: 1),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+              const SizedBox(height: 8),
+
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: Colors.blue),
                 ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: docs.length,
-                  itemBuilder: (_, idx) {
-                    final d = docs[idx];
-                    return ListTile(
-                      leading: const Icon(
-                        Icons.description_rounded,
-                        color: Color(0xFF10B981),
-                      ),
-                      title: Text(
-                        d.title,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        '${formatPageCount(d.pageCount)} • ${formatDate(d.createdAt)}',
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios_rounded,
-                          size: 14),
-                      onTap: () async {
-                        Navigator.of(sheetCtx).pop();
-                        await executeDocumentExportWithUi(
-                          context: context,
-                          ref: ref,
-                          document: d,
-                          format: ExportFormat.xlsx,
-                        );
-                      },
+                title: const Text('تصوير جدول جديد بالكاميرا الآن',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('التقاط فوري لجدول مطبوع وتحويله لإكسل'),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  try {
+                    final draftsDir = await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+                    final scanResults = await NativeScannerBridge.startScan(
+                      destDir: draftsDir.path,
+                      batch: false,
                     );
-                  },
-                ),
+                    if (scanResults.isNotEmpty) {
+                      await _processImageToExcel(scanResults.first.path, 'جدول_ممسوح');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('تعذر تشغيل الكاميرا: $e')),
+                      );
+                    }
+                  }
+                },
               ),
+
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Colors.purple),
+                ),
+                title: const Text('اختيار صورة جدول من المعرض أو الجهاز',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('اختيار ملف صورة JPG أو PNG يحتوي على جدول'),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.image,
+                    allowMultiple: false,
+                  );
+                  if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
+                    await _processImageToExcel(
+                      result.files.first.path!,
+                      stripFileExtension(result.files.first.name),
+                    );
+                  }
+                },
+              ),
+
+              if (docs.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'أو اختر من مستندات المكتبة:',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.35,
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: docs.length,
+                    itemBuilder: (_, idx) {
+                      final d = docs[idx];
+                      return ListTile(
+                        leading: const Icon(
+                          Icons.description_rounded,
+                          color: Color(0xFF10B981),
+                        ),
+                        title: Text(
+                          d.title,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          '${formatPageCount(d.pageCount)} • ${formatDate(d.createdAt)}',
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                        onTap: () async {
+                          Navigator.of(sheetCtx).pop();
+                          await executeDocumentExportWithUi(
+                            context: context,
+                            ref: ref,
+                            document: d,
+                            format: ExportFormat.xlsx,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -503,66 +595,92 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
-  Future<void> _showSmartExtractionLauncher() async {
-    final docs = ref.read(pendingUploadsControllerProvider).valueOrNull ?? [];
-    if (docs.isEmpty) {
-      // Allow user to test with custom text directly!
-      final textCtrl = TextEditingController(
-        text:
-            'بطاقة رقم قومي: 29805120102345\nرقم الهاتف: 01098765432\nالمبلغ المطلوب: 3500 جنيه مصري',
+  Future<void> _extractFromImagePath(String imagePath, String title) async {
+    setState(() => _isProcessing = true);
+    try {
+      final ocr = ref.read(ocrServiceProvider);
+      final res = await ocr.recognizeDocument(
+        documentId: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        imagePaths: [imagePath],
       );
-      await showDialog<void>(
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+
+      SmartDataExtractionSheet.show(
         context: context,
-        builder: (dlgCtx) => AlertDialog(
-          title: const Text(
-            'تجربة الاستخراج الذكي (OCR)',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'أدخل أو الصق نصاً يحتوي على رقم قومي أو هاتف لاختبار التحليل الذكي محلياً:',
-                style: TextStyle(fontSize: 12),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: textCtrl,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+        text: res.fullText.isNotEmpty
+            ? res.fullText
+            : 'لم يتم العثور على نصوص واضحة في الصورة.',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر الاستخراج: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showManualTextExtractionDialog() async {
+    final textCtrl = TextEditingController(
+      text: 'بطاقة رقم قومي: 29805120102345\nرقم الهاتف: 01098765432\nالمبلغ المطلوب: 3500 جنيه مصري',
+    );
+    await showDialog<void>(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        title: const Text(
+          'تجربة الاستخراج الذكي (OCR)',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'أدخل أو الصق نصاً يحتوي على رقم قومي أو هاتف لاختبار التحليل الذكي محلياً:',
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: textCtrl,
+              maxLines: 4,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dlgCtx),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final txt = textCtrl.text.trim();
-                Navigator.pop(dlgCtx);
-                if (txt.isNotEmpty) {
-                  SmartDataExtractionSheet.show(
-                    context: context,
-                    text: txt,
-                  );
-                }
-              },
-              child: const Text('تحليل النص'),
             ),
           ],
         ),
-      );
-      return;
-    }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final txt = textCtrl.text.trim();
+              Navigator.pop(dlgCtx);
+              if (txt.isNotEmpty) {
+                SmartDataExtractionSheet.show(
+                  context: context,
+                  text: txt,
+                );
+              }
+            },
+            child: const Text('تحليل النص'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSmartExtractionLauncher() async {
+    final docs = ref.read(pendingUploadsControllerProvider).valueOrNull ?? [];
 
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -573,48 +691,161 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'الاستخراج الذكي والقراءة الصوتية',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                textAlign: TextAlign.center,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.psychology_rounded,
+                      color: Color(0xFF8B5CF6),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'الاستخراج الذكي وتحليل المستندات',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          'تفكيك بيانات الرقم القومي، الهواتف، vCard، والقراءة الصوتية',
+                          style: TextStyle(fontSize: 11.5, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'اختر مستنداً لاستخراج بيانات الرقم القومي المصري، الهواتف، وتوليد جهات الاتصال vCard:',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               const Divider(height: 1),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+              const SizedBox(height: 8),
+
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: Colors.blue),
                 ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: docs.length,
-                  itemBuilder: (_, idx) {
-                    final d = docs[idx];
-                    return ListTile(
-                      leading: const Icon(
-                        Icons.psychology_rounded,
-                        color: Color(0xFF8B5CF6),
-                      ),
-                      title: Text(
-                        d.title,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text('${formatPageCount(d.pageCount)} صفحة'),
-                      onTap: () async {
-                        Navigator.of(sheetCtx).pop();
-                        _extractFromDocument(d);
-                      },
+                title: const Text('تصوير بطاقة أو وثيقة بالكاميرا',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('التقاط صورة وتحليل حقولها فوراً'),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  try {
+                    final draftsDir = await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+                    final scanResults = await NativeScannerBridge.startScan(
+                      destDir: draftsDir.path,
+                      batch: false,
                     );
-                  },
-                ),
+                    if (scanResults.isNotEmpty) {
+                      await _extractFromImagePath(scanResults.first.path, 'وثيقة_ممسوحة');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('تعذر تشغيل الكاميرا: $e')),
+                      );
+                    }
+                  }
+                },
               ),
+
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Colors.purple),
+                ),
+                title: const Text('اختيار صورة من المعرض أو الجهاز',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('فحص صورة بطاقة أو فاتورة محفوظة'),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.image,
+                    allowMultiple: false,
+                  );
+                  if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
+                    await _extractFromImagePath(
+                      result.files.first.path!,
+                      stripFileExtension(result.files.first.name),
+                    );
+                  }
+                },
+              ),
+
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.text_fields_rounded, color: Colors.teal),
+                ),
+                title: const Text('كتابة أو لصق نص يدوي للتحليل',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('فحص فوري لأي رقم قومي أو هاتف نصياً'),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _showManualTextExtractionDialog();
+                },
+              ),
+
+              if (docs.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'أو اختر من مستندات المكتبة:',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.35,
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: docs.length,
+                    itemBuilder: (_, idx) {
+                      final d = docs[idx];
+                      return ListTile(
+                        leading: const Icon(
+                          Icons.psychology_rounded,
+                          color: Color(0xFF8B5CF6),
+                        ),
+                        title: Text(
+                          d.title,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text('${formatPageCount(d.pageCount)} صفحة'),
+                        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                        onTap: () async {
+                          Navigator.of(sheetCtx).pop();
+                          _extractFromDocument(d);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -661,11 +892,90 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
   }
 
   Future<void> _showBookSplitterDialog() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
+    final source = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'مسح وفصل صفحات الكتب المزدوجة (Book Mode)',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'التقط صورة لصفحتين متقابلتين في لقطة واحدة وسيقوم التطبيق بفصلهما وتسوية انحناءات الورق.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: Colors.amber),
+                ),
+                title: const Text('تصوير كتاب مفتوح بالكاميرا الآن',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () => Navigator.pop(ctx, 'camera'),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Colors.blue),
+                ),
+                title: const Text('اختيار صورة كتاب من الجهاز',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () => Navigator.pop(ctx, 'gallery'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    final path = result?.files.firstOrNull?.path;
+
+    if (source == null) return;
+
+    String? path;
+    if (source == 'camera') {
+      try {
+        final draftsDir = await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+        final scanResults = await NativeScannerBridge.startScan(
+          destDir: draftsDir.path,
+          batch: false,
+        );
+        if (scanResults.isNotEmpty) {
+          path = scanResults.first.path;
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر فتح الكاميرا: $e')),
+          );
+        }
+        return;
+      }
+    } else {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+      path = result?.files.firstOrNull?.path;
+    }
+
     if (path == null) return;
 
     setState(() => _isProcessing = true);
@@ -685,19 +995,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       if (!mounted) return;
       setState(() => _isProcessing = false);
 
-      if (splitRes != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'تم فصل صفحتين بنجاح (يمين ويسار) وتسوية الانحناءات محلياً!',
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      if (splitRes != null &&
+          File(splitRes.pageRight).existsSync() &&
+          File(splitRes.pageLeft).existsSync()) {
+        await _showBookSplitResultDialog(splitRes.pageRight, splitRes.pageLeft);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('تعذر فصل الكتاب. تأكد من وضوح الصورة وتوسط الكتاب.'),
+            content: Text('تعذر فصل الكتاب. تأكد من وضوح الصورة وتوسط منحنى الكتاب.'),
           ),
         );
       }
@@ -708,6 +1013,151 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           SnackBar(content: Text('حدث خطأ: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _showBookSplitResultDialog(String rightPath, String leftPath) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        title: const Text(
+          'تم فصل صفحتين الكتاب وتسوية الانحناءات',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'الصفحة اليمنى (1)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(rightPath),
+                          height: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'الصفحة اليسرى (2)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(leftPath),
+                          height: 150,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: const Text('إغلاق'),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.library_add_rounded, size: 18),
+            label: const Text('حفظ كمستند في المكتبة'),
+            onPressed: () async {
+              Navigator.pop(dlgCtx);
+              await _saveSplitBookPagesToLibrary(rightPath, leftPath);
+            },
+          ),
+          FilledButton.tonalIcon(
+            icon: const Icon(Icons.share_rounded, size: 18),
+            label: const Text('مشاركة الصفحتين'),
+            onPressed: () {
+              Navigator.pop(dlgCtx);
+              Share.shareXFiles([XFile(rightPath), XFile(leftPath)]);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveSplitBookPagesToLibrary(String rightPath, String leftPath) async {
+    setState(() => _isProcessing = true);
+    try {
+      const storage = LocalMediaStorageService();
+      final docsDir = await storage.documentsDirectory();
+      final pdfBuilder = ref.read(pdfBuilderServiceProvider);
+      final now = DateTime.now();
+      final docId = 'book_${now.millisecondsSinceEpoch}';
+      final title = 'كتاب_مفصول_${now.millisecondsSinceEpoch % 10000}';
+
+      final pages = [
+        ScannedPage(
+          imagePath: rightPath,
+          originalImagePath: rightPath,
+          filterName: 'original',
+          paperSize: DocumentPaperSize.a4,
+        ),
+        ScannedPage(
+          imagePath: leftPath,
+          originalImagePath: leftPath,
+          filterName: 'original',
+          paperSize: DocumentPaperSize.a4,
+        ),
+      ];
+
+      final pdfBytes = await pdfBuilder.buildPdf(
+        imagePaths: [rightPath, leftPath],
+        paperSizes: [DocumentPaperSize.a4, DocumentPaperSize.a4],
+      );
+      final outPath = p.join(docsDir.path, '${docId}_$title.pdf');
+      await File(outPath).writeAsBytes(pdfBytes, flush: true);
+
+      final doc = PendingUpload(
+        id: docId,
+        filePath: outPath,
+        fileName: '$title.pdf',
+        fileType: 'pdf',
+        createdAt: now,
+        status: 'saved',
+        pageCount: 2,
+        thumbnailPath: rightPath,
+        pages: pages,
+      );
+
+      await ref.read(pendingUploadsControllerProvider.notifier).addDocument(doc);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم حفظ الصفحتين كمستند "$title" في المكتبة بنجاح!'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر الحفظ: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -891,25 +1341,6 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           ),
         );
       },
-    );
-  }
-
-  void _showSimpleInfoDialog({
-    required String title,
-    required String message,
-  }) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-        content: Text(message),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('حسناً'),
-          ),
-        ],
-      ),
     );
   }
 

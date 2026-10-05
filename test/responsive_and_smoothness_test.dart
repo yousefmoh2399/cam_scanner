@@ -129,14 +129,14 @@ void main() {
         expect(find.byType(GovernmentDocumentsScreen), findsOneWidget);
 
         // Test smooth scrolling through cards
-        final scrollable = find.byType(SingleChildScrollView);
+        final scrollable = find.byType(ListView);
         if (scrollable.evaluate().isNotEmpty) {
-          await tester.fling(scrollable, const Offset(0, -400), 1000);
+          await tester.fling(scrollable.first, const Offset(0, -400), 1000);
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 300));
           expect(tester.takeException(), isNull);
 
-          await tester.fling(scrollable, const Offset(0, 400), 1000);
+          await tester.fling(scrollable.first, const Offset(0, 400), 1000);
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 300));
           expect(tester.takeException(), isNull);
