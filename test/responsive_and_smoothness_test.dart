@@ -10,6 +10,8 @@ import 'package:cam_scanner/features/scanner/presentation/government_documents_s
 import 'package:cam_scanner/features/scanner/presentation/library_screen.dart';
 import 'package:cam_scanner/features/scanner/presentation/tools_hub_screen.dart';
 import 'package:cam_scanner/features/scanner/presentation/trash_screen.dart';
+import 'package:cam_scanner/features/scanner/presentation/watermark_studio_screen.dart';
+import 'package:cam_scanner/features/scanner/presentation/auto_redaction_screen.dart';
 import 'package:cam_scanner/features/scanner/presentation/widgets/smart_data_extraction_sheet.dart';
 
 Widget _buildTestApp(Widget child, {bool isDark = false}) {
@@ -249,6 +251,36 @@ void main() {
           await tester.pump(const Duration(milliseconds: 200));
           expect(tester.takeException(), isNull);
         }
+      });
+
+      testWidgets(
+          'WatermarkStudioScreen renders with ZERO overflow on ${device.name}',
+          (tester) async {
+        tester.view.physicalSize = device.size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        await tester.pumpWidget(_buildTestApp(const WatermarkStudioScreen()));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('العلامة المائية والأختام الأمنية'), findsOneWidget);
+      });
+
+      testWidgets(
+          'AutoRedactionScreen renders with ZERO overflow on ${device.name}',
+          (tester) async {
+        tester.view.physicalSize = device.size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        await tester.pumpWidget(_buildTestApp(const AutoRedactionScreen()));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('الحجب الأمني وتسويد البيانات'), findsOneWidget);
       });
     }
   });

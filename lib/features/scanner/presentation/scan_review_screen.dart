@@ -82,6 +82,11 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
       label: 'إزالة خط اليد',
       icon: Icons.cleaning_services_rounded
     ),
+    (
+      key: 'shadow_remover',
+      label: 'إزالة الظلال',
+      icon: Icons.exposure_rounded
+    ),
     (key: 'gray', label: 'رمادي', icon: Icons.filter_b_and_w_rounded),
     (key: 'bw', label: 'أبيض وأسود', icon: Icons.contrast_rounded),
     (key: 'eco', label: 'توفير الحبر', icon: Icons.format_color_reset_rounded),

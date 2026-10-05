@@ -22,6 +22,7 @@ void main() {
         'enhance',
         'lighten',
         'no_handwriting',
+        'shadow_remover',
         'gray',
         'bw',
         'eco',

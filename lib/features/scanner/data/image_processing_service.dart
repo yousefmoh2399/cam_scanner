@@ -357,6 +357,7 @@ Uint8List _processImageBytes(_ImageTransformRequest request) {
   switch (filter) {
     case ImageFilterType.enhance:
     case ImageFilterType.magic:
+    case ImageFilterType.shadowRemover:
       transformed = _applyDocumentScanLook(transformed, quality: quality);
       break;
     case ImageFilterType.original:

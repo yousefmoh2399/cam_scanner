@@ -18,6 +18,8 @@ import 'pdf_tools_screen.dart';
 import 'signature_bottom_sheet.dart';
 import 'trash_screen.dart';
 import 'vault_screen.dart';
+import 'watermark_studio_screen.dart';
+import 'auto_redaction_screen.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 
@@ -246,6 +248,28 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       keywords: ['سلة', 'حذف', 'محذوفات', 'استرجاع', 'مهملات'],
     ),
     ToolItem(
+      id: 'sec_watermark',
+      title: 'العلامة المائية والأختام الأمنية',
+      subtitle:
+          'إضافة كتابة مائلة متكررة أو ختم نصي أمني (صورة طبق الأصل، مقدمة لبنك مصر فقط...) لمنع التزوير وسرقة الهوية.',
+      category: ToolCategory.security,
+      icon: Icons.verified_user_rounded,
+      badge: 'مجاني 100%',
+      accentColor: Color(0xFFDC2626),
+      keywords: ['علامة', 'مائية', 'ختم', 'أمان', 'بنك', 'بطاقة', 'تزوير', 'watermark'],
+    ),
+    ToolItem(
+      id: 'sec_smart_redaction',
+      title: 'الحجب الأمني وتسويد البيانات (Smart Redaction)',
+      subtitle:
+          'تسويد وحرق الرقم القومي والهواتف والرواتب نهائياً داخل الصورة قبل مشاركتها لمنع استرجاعها.',
+      category: ToolCategory.security,
+      icon: Icons.visibility_off_rounded,
+      badge: 'حماية الهوية',
+      accentColor: Color(0xFF334155),
+      keywords: ['حجب', 'تسويد', 'رقم قومي', 'خصوصية', 'redact', 'تشفير'],
+    ),
+    ToolItem(
       id: 'sec_backup_zip',
       title: 'النسخ الاحتياطي والاستعادة (.ZIP)',
       subtitle:
@@ -331,6 +355,22 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
       case 'sec_signatures':
         _openSignaturesSheet();
+        break;
+
+      case 'sec_watermark':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const WatermarkStudioScreen(),
+          ),
+        );
+        break;
+
+      case 'sec_smart_redaction':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const AutoRedactionScreen(),
+          ),
+        );
         break;
 
       case 'sec_trash':

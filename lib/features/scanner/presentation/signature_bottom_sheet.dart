@@ -3,10 +3,12 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/signature_model.dart';
+import '../data/signature_extractor_service.dart';
 import '../data/signature_storage_service.dart';
 
 /// Result returned when the user confirms a signature from the bottom sheet.
@@ -162,6 +164,43 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
     await _loadSignatures();
   }
 
+  Future<void> _scanSignatureFromPaper() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.isEmpty || result.files.first.path == null) {
+      return;
+    }
+    final imagePath = result.files.first.path!;
+
+    setState(() => _saving = true);
+
+    try {
+      final extractor = SignatureExtractorService();
+      final transparentBytes = await extractor.extractTransparentSignatureFromFile(
+        filePath: imagePath,
+        colorMode: SignatureInkColorMode.royalBlue,
+      );
+
+      await widget.storageService.saveSignature(transparentBytes);
+
+      if (mounted) {
+        Navigator.of(context).pop(SignatureResult(
+          pngBytes: transparentBytes,
+          isSaved: true,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر استخراج التوقيع من الورقة: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -233,6 +272,58 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
                   icon: const Icon(Icons.close_rounded, size: 20),
                 ),
               ],
+            ),
+          ),
+
+          // ── Scan Signature from Paper Option ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _scanSignatureFromPaper,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: palette.accent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: palette.accent.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.document_scanner_rounded,
+                      size: 20,
+                      color: palette.accent,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'مسح توقيع من ورقة بيضاء (تفريغ شفاف)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                              color: palette.accent,
+                            ),
+                          ),
+                          Text(
+                            'صوّر توقيعك على ورقة وسيزيل التطبيق الخلفية تلقائياً',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  ],
+                ),
+              ),
             ),
           ),
 

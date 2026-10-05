@@ -77,6 +77,7 @@ object ImageFilters {
                 "document", "enhance" -> "enhance"
                 "color", "lighten" -> "lighten"
                 "no_handwriting", "nohandwriting" -> "no_handwriting"
+                "shadow_remover", "remove_shadows", "shadow" -> "shadow_remover"
                 "grayscale", "gray" -> "gray"
                 "bw", "blackwhite_sharp", "sauvola" -> "bw"
                 "blackwhite", "eco" -> "eco"
@@ -89,6 +90,7 @@ object ImageFilters {
                 "enhance" -> applyEnhance(processingMat)
                 "lighten" -> applyLighten(processingMat)
                 "no_handwriting" -> applyNoHandwriting(processingMat)
+                "shadow_remover" -> applyShadowAndFingerRemoval(processingMat)
                 "gray" -> applyGray(processingMat)
                 "bw" -> applyBwSharp(processingMat)
                 "eco" -> applyEco(processingMat)
@@ -502,6 +504,104 @@ object ImageFilters {
         Imgproc.cvtColor(mergedLab, bgr, Imgproc.COLOR_Lab2BGR)
         mergedLab.release()
         return bgr
+    }
+
+    /**
+     * Shadow & Finger Removal Filter ("إزالة الظلال والأصابع"):
+     * 1. Multi-scale background illumination division to completely flatten deep phone/hand cast shadows.
+     * 2. Edge & border cleanup: in the outer 3.8% margin, replaces dark finger/thumb edge intrusions with clean paper color.
+     * 3. LAB CLAHE + unsharp mask to restore sharp text contrast.
+     */
+    private fun applyShadowAndFingerRemoval(src: Mat): Mat {
+        // 1. Strong background illumination division
+        val flattened = flatten(src)
+
+        // 2. Finger & border margin suppression
+        val w = flattened.cols()
+        val h = flattened.rows()
+        val marginX = (w * 0.038).toInt().coerceAtLeast(6)
+        val marginY = (h * 0.038).toInt().coerceAtLeast(6)
+
+        // Sample interior clean paper color
+        val sampleBox = flattened.submat(h / 4, 3 * h / 4, w / 4, 3 * w / 4)
+        val meanBg = Core.mean(sampleBox)
+        sampleBox.release()
+        val paperScalar = Scalar(
+            meanBg.`val`[0].coerceAtLeast(240.0),
+            meanBg.`val`[1].coerceAtLeast(240.0),
+            meanBg.`val`[2].coerceAtLeast(240.0)
+        )
+
+        // Clean left, right, top, bottom border margins if finger shadows or thumbs are present
+        val leftRoi = flattened.submat(0, h, 0, marginX)
+        cleanBorderMargin(leftRoi, paperScalar)
+        leftRoi.release()
+
+        val rightRoi = flattened.submat(0, h, w - marginX, w)
+        cleanBorderMargin(rightRoi, paperScalar)
+        rightRoi.release()
+
+        val topRoi = flattened.submat(0, marginY, 0, w)
+        cleanBorderMargin(topRoi, paperScalar)
+        topRoi.release()
+
+        val bottomRoi = flattened.submat(h - marginY, h, 0, w)
+        cleanBorderMargin(bottomRoi, paperScalar)
+        bottomRoi.release()
+
+        // 3. Contrast stretch & LAB CLAHE
+        val lab = Mat()
+        Imgproc.cvtColor(flattened, lab, Imgproc.COLOR_BGR2Lab)
+        flattened.release()
+
+        val channels = ArrayList<Mat>(3)
+        Core.split(lab, channels)
+        lab.release()
+
+        val clahe = Imgproc.createCLAHE(2.0, Size(8.0, 8.0))
+        val lEnhanced = Mat()
+        clahe.apply(channels[0], lEnhanced)
+        channels[0].release()
+
+        // Stretch L channel levels
+        val lut = Mat(1, 256, CvType.CV_8UC1)
+        val lutData = ByteArray(256)
+        for (i in 0..255) {
+            val v = i.toDouble()
+            val mapped = when {
+                v <= 32.0 -> 0.0
+                v >= 220.0 -> 255.0
+                else -> 255.0 * ((v - 32.0) / (220.0 - 32.0)).pow(1.05)
+            }
+            lutData[i] = mapped.toInt().coerceIn(0, 255).toByte()
+        }
+        lut.put(0, 0, lutData)
+        val lFinal = Mat()
+        Core.LUT(lEnhanced, lut, lFinal)
+        lEnhanced.release()
+        lut.release()
+        channels[0] = lFinal
+
+        val mergedLab = Mat()
+        Core.merge(channels, mergedLab)
+        for (ch in channels) ch.release()
+
+        val result = Mat()
+        Imgproc.cvtColor(mergedLab, result, Imgproc.COLOR_Lab2BGR)
+        mergedLab.release()
+
+        return result
+    }
+
+    private fun cleanBorderMargin(roi: Mat, paperColor: Scalar) {
+        val gray = Mat()
+        Imgproc.cvtColor(roi, gray, Imgproc.COLOR_BGR2GRAY)
+        val mask = Mat()
+        Imgproc.threshold(gray, mask, 175.0, 255.0, Imgproc.THRESH_BINARY_INV)
+        gray.release()
+
+        roi.setTo(paperColor, mask)
+        mask.release()
     }
 
     /**
