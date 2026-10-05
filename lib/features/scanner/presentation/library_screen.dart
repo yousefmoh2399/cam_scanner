@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,11 +19,9 @@ import '../data/document_search_service.dart';
 import '../data/ocr_service.dart';
 import '../data/office_exporter_service.dart';
 import 'document_viewer_screen.dart';
-import 'government_documents_screen.dart';
-import 'pdf_tools_screen.dart';
 import 'scanner_session_screen.dart';
 import 'signature_bottom_sheet.dart';
-import 'trash_screen.dart';
+import 'tools_hub_screen.dart';
 import 'vault_screen.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
@@ -1201,123 +1198,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     }
   }
 
-  Future<void> _showBackupRestoreDialog(List<PendingUpload> allDocs) async {
-    final passwordCtrl = TextEditingController();
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (sheetCtx) {
-        final bottomInset = MediaQuery.of(sheetCtx).viewInsets.bottom;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'النسخ الاحتياطي والاستعادة الشاملة (.ZIP)',
-                style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'تصدير كل المستندات والمجلدات وفهرس البحث في ملف .zip محلي أو استعادتها ودمجها بدون تكرار.',
-                style: TextStyle(fontSize: 12.5),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: passwordCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'كلمة مرور لتشفير النسخة الاحتياطية (اختياري AES-256)',
-                  prefixIcon: Icon(Icons.lock_outline_rounded),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () async {
-                  final pwd = passwordCtrl.text.trim();
-                  Navigator.of(sheetCtx).pop();
-                  try {
-                    final backupSvc = ref.read(backupRestoreServiceProvider);
-                    final zipPath = await backupSvc.createBackupZip(
-                      documents: allDocs,
-                      folders: _folders,
-                      password: pwd.isEmpty ? null : pwd,
-                    );
-                    if (mounted) {
-                      await Share.shareXFiles(
-                        [XFile(zipPath)],
-                        subject: 'نسخة احتياطية للمستندات',
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('فشل إنشاء النسخة الاحتياطية: $e')),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.archive_rounded),
-                label: Text('تصدير ومشاركة نسخة احتياطية (${allDocs.length} مستند)'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final pwd = passwordCtrl.text.trim();
-                  Navigator.of(sheetCtx).pop();
-                  final picked = await FilePicker.platform.pickFiles(
-                    type: FileType.custom,
-                    allowedExtensions: const ['zip'],
-                  );
-                  final path = picked?.files.firstOrNull?.path;
-                  if (path == null) return;
-
-                  try {
-                    final backupSvc = ref.read(backupRestoreServiceProvider);
-                    final res = await backupSvc.restoreFromBackupFile(
-                      zipFilePath: path,
-                      currentDocuments: allDocs,
-                      currentFolders: _folders,
-                      password: pwd.isEmpty ? null : pwd,
-                    );
-                    await ref
-                        .read(documentFolderServiceProvider)
-                        .saveFolders(res.mergedFolders);
-                    await ref
-                        .read(pendingUploadsControllerProvider.notifier)
-                        .replaceAllDocuments(res.mergedDocuments);
-                    await _loadFolders();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'تمت الاستعادة بنجاح! (${res.stats.restoredDocuments} مستند جديد، ${res.stats.restoredFolders} مجلد، تم تخطي ${res.stats.skippedDuplicates} مكرر)',
-                          ),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('فشل استعادة النسخة: $e')),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.restore_page_rounded),
-                label: const Text('استعادة ودمج من ملف .ZIP'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   List<PendingUpload> _filterAndSortDocuments(List<PendingUpload> allDocs) {
     final query = _searchQuery.trim().toLowerCase();
     final filtered = allDocs.where((doc) {
@@ -1540,6 +1420,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       .toList(),
                 ),
                 IconButton(
+                  tooltip: 'مركز الأدوات الذكية',
+                  icon: const Icon(Icons.widgets_rounded),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ToolsHubScreen(),
+                    ),
+                  ),
+                ),
+                IconButton(
                   tooltip: 'تبديل الوضع الليلي/النهاري',
                   onPressed: () => ref
                       .read(userPreferencesControllerProvider.notifier)
@@ -1584,10 +1473,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ),
                   Expanded(
                     child: _BottomBarActionButton(
-                      icon: Icons.create_new_folder_rounded,
-                      label: 'مجلد جديد',
+                      icon: Icons.widgets_rounded,
+                      label: 'الأدوات',
                       isActive: false,
-                      onTap: _createFolderDialog,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ToolsHubScreen(),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -1600,6 +1493,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 children: [
                   Expanded(
                     child: _BottomBarActionButton(
+                      icon: Icons.create_new_folder_rounded,
+                      label: 'مجلد جديد',
+                      isActive: false,
+                      onTap: _createFolderDialog,
+                    ),
+                  ),
+                  Expanded(
+                    child: _BottomBarActionButton(
                       icon: Icons.draw_rounded,
                       label: 'التوقيعات',
                       isActive: false,
@@ -1609,24 +1510,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           context: context,
                           storageService: storage,
                         );
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: _BottomBarActionButton(
-                      icon: Icons.transform_rounded,
-                      label: 'تصدير سريع',
-                      isActive: false,
-                      onTap: () {
-                        if (visibleDocs.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('امسح مستنداً أولاً لتصديره إلى PDF أو Word أو Excel'),
-                            ),
-                          );
-                          return;
-                        }
-                        _exportDocumentSheet(visibleDocs.first);
                       },
                     ),
                   ),
@@ -1722,106 +1605,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ),
                 ),
               ),
-
-            // ── Quick Feature Pills: Government Mode, Trash, PDF Tools, Secret Vault, ZIP Backup ──
-            SliverToBoxAdapter(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: Row(
-                  children: [
-                    ActionChip(
-                      avatar: const Icon(
-                        Icons.account_balance_rounded,
-                        size: 17,
-                        color: Color(0xFFD97706),
-                      ),
-                      label: const Text(
-                        'الأوراق الحكومية (بطاقة • جواز • صور)',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const GovernmentDocumentsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ActionChip(
-                      avatar: Icon(
-                        Icons.delete_sweep_rounded,
-                        size: 17,
-                        color: palette.danger,
-                      ),
-                      label: const Text(
-                        'سلة المحذوفات',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TrashScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ActionChip(
-                      avatar: const Icon(
-                        Icons.handyman_rounded,
-                        size: 17,
-                        color: Color(0xFF2563EB),
-                      ),
-                      label: const Text(
-                        'أدوات PDF (دمج • تقسيم • ضغط • استيراد)',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const PdfToolsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ActionChip(
-                      avatar: const Icon(
-                        Icons.enhanced_encryption_rounded,
-                        size: 17,
-                        color: Color(0xFF059669),
-                      ),
-                      label: const Text(
-                        'الخزنة السرية والحماية (AES-256)',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const VaultScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ActionChip(
-                      avatar: const Icon(
-                        Icons.folder_zip_rounded,
-                        size: 17,
-                        color: Color(0xFF9333EA),
-                      ),
-                      label: const Text(
-                        'نسخ احتياطي واستعادة (.ZIP)',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      ),
-                      onPressed: () => _showBackupRestoreDialog(allDocs),
-                    ),
-                  ],
-                ),
-              ),
-            ),
 
             // ── Favorites & Category Filters Bar ──
             SliverToBoxAdapter(

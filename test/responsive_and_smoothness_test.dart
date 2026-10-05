@@ -8,6 +8,7 @@ import 'package:cam_scanner/core/theme/app_theme.dart';
 import 'package:cam_scanner/features/scanner/data/native_scanner_bridge.dart';
 import 'package:cam_scanner/features/scanner/presentation/government_documents_screen.dart';
 import 'package:cam_scanner/features/scanner/presentation/library_screen.dart';
+import 'package:cam_scanner/features/scanner/presentation/tools_hub_screen.dart';
 import 'package:cam_scanner/features/scanner/presentation/trash_screen.dart';
 import 'package:cam_scanner/features/scanner/presentation/widgets/smart_data_extraction_sheet.dart';
 
@@ -210,6 +211,44 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(find.text('01012345678'), findsOneWidget);
+      });
+
+      testWidgets('ToolsHubScreen renders with ZERO overflow on ${device.name}',
+          (tester) async {
+        tester.view.physicalSize = device.size;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        await tester.pumpWidget(_buildTestApp(const ToolsHubScreen()));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(ToolsHubScreen), findsOneWidget);
+        expect(find.text('مركز الأدوات'), findsOneWidget);
+
+        // Test smooth scrolling down and up through tools
+        final scrollable = find.byType(CustomScrollView);
+        if (scrollable.evaluate().isNotEmpty) {
+          await tester.fling(scrollable, const Offset(0, -400), 1000);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(tester.takeException(), isNull);
+
+          await tester.fling(scrollable, const Offset(0, 400), 1000);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(tester.takeException(), isNull);
+        }
+
+        // Tap on a category filter chip
+        final govChip = find.text('أوراق حكومية');
+        if (govChip.evaluate().isNotEmpty) {
+          await tester.tap(govChip, warnIfMissed: false);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 200));
+          expect(tester.takeException(), isNull);
+        }
       });
     }
   });
