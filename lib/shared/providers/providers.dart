@@ -6,11 +6,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/scanner/data/backup_restore_service.dart';
 import '../../features/scanner/data/document_search_service.dart';
+import '../../features/scanner/data/exif_scrubber_service.dart';
+import '../../features/scanner/data/government_preset_service.dart';
 import '../../features/scanner/data/local_document_store.dart';
 import '../../features/scanner/data/ocr_service.dart';
 import '../../features/scanner/data/office_exporter_service.dart';
 import '../../features/scanner/data/pdf_builder_service.dart';
 import '../../features/scanner/data/signature_storage_service.dart';
+import '../../features/scanner/data/smart_field_extractor_service.dart';
 import '../../features/scanner/data/vault_security_service.dart';
 import '../../features/scanner/presentation/scan_session_controller.dart';
 import '../models/pending_upload.dart';
@@ -23,6 +26,18 @@ export '../services/document_folder_service.dart';
 
 final localDocumentStoreProvider = Provider<LocalDocumentStore>(
   (ref) => LocalDocumentStore(),
+);
+
+final exifScrubberServiceProvider = Provider<ExifScrubberService>(
+  (ref) => const ExifScrubberService(),
+);
+
+final governmentPresetServiceProvider = Provider<GovernmentPresetService>(
+  (ref) => const GovernmentPresetService(),
+);
+
+final smartFieldExtractorServiceProvider = Provider<SmartFieldExtractorService>(
+  (ref) => const SmartFieldExtractorService(),
 );
 
 final pdfBuilderServiceProvider = Provider<PdfBuilderService>(
@@ -81,12 +96,13 @@ class PendingUploadsController extends AsyncNotifier<List<PendingUpload>> {
   Future<List<PendingUpload>> build() async {
     final store = ref.read(localDocumentStoreProvider);
     await store.initialize();
-    return store.loadPendingUploads();
+    await store.purgeExpiredTrash();
+    return store.loadPendingUploadsFiltered(includeTrash: false);
   }
 
   Future<void> refresh() async {
     final store = ref.read(localDocumentStoreProvider);
-    state = AsyncData(await store.loadPendingUploads());
+    state = AsyncData(await store.loadPendingUploadsFiltered(includeTrash: false));
   }
 
   Future<void> addDocument(PendingUpload doc) async {
@@ -95,7 +111,7 @@ class PendingUploadsController extends AsyncNotifier<List<PendingUpload>> {
     await refresh();
   }
 
-  Future<void> deleteDocument(String id) => removeById(id);
+  Future<void> deleteDocument(String id) => moveToTrash(id);
 
   Future<void> removeById(String id) async {
     final store = ref.read(localDocumentStoreProvider);
@@ -150,6 +166,7 @@ class PendingUploadsController extends AsyncNotifier<List<PendingUpload>> {
     await ref
         .read(documentFolderServiceProvider)
         .assignDocumentToFolder(id, folderId);
+    await ref.read(documentFoldersProvider.notifier).reload();
     await refresh();
   }
 
@@ -170,7 +187,73 @@ class PendingUploadsController extends AsyncNotifier<List<PendingUpload>> {
       await refresh();
     }
   }
+
+  /// Soft-delete → move to Trash
+  Future<void> moveToTrash(String id) async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.moveToTrash(id);
+    await refresh();
+  }
+
+  /// Restore from Trash
+  Future<void> restoreFromTrash(String id) async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.restoreFromTrash(id);
+    await refresh();
+  }
+
+  /// Permanently delete (from trash)
+  Future<void> permanentlyDelete(String id) async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.permanentlyDelete(id);
+    await ref.read(documentSearchServiceProvider).removeDocument(id);
+    await refresh();
+  }
+
+  /// Empty all trash
+  Future<void> emptyTrash() async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.emptyTrash();
+    await refresh();
+  }
+
+  /// Toggle favorite
+  Future<void> toggleFavorite(String id) async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.toggleFavorite(id);
+    await refresh();
+  }
+
+  /// Update tags
+  Future<void> updateTags(String id, List<String> tags) async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.updateTags(id, tags);
+    await refresh();
+  }
+
+  /// Update category
+  Future<void> updateCategory(String id, String? category) async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.updateCategory(id, category);
+    await refresh();
+  }
+
+  /// Set expiry date
+  Future<void> setExpiryDate(String id, DateTime? date) async {
+    final store = ref.read(localDocumentStoreProvider);
+    await store.setExpiryDate(id, date);
+    await refresh();
+  }
 }
+
+// ─── Trash Provider ───────────────────────────────────────────────────────────
+
+final trashUploadsProvider = FutureProvider<List<PendingUpload>>((ref) async {
+  // Watch pendingUploads so we refresh automatically when anything changes
+  ref.watch(pendingUploadsControllerProvider);
+  final store = ref.read(localDocumentStoreProvider);
+  return store.loadTrashUploads();
+});
 
 // ─── User Preferences (Theme, View Mode, Sort Order, Auto-Save) ──────────────
 

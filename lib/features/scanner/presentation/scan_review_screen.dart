@@ -59,6 +59,8 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
 
   bool _isBusy = false;
   String? _statusText;
+  bool _isBlurry = false;
+  bool _checkedBlur = false;
 
   String? _warpedPreviewPath;
   String? _currentPreviewPath;
@@ -153,6 +155,15 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
 
       await _applyFilter(_selectedFilter, parentToken: token);
       _generateFilterThumbnails(warpedPath, token);
+
+      if (!_checkedBlur) {
+        _checkedBlur = true;
+        NativeScannerBridge.checkBlur(widget.rawImagePath).then((res) {
+          if (mounted && res.isBlurry) {
+            setState(() => _isBlurry = true);
+          }
+        });
+      }
     } catch (e) {
       if (token != _previewToken || !mounted) return;
       setState(() {
@@ -479,6 +490,38 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
         children: [
           Column(
             children: [
+              if (_isBlurry)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade900.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'الصورة مهزوزة أو غير واضحة. يفضل إعادة التصوير لدقة أفضل.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => setState(() => _isBlurry = false),
+                        child: const Icon(Icons.close_rounded,
+                            color: Colors.white70, size: 18),
+                      ),
+                    ],
+                  ),
+                ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(

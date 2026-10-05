@@ -20,11 +20,14 @@ import '../data/document_search_service.dart';
 import '../data/ocr_service.dart';
 import '../data/office_exporter_service.dart';
 import 'document_viewer_screen.dart';
+import 'government_documents_screen.dart';
 import 'pdf_tools_screen.dart';
 import 'scanner_session_screen.dart';
 import 'signature_bottom_sheet.dart';
+import 'trash_screen.dart';
 import 'vault_screen.dart';
 import 'widgets/export_format_sheet.dart';
+import 'widgets/smart_data_extraction_sheet.dart';
 
 enum LibrarySortOption {
   newest('الأحدث أولاً', Icons.schedule_rounded),
@@ -53,6 +56,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   String? _activeFolderId;
   DateTime? _backgroundedAt;
   bool _isAppLockedOverlay = false;
+
+  bool _showFavoritesOnly = false;
+  String? _selectedCategoryFilter;
 
   List<DocumentFolder> _folders = const [];
   bool _isLoadingFolders = true;
@@ -474,6 +480,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     await ref
         .read(pendingUploadsControllerProvider.notifier)
         .assignToFolder(doc.id, folder?.id);
+    await _loadFolders();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -869,27 +876,108 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               ),
               ListTile(
                 leading: Icon(
-                  Icons.delete_outline_rounded,
-                  color: palette.danger,
+                  doc.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                  color: Colors.amber,
                 ),
                 title: Text(
-                  'حذف المستند',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: palette.danger,
-                  ),
+                  doc.isFavorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 onTap: () async {
                   Navigator.pop(ctx);
                   await ref
                       .read(pendingUploadsControllerProvider.notifier)
-                      .removeById(doc.id);
+                      .toggleFavorite(doc.id);
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.psychology_rounded,
+                  color: palette.accent,
+                ),
+                title: const Text(
+                  'استخراج ذكي وقراءة صوتية (OCR)',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'استخراج رقم قومي، هواتف، كروت vCard، وقراءة صوتية بدون إنترنت',
+                  style: TextStyle(fontSize: 11.5),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showSmartExtractionForDoc(doc);
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.delete_outline_rounded,
+                  color: palette.danger,
+                ),
+                title: Text(
+                  'نقل إلى سلة المحذوفات',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: palette.danger,
+                  ),
+                ),
+                subtitle: const Text(
+                  'يمكنك استعادة المستند خلال 30 يوماً',
+                  style: TextStyle(fontSize: 11),
+                ),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ref
+                      .read(pendingUploadsControllerProvider.notifier)
+                      .moveToTrash(doc.id);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('تم نقل "${doc.title}" إلى سلة المحذوفات'),
+                        action: SnackBarAction(
+                          label: 'تراجع',
+                          onPressed: () {
+                            ref
+                                .read(pendingUploadsControllerProvider.notifier)
+                                .restoreFromTrash(doc.id);
+                          },
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 },
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _showSmartExtractionForDoc(PendingUpload doc) async {
+    final imagePaths = doc.pages
+        .map((p) => p.imagePath)
+        .where((path) => path.isNotEmpty && File(path).existsSync())
+        .toList();
+    if (imagePaths.isEmpty &&
+        doc.effectiveThumbnailPath != null &&
+        File(doc.effectiveThumbnailPath!).existsSync()) {
+      imagePaths.add(doc.effectiveThumbnailPath!);
+    }
+    if (imagePaths.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا توجد صور صفحات لاستخراج النص.')),
+      );
+      return;
+    }
+
+    final ocr = ref.read(ocrServiceProvider);
+    final text = await ocr.extractTextFromFile(imagePaths.first);
+    if (!mounted) return;
+    await SmartDataExtractionSheet.show(
+      context: context,
+      text: text,
+      document: doc,
     );
   }
 
@@ -1233,6 +1321,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   List<PendingUpload> _filterAndSortDocuments(List<PendingUpload> allDocs) {
     final query = _searchQuery.trim().toLowerCase();
     final filtered = allDocs.where((doc) {
+      if (_showFavoritesOnly && !doc.isFavorite) return false;
+      if (_selectedCategoryFilter != null && doc.category != _selectedCategoryFilter) {
+        return false;
+      }
       if (_activeFolderId != null) {
         if (doc.folderId != _activeFolderId) return false;
       } else {
@@ -1616,13 +1708,51 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
               ),
 
-            // ── Quick Feature Pills: PDF Tools, Secret Vault, ZIP Backup ──
+            // ── Quick Feature Pills: Government Mode, Trash, PDF Tools, Secret Vault, ZIP Backup ──
             SliverToBoxAdapter(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: Row(
                   children: [
+                    ActionChip(
+                      avatar: const Icon(
+                        Icons.account_balance_rounded,
+                        size: 17,
+                        color: Color(0xFFD97706),
+                      ),
+                      label: const Text(
+                        'الأوراق الحكومية (بطاقة • جواز • صور)',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const GovernmentDocumentsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ActionChip(
+                      avatar: Icon(
+                        Icons.delete_sweep_rounded,
+                        size: 17,
+                        color: palette.danger,
+                      ),
+                      label: const Text(
+                        'سلة المحذوفات',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const TrashScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
                     ActionChip(
                       avatar: const Icon(
                         Icons.handyman_rounded,
@@ -1673,6 +1803,57 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       ),
                       onPressed: () => _showBackupRestoreDialog(allDocs),
                     ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Favorites & Category Filters Bar ──
+            SliverToBoxAdapter(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    FilterChip(
+                      label: const Text('كل المستندات'),
+                      selected: !_showFavoritesOnly && _selectedCategoryFilter == null,
+                      onSelected: (_) {
+                        setState(() {
+                          _showFavoritesOnly = false;
+                          _selectedCategoryFilter = null;
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    FilterChip(
+                      avatar: const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
+                      label: const Text('المفضلة ★'),
+                      selected: _showFavoritesOnly,
+                      onSelected: (val) {
+                        setState(() {
+                          _showFavoritesOnly = val;
+                          if (val) _selectedCategoryFilter = null;
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    ...['هوية وبطاقات', 'فواتير وإيصالات', 'عقود ووثائق', 'شهادات رسمية'].map((cat) {
+                      final isSel = _selectedCategoryFilter == cat;
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: FilterChip(
+                          label: Text(cat),
+                          selected: isSel,
+                          onSelected: (val) {
+                            setState(() {
+                              _selectedCategoryFilter = val ? cat : null;
+                              if (val) _showFavoritesOnly = false;
+                            });
+                          },
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -2299,20 +2480,46 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                 ),
                               ),
                             ),
-                            if (isSelected)
-                              Positioned(
-                                top: 6,
-                                left: 6,
-                                child: CircleAvatar(
-                                  radius: 13,
-                                  backgroundColor: palette.accent,
-                                  child: const Icon(
-                                    Icons.check_rounded,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
+                            Positioned(
+                              top: 6,
+                              left: 6,
+                              child: isSelected
+                                  ? CircleAvatar(
+                                      radius: 13,
+                                      backgroundColor: palette.accent,
+                                      child: const Icon(
+                                        Icons.check_rounded,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : InkWell(
+                                      onTap: () {
+                                        ref
+                                            .read(
+                                                pendingUploadsControllerProvider
+                                                    .notifier)
+                                            .toggleFavorite(doc.id);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.65),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          doc.isFavorite
+                                              ? Icons.star_rounded
+                                              : Icons.star_border_rounded,
+                                          size: 16,
+                                          color: doc.isFavorite
+                                              ? Colors.amber
+                                              : Colors.white70,
+                                        ),
+                                      ),
+                                    ),
+                            ),
                           ],
                         ),
                       ),
@@ -2334,6 +2541,58 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         style: TextStyle(
                           fontSize: 10.5,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Wrap(
+                          spacing: 4,
+                          runSpacing: 2,
+                          children: [
+                            if (doc.category != null &&
+                                doc.category!.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: palette.accent.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  doc.category!,
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: palette.accent,
+                                  ),
+                                ),
+                              ),
+                            if (doc.isExifClean)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: palette.success.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.shield_rounded,
+                                        size: 9, color: palette.success),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      'نظيف',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: palette.success,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       if (_activeFolderId == null && doc.folderId != null) ...[

@@ -34,6 +34,7 @@ class MainActivity : FlutterFragmentActivity() {
     private var pendingScannerResult: MethodChannel.Result? = null
     private val mainScope = CoroutineScope(Dispatchers.Main)
     private val nativeOpSemaphore = java.util.concurrent.Semaphore(2)
+    private var tts: android.speech.tts.TextToSpeech? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -449,6 +450,108 @@ class MainActivity : FlutterFragmentActivity() {
                             }
                         }
                     }
+                    "checkBlur" -> {
+                        val path = call.argument<String>("path")
+                        if (path.isNullOrBlank()) {
+                            result.error("INVALID_ARGS", "path is required", null)
+                            return@setMethodCallHandler
+                        }
+                        mainScope.launch(Dispatchers.Default) {
+                            try {
+                                val src = Imgcodecs.imread(path, Imgcodecs.IMREAD_GRAYSCALE)
+                                if (src.empty()) {
+                                    withContext(Dispatchers.Main) { result.error("READ_FAILED", "Could not load image", null) }
+                                    return@launch
+                                }
+                                val laplacian = Mat()
+                                org.opencv.imgproc.Imgproc.Laplacian(src, laplacian, org.opencv.core.CvType.CV_64F)
+                                val mean = org.opencv.core.MatOfDouble()
+                                val stddev = org.opencv.core.MatOfDouble()
+                                Core.meanStdDev(laplacian, mean, stddev)
+                                val std = stddev.get(0, 0)[0]
+                                val variance = std * std
+                                src.release()
+                                laplacian.release()
+                                mean.release()
+                                stddev.release()
+                                val isBlurry = variance < 80.0
+                                withContext(Dispatchers.Main) {
+                                    result.success(mapOf("isBlurry" to isBlurry, "variance" to variance))
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) { result.error("BLUR_ERR", e.message, null) }
+                            }
+                        }
+                    }
+                    "splitBookPage" -> {
+                        val path = call.argument<String>("path")
+                        val outRightPath = call.argument<String>("outRightPath")
+                        val outLeftPath = call.argument<String>("outLeftPath")
+                        if (path.isNullOrBlank() || outRightPath.isNullOrBlank() || outLeftPath.isNullOrBlank()) {
+                            result.error("INVALID_ARGS", "path, outRightPath and outLeftPath are required", null)
+                            return@setMethodCallHandler
+                        }
+                        mainScope.launch(Dispatchers.Default) {
+                            try {
+                                val src = Imgcodecs.imread(path, Imgcodecs.IMREAD_COLOR)
+                                if (src.empty()) {
+                                    withContext(Dispatchers.Main) { result.error("READ_FAILED", "Could not load image", null) }
+                                    return@launch
+                                }
+                                val w = src.cols()
+                                val h = src.rows()
+                                val midX = w / 2
+                                val rectRight = org.opencv.core.Rect(midX, 0, w - midX, h)
+                                val matRight = Mat(src, rectRight)
+                                val rectLeft = org.opencv.core.Rect(0, 0, midX, h)
+                                val matLeft = Mat(src, rectLeft)
+
+                                val writeParams = MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, 95)
+                                File(outRightPath).parentFile?.mkdirs()
+                                File(outLeftPath).parentFile?.mkdirs()
+                                Imgcodecs.imwrite(outRightPath, matRight, writeParams)
+                                Imgcodecs.imwrite(outLeftPath, matLeft, writeParams)
+
+                                src.release()
+                                matRight.release()
+                                matLeft.release()
+                                writeParams.release()
+
+                                withContext(Dispatchers.Main) {
+                                    result.success(mapOf("pageRight" to outRightPath, "pageLeft" to outLeftPath))
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) { result.error("SPLIT_ERR", e.message, null) }
+                            }
+                        }
+                    }
+                    "speakText" -> {
+                        val text = call.argument<String>("text") ?: ""
+                        val lang = call.argument<String>("lang") ?: "ar"
+                        if (text.isBlank()) {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
+                        if (tts == null) {
+                            tts = android.speech.tts.TextToSpeech(this@MainActivity) { status ->
+                                if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                                    val locale = if (lang.startsWith("ar")) java.util.Locale("ar") else java.util.Locale.ENGLISH
+                                    tts?.language = locale
+                                    tts?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "tts_id")
+                                }
+                            }
+                            result.success(true)
+                        } else {
+                            val locale = if (lang.startsWith("ar")) java.util.Locale("ar") else java.util.Locale.ENGLISH
+                            tts?.language = locale
+                            tts?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "tts_id")
+                            result.success(true)
+                        }
+                    }
+                    "stopSpeaking" -> {
+                        tts?.stop()
+                        result.success(true)
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -711,6 +814,11 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onDestroy() {
         replyScannerResult { it.success(null) }
+        try {
+            tts?.stop()
+            tts?.shutdown()
+            tts = null
+        } catch (_: Exception) {}
         mainScope.cancel()
         super.onDestroy()
     }

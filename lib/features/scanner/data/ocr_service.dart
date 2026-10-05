@@ -602,4 +602,18 @@ class OcrService {
     }
     return null;
   }
+
+  /// Extracts plain text from an image file directly.
+  Future<String> extractTextFromFile(
+    String imagePath, {
+    OcrLanguageMode languageMode = OcrLanguageMode.araAndEng,
+  }) async {
+    final engine = selectEngine(languageMode: languageMode);
+    final result = await engine.recognizePage(
+      imagePath: imagePath,
+      pageIndex: 0,
+      languageMode: languageMode,
+    );
+    return result.fullText;
+  }
 }

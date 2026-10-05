@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="quick_scan"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_quick_scan_short"
+        android:shortcutLongLabel="@string/shortcut_quick_scan_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.yourname.docscanner"
+            android:targetClass="com.yourname.docscanner.MainActivity">
+            <extra android:name="quick_action" android:value="scan" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="gov_docs"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_gov_docs_short"
+        android:shortcutLongLabel="@string/shortcut_gov_docs_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.yourname.docscanner"
+            android:targetClass="com.yourname.docscanner.MainActivity">
+            <extra android:name="quick_action" android:value="gov" />
+        </intent>
+    </shortcut>
+</shortcuts>

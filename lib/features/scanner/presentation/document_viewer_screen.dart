@@ -18,6 +18,7 @@ import 'scan_review_screen.dart';
 import 'signature_bottom_sheet.dart';
 import 'signature_placement_screen.dart';
 import 'widgets/export_format_sheet.dart';
+import 'widgets/smart_data_extraction_sheet.dart';
 
 /// Screen for viewing a saved document's pages with Hero animation,
 /// allowing non-destructive re-cropping/filtering, adding signatures,
@@ -195,6 +196,119 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     );
   }
 
+  Future<void> _showPageReorderSheet() async {
+    if (_doc.pages.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('المستند يحتوي على صفحة واحدة فقط')),
+      );
+      return;
+    }
+
+    final reordered = List<ScanPage>.from(_doc.pages);
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.reorder_rounded),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'إعادة ترتيب الصفحات بالسحب',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                        ),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('حفظ الترتيب'),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: ReorderableListView.builder(
+                    itemCount: reordered.length,
+                    // ignore: deprecated_member_use
+                    onReorder: (oldIndex, newIndex) {
+                      setSheetState(() {
+                        if (oldIndex < newIndex) {
+                          newIndex -= 1;
+                        }
+                        final item = reordered.removeAt(oldIndex);
+                        reordered.insert(newIndex, item);
+                      });
+                    },
+                    itemBuilder: (ctx, i) {
+                      final p = reordered[i];
+                      return ListTile(
+                        key: ValueKey(p.id),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: File(p.imagePath).existsSync()
+                                ? Image.file(File(p.imagePath), fit: BoxFit.cover)
+                                : const Icon(Icons.image),
+                          ),
+                        ),
+                        title: Text('صفحة ${i + 1}',
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                        trailing: const Icon(Icons.drag_handle_rounded),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _rebuildSavedPdf(reordered);
+      setState(() => _currentPageIndex = 0);
+    }
+  }
+
+  Future<void> _showSmartExtraction() async {
+    if (_doc.pages.isEmpty) return;
+    setState(() => _isRebuildingPdf = true);
+    try {
+      final ocr = ref.read(ocrServiceProvider);
+      final page = _doc.pages[_currentPageIndex];
+      final text = await ocr.extractTextFromFile(page.imagePath);
+      if (!mounted) return;
+      setState(() => _isRebuildingPdf = false);
+      await SmartDataExtractionSheet.show(
+        context: context,
+        text: text,
+        document: _doc,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRebuildingPdf = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر استخراج النص: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = context.appThemePalette;
@@ -223,6 +337,17 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
           ],
         ),
         actions: [
+          if (pages.length > 1)
+            IconButton(
+              tooltip: 'إعادة ترتيب الصفحات بالسحب',
+              icon: const Icon(Icons.reorder_rounded),
+              onPressed: _showPageReorderSheet,
+            ),
+          IconButton(
+            tooltip: 'استخراج ذكي OCR وقراءة صوتية',
+            icon: Icon(Icons.psychology_rounded, color: palette.accent),
+            onPressed: _showSmartExtraction,
+          ),
           IconButton(
             tooltip: 'تحويل الجداول إلى Excel (.xlsx)',
             icon: const Icon(
@@ -260,6 +385,35 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
         children: [
           Column(
             children: [
+              // Privacy Clean Indicator Badge
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: palette.success.withValues(alpha: 0.08),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: palette.success.withValues(alpha: 0.2),
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.shield_rounded, color: palette.success, size: 15),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'ملفك نظيف وخصوصيتك محفوظة • خالي تماماً من بيانات الموقع وEXIF',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: palette.success,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: pages.isEmpty
                     ? Center(
@@ -359,6 +513,20 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                 onPressed: _editCurrentPage,
                                 icon: const Icon(Icons.crop_rotate_rounded, size: 18),
                                 label: const Text('قص وفلاتر'),
+                              ),
+                              const SizedBox(width: 8),
+                              if (pages.length > 1) ...[
+                                FilledButton.tonalIcon(
+                                  onPressed: _showPageReorderSheet,
+                                  icon: const Icon(Icons.reorder_rounded, size: 18),
+                                  label: const Text('ترتيب الصفحات'),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              FilledButton.tonalIcon(
+                                onPressed: _showSmartExtraction,
+                                icon: Icon(Icons.psychology_rounded, size: 18, color: palette.accent),
+                                label: const Text('استخراج ذكي'),
                               ),
                               const SizedBox(width: 8),
                               FilledButton.tonalIcon(

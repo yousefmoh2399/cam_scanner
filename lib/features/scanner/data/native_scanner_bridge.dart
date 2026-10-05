@@ -289,5 +289,69 @@ class NativeScannerBridge {
       return const [];
     }
   }
+
+  /// Evaluates document blurriness natively using Laplacian variance.
+  /// Returns `isBlurry: true` if variance is below sharpness threshold (~80.0).
+  static Future<({bool isBlurry, double variance})> checkBlur(String imagePath) async {
+    try {
+      final res = await _channel.invokeMethod<Map<dynamic, dynamic>>('checkBlur', {
+        'path': imagePath,
+      });
+      if (res == null) return (isBlurry: false, variance: 999.0);
+      return (
+        isBlurry: res['isBlurry'] == true,
+        variance: (res['variance'] as num?)?.toDouble() ?? 999.0,
+      );
+    } catch (e) {
+      debugPrint('[NativeScannerBridge] checkBlur error: $e');
+      return (isBlurry: false, variance: 999.0);
+    }
+  }
+
+  /// Splits a 2-page book spread vertically down the center into 2 pages.
+  /// Follows Arabic RTL order: Page 1 = Right half, Page 2 = Left half.
+  static Future<({String pageRight, String pageLeft})?> splitBookPage({
+    required String path,
+    required String outRightPath,
+    required String outLeftPath,
+  }) async {
+    try {
+      final res = await _channel.invokeMethod<Map<dynamic, dynamic>>('splitBookPage', {
+        'path': path,
+        'outRightPath': outRightPath,
+        'outLeftPath': outLeftPath,
+      });
+      if (res == null) return null;
+      return (
+        pageRight: res['pageRight'] as String? ?? outRightPath,
+        pageLeft: res['pageLeft'] as String? ?? outLeftPath,
+      );
+    } catch (e) {
+      debugPrint('[NativeScannerBridge] splitBookPage error: $e');
+      return null;
+    }
+  }
+
+  /// Offline Text-to-Speech (TTS) reading using Android built-in speech engine.
+  static Future<bool> speakText(String text, {String lang = 'ar'}) async {
+    try {
+      final res = await _channel.invokeMethod<bool>('speakText', {
+        'text': text,
+        'lang': lang,
+      });
+      return res ?? false;
+    } catch (e) {
+      debugPrint('[NativeScannerBridge] speakText error: $e');
+      return false;
+    }
+  }
+
+  /// Stops any currently playing speech.
+  static Future<void> stopSpeaking() async {
+    try {
+      await _channel.invokeMethod<bool>('stopSpeaking');
+    } catch (_) {}
+  }
 }
+
 

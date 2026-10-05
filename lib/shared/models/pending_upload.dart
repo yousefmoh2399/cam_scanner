@@ -39,6 +39,12 @@ class PendingUpload {
     this.folderId,
     String? fileType,
     Object? status = LocalDocumentStatus.saved,
+    this.deletedAt,
+    this.isFavorite = false,
+    this.tags = const [],
+    this.category,
+    this.expiryDate,
+    this.isExifClean = true,
   })  : fileSize = fileSize ??
             (filePath.isNotEmpty && File(filePath).existsSync()
                 ? File(filePath).lengthSync()
@@ -59,10 +65,24 @@ class PendingUpload {
   final String? xlsxPath;
   final String? folderId;
   final LocalDocumentStatus status;
+  final DateTime? deletedAt;
+  final bool isFavorite;
+  final List<String> tags;
+  final String? category;
+  final DateTime? expiryDate;
+  final bool isExifClean;
 
   String get title => stripFileExtension(fileName);
 
   int get fileSizeBytes => fileSize;
+
+  bool get isDeleted => deletedAt != null;
+
+  int get daysRemainingInTrash {
+    if (deletedAt == null) return 30;
+    final diff = DateTime.now().difference(deletedAt!).inDays;
+    return (30 - diff).clamp(0, 30);
+  }
 
   int get effectivePageCount =>
       pageCount > 0 ? pageCount : (pages.isNotEmpty ? pages.length : 1);
@@ -93,6 +113,14 @@ class PendingUpload {
     String? folderId,
     bool clearFolderId = false,
     LocalDocumentStatus? status,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false,
+    bool? isFavorite,
+    List<String>? tags,
+    String? category,
+    DateTime? expiryDate,
+    bool clearExpiryDate = false,
+    bool? isExifClean,
   }) {
     return PendingUpload(
       id: id ?? this.id,
@@ -107,6 +135,12 @@ class PendingUpload {
       xlsxPath: xlsxPath ?? this.xlsxPath,
       folderId: clearFolderId ? null : (folderId ?? this.folderId),
       status: status ?? this.status,
+      deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
+      isFavorite: isFavorite ?? this.isFavorite,
+      tags: tags ?? this.tags,
+      category: category ?? this.category,
+      expiryDate: clearExpiryDate ? null : (expiryDate ?? this.expiryDate),
+      isExifClean: isExifClean ?? this.isExifClean,
     );
   }
 
@@ -124,6 +158,12 @@ class PendingUpload {
       if (xlsxPath != null) 'xlsxPath': xlsxPath,
       if (folderId != null) 'folderId': folderId,
       'status': status.name,
+      if (deletedAt != null) 'deletedAt': deletedAt!.toIso8601String(),
+      'isFavorite': isFavorite,
+      'tags': tags,
+      if (category != null) 'category': category,
+      if (expiryDate != null) 'expiryDate': expiryDate!.toIso8601String(),
+      'isExifClean': isExifClean,
     };
   }
 
@@ -152,6 +192,16 @@ class PendingUpload {
       xlsxPath: (json['xlsxPath'] ?? json['xlsx_path']) as String?,
       folderId: (json['folderId'] ?? json['folder_id']) as String?,
       status: LocalDocumentStatus.fromName(json['status'] as String?),
+      deletedAt: json['deletedAt'] != null
+          ? DateTime.tryParse(json['deletedAt'] as String)
+          : null,
+      isFavorite: json['isFavorite'] as bool? ?? false,
+      tags: (json['tags'] as List<dynamic>?)?.cast<String>() ?? const [],
+      category: json['category'] as String?,
+      expiryDate: json['expiryDate'] != null
+          ? DateTime.tryParse(json['expiryDate'] as String)
+          : null,
+      isExifClean: json['isExifClean'] as bool? ?? true,
     );
   }
 }

@@ -528,4 +528,115 @@ class LocalDocumentStore {
       debugPrint('[LocalDocumentStore] purgeOrphanDrafts error: $e');
     }
   }
+
+  // ─── Trash / Soft-Delete ────────────────────────────────────────────────────
+
+  /// Loads only active (non-deleted) documents. Existing behavior is preserved.
+  /// Pass includeTrash=true to get ALL docs including deleted.
+  Future<List<PendingUpload>> loadPendingUploadsFiltered({bool includeTrash = false}) async {
+    final all = await loadPendingUploads();
+    if (includeTrash) return all;
+    return all.where((d) => !d.isDeleted).toList();
+  }
+
+  /// Loads ONLY trash items (deletedAt != null).
+  Future<List<PendingUpload>> loadTrashUploads() async {
+    final all = await loadPendingUploads();
+    return all.where((d) => d.isDeleted).toList();
+  }
+
+  /// Soft-delete: sets deletedAt = now. Document stays in storage.
+  Future<void> moveToTrash(String id) async {
+    final items = await loadPendingUploads();
+    final idx = items.indexWhere((d) => d.id == id);
+    if (idx == -1) return;
+    items[idx] = items[idx].copyWith(deletedAt: DateTime.now());
+    await _savePendingUploads(items);
+  }
+
+  /// Restores a trashed document back to active.
+  Future<void> restoreFromTrash(String id) async {
+    final items = await loadPendingUploads();
+    final idx = items.indexWhere((d) => d.id == id);
+    if (idx == -1) return;
+    items[idx] = items[idx].copyWith(clearDeletedAt: true);
+    await _savePendingUploads(items);
+  }
+
+  /// Permanently deletes files from disk and removes from storage.
+  Future<void> permanentlyDelete(String id) async {
+    await removePendingUpload(id); // existing method handles file deletion
+  }
+
+  /// Clears all items in trash permanently.
+  Future<void> emptyTrash() async {
+    final items = await loadPendingUploads();
+    final trashItems = items.where((d) => d.isDeleted).toList();
+    for (final item in trashItems) {
+      await removePendingUpload(item.id);
+    }
+  }
+
+  /// Auto-purges trash items older than 30 days.
+  Future<void> purgeExpiredTrash() async {
+    final items = await loadPendingUploads();
+    final now = DateTime.now();
+    final expired = items.where((d) {
+      if (d.deletedAt == null) return false;
+      return now.difference(d.deletedAt!).inDays >= 30;
+    }).toList();
+    for (final item in expired) {
+      await removePendingUpload(item.id);
+    }
+  }
+
+  // ─── Favorite / Tags / Category / Expiry / EXIF ────────────────────────────
+
+  /// Toggles favorite state.
+  Future<void> toggleFavorite(String id) async {
+    final items = await loadPendingUploads();
+    final idx = items.indexWhere((d) => d.id == id);
+    if (idx == -1) return;
+    items[idx] = items[idx].copyWith(isFavorite: !items[idx].isFavorite);
+    await _savePendingUploads(items);
+  }
+
+  /// Sets document tags.
+  Future<void> updateTags(String id, List<String> tags) async {
+    final items = await loadPendingUploads();
+    final idx = items.indexWhere((d) => d.id == id);
+    if (idx == -1) return;
+    items[idx] = items[idx].copyWith(tags: tags);
+    await _savePendingUploads(items);
+  }
+
+  /// Sets document category.
+  Future<void> updateCategory(String id, String? category) async {
+    final items = await loadPendingUploads();
+    final idx = items.indexWhere((d) => d.id == id);
+    if (idx == -1) return;
+    items[idx] = items[idx].copyWith(category: category);
+    await _savePendingUploads(items);
+  }
+
+  /// Sets document expiry reminder date.
+  Future<void> setExpiryDate(String id, DateTime? date) async {
+    final items = await loadPendingUploads();
+    final idx = items.indexWhere((d) => d.id == id);
+    if (idx == -1) return;
+    items[idx] = items[idx].copyWith(
+      expiryDate: date,
+      clearExpiryDate: date == null,
+    );
+    await _savePendingUploads(items);
+  }
+
+  /// Marks document as EXIF-clean.
+  Future<void> markAsExifClean(String id) async {
+    final items = await loadPendingUploads();
+    final idx = items.indexWhere((d) => d.id == id);
+    if (idx == -1) return;
+    items[idx] = items[idx].copyWith(isExifClean: true);
+    await _savePendingUploads(items);
+  }
 }

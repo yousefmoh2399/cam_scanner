@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">الماسح الذكي</string>
+    <string name="shortcut_quick_scan_short">مسح سريع</string>
+    <string name="shortcut_quick_scan_long">مسح مستند جديد بالكاميرا</string>
+    <string name="shortcut_gov_docs_short">أوراق حكومية</string>
+    <string name="shortcut_gov_docs_long">أوراق وبطاقات حكومية مصرية</string>
+    <string name="tile_label">مسح ضوئي</string>
+</resources>

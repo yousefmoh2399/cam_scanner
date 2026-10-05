@@ -86,6 +86,62 @@ class _ScannerSessionScreenState extends ConsumerState<ScannerSessionScreen> {
     }
   }
 
+  Future<void> _splitBookPageFlow(ScanPage page) async {
+    final draftsDir =
+        await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+    final tag = DateTime.now().millisecondsSinceEpoch;
+    final outRight = '${draftsDir.path}/book_right_$tag.jpg';
+    final outLeft = '${draftsDir.path}/book_left_$tag.jpg';
+
+    setState(() => _isLoadingScanner = true);
+    try {
+      final res = await NativeScannerBridge.splitBookPage(
+        path: page.imagePath,
+        outRightPath: outRight,
+        outLeftPath: outLeft,
+      );
+      if (res == null || !mounted) return;
+
+      final sessionController = ref.read(scanSessionControllerProvider.notifier);
+      final page1 = ScanPage(
+        id: const Uuid().v4(),
+        imagePath: res.pageRight,
+        createdAt: DateTime.now(),
+        paperSize: page.paperSize,
+        filter: page.filter,
+      );
+      final page2 = ScanPage(
+        id: const Uuid().v4(),
+        imagePath: res.pageLeft,
+        createdAt: DateTime.now(),
+        paperSize: page.paperSize,
+        filter: page.filter,
+      );
+
+      await sessionController.replacePage(page.id, page1);
+      await sessionController.addPage(page2);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'تم فصل الصفحتين بنجاح بترتيب القراءة العربي (يمين ثم يسار)',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل فصل صفحتين الكتاب: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingScanner = false);
+    }
+  }
+
   Future<void> _startScan({String? replacePageId}) async {
     if (_isSavingSession || _isLoadingScanner) {
       return;
@@ -1314,6 +1370,14 @@ class _ScannerSessionScreenState extends ConsumerState<ScannerSessionScreen> {
                                             onTap: _isSavingSession
                                                 ? null
                                                 : () => _editPage(page),
+                                          ),
+                                          _buildPageActionChip(
+                                            label: 'فصل كتاب',
+                                            icon: Icons.auto_stories_rounded,
+                                            color: const Color(0xFF7C3AED),
+                                            onTap: _isSavingSession
+                                                ? null
+                                                : () => _splitBookPageFlow(page),
                                           ),
                                           _buildPageActionChip(
                                             label: 'تدوير',
