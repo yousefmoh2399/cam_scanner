@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">لقطة</string>
+    <string name="shortcut_quick_scan_short">مسح ضوئي</string>
+    <string name="shortcut_quick_scan_long">مسح مستند جديد بالكاميرا</string>
+    <string name="shortcut_gov_docs_short">استوديو الهوية</string>
+    <string name="shortcut_gov_docs_long">مسح بطاقات الهوية والوثائق الرسمية</string>
+    <string name="shortcut_vault_short">الخزنة السرية</string>
+    <string name="shortcut_vault_long">فتح الخزنة المشفرة</string>
+    <string name="tile_label">مسح ضوئي</string>
+</resources>

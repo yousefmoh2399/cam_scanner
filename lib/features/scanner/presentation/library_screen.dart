@@ -1340,17 +1340,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   : Padding(
                       padding: const EdgeInsets.only(right: 14),
                       child: Center(
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: palette.accent.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.document_scanner_rounded,
-                            color: palette.accent,
-                            size: 21,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(
+                            'assets/images/app_icon.png',
+                            width: 36,
+                            height: 36,
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),
@@ -1359,21 +1355,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    activeFolder != null
-                        ? activeFolder.name
-                        : 'المستندات',
+                    activeFolder != null ? activeFolder.name : 'لقطة',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
                       letterSpacing: -0.4,
                     ),
                   ),
                   Text(
                     activeFolder != null
                         ? '${visibleDocs.length} مستند بالمجلد'
-                        : '${allDocs.length} مستند • معالجة محلية',
+                        : 'Laqta Scanner • ${allDocs.length} مستند',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

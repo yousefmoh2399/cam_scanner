@@ -25,7 +25,7 @@ class CamScannerApp extends ConsumerWidget {
         ChatPreferences(themeId: prefs?.accentThemeId ?? 'default');
 
     return MaterialApp(
-      title: 'الماسح الضوئي الذكي',
+      title: 'لقطة - Laqta Scanner',
       debugShowCheckedModeBanner: false,
       locale: const Locale('ar'),
       supportedLocales: const [

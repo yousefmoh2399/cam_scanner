@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Laqta Scanner</string>
+    <string name="shortcut_quick_scan_short">Quick Scan</string>
+    <string name="shortcut_quick_scan_long">Scan document with camera</string>
+    <string name="shortcut_gov_docs_short">ID Studio</string>
+    <string name="shortcut_gov_docs_long">Scan ID cards and official docs</string>
+    <string name="shortcut_vault_short">Secret Vault</string>
+    <string name="shortcut_vault_long">Open encrypted document vault</string>
+    <string name="tile_label">Scan</string>
+</resources>

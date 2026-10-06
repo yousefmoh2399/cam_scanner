@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">الماسح الذكي</string>
+    <string name="app_name">لقطة</string>
     <string name="shortcut_quick_scan_short">مسح ضوئي</string>
     <string name="shortcut_quick_scan_long">مسح مستند جديد بالكاميرا</string>
     <string name="shortcut_gov_docs_short">استوديو الهوية</string>

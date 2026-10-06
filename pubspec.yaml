@@ -1,5 +1,5 @@
 name: cam_scanner
-description: "تطبيق المسح الضوئي الاحترافي - يعمل بدون إنترنت 100%"
+description: "لقطة (Laqta Scanner) - تطبيق المسح الضوئي الاحترافي - يعمل بدون إنترنت 100%"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -47,6 +47,7 @@ flutter:
   assets:
     - assets/fonts/
     - assets/tessdata/
+    - assets/images/
 
   fonts:
     - family: Cairo
