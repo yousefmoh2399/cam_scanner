@@ -8,133 +8,236 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/government_preset_service.dart';
 import '../data/native_scanner_bridge.dart';
 
-/// Screen offering specialized Egyptian Government document templates:
-/// - National ID Card (Front & Back merged on single A4 with exact ID-1 scale).
-/// - Passport & Certificate presets.
-/// - Calibrated compression limits (<100KB, <200KB, <500KB, <1MB).
-/// - Official photo cutouts & print layouts (3x4 cm & 4x6 cm).
+/// Available document modes in the official studio.
+enum OfficialDocMode {
+  idCard(
+    'بطاقة وجهين',
+    Icons.badge_rounded,
+    'دمج وجهي البطاقة في A4 (معيار ISO ID-1)',
+  ),
+  passport(
+    'جواز السفر',
+    Icons.menu_book_rounded,
+    'تنسيق صفحة البيانات (معيار ICAO الدولي)',
+  ),
+  certificate(
+    'وثائق وشهادات',
+    Icons.workspace_premium_rounded,
+    'تنسيق وتأطير رسمي للشهادات والعقود',
+  ),
+  photos(
+    'صور التأشيرات',
+    Icons.photo_camera_front_rounded,
+    'طباعة فورية بمقاسات شنغن وأمريكا والعالم',
+  ),
+  compress(
+    'ضغط المستندات',
+    Icons.speed_rounded,
+    'تقليص دقيق للحجم للبوابات والسفارات',
+  );
+
+  const OfficialDocMode(this.label, this.icon, this.description);
+  final String label;
+  final IconData icon;
+  final String description;
+}
+
+/// A world-class, international Official ID & Document Studio conforming
+/// to Apple Human Interface Guidelines.
+///
+/// Supports:
+/// - 2-in-1 Dual Side ID & Driver's License cards (ISO/IEC 7810 ID-1 standard)
+/// - International Passport Data Pages (ICAO Doc 9303 standard)
+/// - Official Documents & Academic Certificates (Landscape & Portrait)
+/// - Universal Visa & Passport Photo Sheets (Schengen 35x45mm, US Visa 2x2", 4x6cm, 3x4cm)
+/// - Precision File Compression for Global Embassies and Online Portals (<100KB to <2MB)
 class GovernmentDocumentsScreen extends ConsumerStatefulWidget {
-  const GovernmentDocumentsScreen({super.key});
+  const GovernmentDocumentsScreen({
+    super.key,
+    this.initialMode = OfficialDocMode.idCard,
+  });
+
+  final OfficialDocMode initialMode;
 
   @override
   ConsumerState<GovernmentDocumentsScreen> createState() =>
       _GovernmentDocumentsScreenState();
 }
 
-class _GovernmentDocumentsScreenState
-    extends ConsumerState<GovernmentDocumentsScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+/// Backwards-compatibility alias
+typedef OfficialDocumentsScreen = GovernmentDocumentsScreen;
 
-  // National ID state
+class _GovernmentDocumentsScreenState
+    extends ConsumerState<GovernmentDocumentsScreen> {
+  late OfficialDocMode _currentMode;
+
+  // ── ID Card State ──
   String? _idFrontPath;
   String? _idBackPath;
-  bool _idActualSize = false; // false = 1.35x enlarged, true = 1:1 official
+  bool _idActualSize = false; // false = 1.35x enlarged, true = 1:1 ISO scale
 
-  // Compression state
-  String? _compressionImagePath;
+  // ── Passport State ──
+  String? _passportImagePath;
+  bool _passportLandscape = false;
+
+  // ── Certificate State ──
+  String? _certificateImagePath;
+  bool _certificateLandscape = true;
+
+  // ── Photo Grid State ──
+  String? _photoImagePath;
+  GovDocType _selectedPhotoType = GovDocType.personalPhoto35x45;
+
+  // ── Compression State ──
+  String? _compressImagePath;
   int _selectedTargetKb = 200;
-  bool _isCompressing = false;
   final TextEditingController _customKbController = TextEditingController();
 
-  // Personal photo state
-  String? _photoImagePath;
-  GovDocType _selectedPhotoType = GovDocType.personalPhoto3x4;
-
-  // Passport & Certificate state
-  String? _passportImagePath;
-  String? _certificateImagePath;
-
+  // ── Process Indicator ──
   bool _isProcessing = false;
   String? _statusText;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _currentMode = widget.initialMode;
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _customKbController.dispose();
     super.dispose();
   }
 
-  /// Unified source picker: Camera, Gallery/Files, or Existing Library Document
-  Future<String?> _pickImageWithSource(BuildContext context, {String? title}) async {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SOURCE PICKERS & HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Apple-style unified source picker bottom sheet: Camera, Gallery, Library.
+  Future<String?> _pickImageWithSource(
+    BuildContext context, {
+    required String title,
+    String? subtitle,
+  }) async {
     final docs = ref.read(pendingUploadsControllerProvider).valueOrNull ?? [];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final source = await showModalBottomSheet<String>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (title != null) ...[
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4.5,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
-              ],
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16.5,
                   ),
-                  child: const Icon(Icons.camera_alt_rounded, color: Colors.blue),
+                  textAlign: TextAlign.center,
                 ),
-                title: const Text('تصوير بالكاميرا الآن (مسح ضوئي)',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('التقاط فوري مع ضبط الحدود تلقائياً'),
-                onTap: () => Navigator.pop(ctx, 'camera'),
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.photo_library_rounded, color: Colors.purple),
-                ),
-                title: const Text('اختيار من المعرض أو ملفات الجهاز',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('اختيار صورة محفوظة بصيغة JPG أو PNG'),
-                onTap: () => Navigator.pop(ctx, 'gallery'),
-              ),
-              if (docs.isNotEmpty)
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white60 : Colors.black54,
                     ),
-                    child: const Icon(Icons.folder_shared_rounded, color: Colors.teal),
+                    textAlign: TextAlign.center,
                   ),
-                  title: const Text('اختيار من مستندات المكتبة',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${docs.length} مستندات متوفرة في مكتبتك'),
-                  onTap: () => Navigator.pop(ctx, 'library'),
+                ],
+                const SizedBox(height: 20),
+
+                // Option 1: Camera Scanner
+                _buildSourceOptionTile(
+                  icon: Icons.camera_alt_rounded,
+                  iconColor: const Color(0xFF007AFF),
+                  title: 'مسح ضوئي ذكي بالكاميرا',
+                  subtitle: 'التقاط فوري مع ضبط الحدود والزوايا تلقائياً',
+                  onTap: () => Navigator.pop(ctx, 'camera'),
+                  isDark: isDark,
                 ),
-            ],
+                const SizedBox(height: 10),
+
+                // Option 2: Gallery
+                _buildSourceOptionTile(
+                  icon: Icons.photo_library_rounded,
+                  iconColor: const Color(0xFFAF52DE),
+                  title: 'اختيار من الصور أو الملفات',
+                  subtitle: 'تحديد صورة بصيغة JPG أو PNG من هاتفك',
+                  onTap: () => Navigator.pop(ctx, 'gallery'),
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 10),
+
+                // Option 3: Document Library
+                if (docs.isNotEmpty) ...[
+                  _buildSourceOptionTile(
+                    icon: Icons.folder_special_rounded,
+                    iconColor: const Color(0xFF34C759),
+                    title: 'اختيار من مكتبة التطبيق',
+                    subtitle: 'استخدام صفحات ممسوحة مسبقاً (${docs.length} مستند)',
+                    onTap: () => Navigator.pop(ctx, 'library'),
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                const SizedBox(height: 6),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'إلغاء',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -177,6 +280,75 @@ class _GovernmentDocumentsScreenState
     return null;
   }
 
+  Widget _buildSourceOptionTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_left_rounded,
+              color: isDark ? Colors.white30 : Colors.black26,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<String?> _pickPageFromLibrary(
     BuildContext context,
     List<PendingUpload> docs,
@@ -185,7 +357,7 @@ class _GovernmentDocumentsScreenState
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
         child: Padding(
@@ -195,7 +367,7 @@ class _GovernmentDocumentsScreenState
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'اختر مستنداً من المكتبة لاستخدامه:',
+                'اختر مستنداً من مكتبتك:',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
@@ -216,7 +388,7 @@ class _GovernmentDocumentsScreenState
                       leading: firstPagePath.isNotEmpty &&
                               File(firstPagePath).existsSync()
                           ? ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
                               child: Image.file(
                                 File(firstPagePath),
                                 width: 44,
@@ -246,7 +418,7 @@ class _GovernmentDocumentsScreenState
     );
   }
 
-  /// Rotates an image file 90 degrees clockwise in place
+  /// Rotates an image file 90 degrees clockwise in place with high JPEG quality.
   Future<String?> _rotateImage(String imagePath) async {
     try {
       final file = File(imagePath);
@@ -259,7 +431,10 @@ class _GovernmentDocumentsScreenState
 
       final dir = p.dirname(imagePath);
       final base = p.basenameWithoutExtension(imagePath);
-      final newPath = p.join(dir, '${base}_rot_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final newPath = p.join(
+        dir,
+        '${base}_rot_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
       await File(newPath).writeAsBytes(newBytes, flush: true);
       return newPath;
     } catch (e) {
@@ -272,93 +447,196 @@ class _GovernmentDocumentsScreenState
     }
   }
 
-  void _showResultDialog({
+  /// Apple HIG Result Modal with Share, Instant Print, and Open.
+  void _showResultModal({
     required String filePath,
     required String title,
     String? subtitle,
   }) {
-    final palette = context.appThemePalette;
     final file = File(filePath);
     final sizeStr = file.existsSync() ? formatFileSize(file.lengthSync()) : '';
+    final isPdf = filePath.toLowerCase().endsWith('.pdf');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showDialog<void>(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (subtitle != null) ...[
-              Text(subtitle, style: const TextStyle(fontSize: 13.5, height: 1.4)),
-              const SizedBox(height: 12),
-            ],
-            if (sizeStr.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: palette.success.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle_rounded,
-                        color: palette.success, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'حجم الملف النهائي: $sizeStr',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: palette.success,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
+            ),
           ],
         ),
-        actions: [
-          TextButton.icon(
-            icon: const Icon(Icons.share_rounded, size: 18),
-            label: const Text('مشاركة'),
-            onPressed: () {
-              Navigator.pop(ctx);
-              Share.shareXFiles([XFile(filePath)]);
-            },
-          ),
-          if (filePath.endsWith('.pdf'))
-            TextButton.icon(
-              icon: const Icon(Icons.print_rounded, size: 18),
-              label: const Text('طباعة فورية'),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                final bytes = await File(filePath).readAsBytes();
-                await Printing.layoutPdf(onLayout: (_) => bytes);
-              },
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4.5,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                // Success icon
+                Center(
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: Color(0xFF34C759),
+                      size: 36,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: 14),
+
+                if (sizeStr.isNotEmpty)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF34C759).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'الحجم النهائي: $sizeStr',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF34C759),
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 24),
+
+                // Primary: Open
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF007AFF),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.open_in_new_rounded, size: 20),
+                  label: const Text(
+                    'فتح المستند للمعاينة',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    OpenFilex.open(filePath);
+                  },
+                ),
+                const SizedBox(height: 10),
+
+                // Secondary row: Share + Print
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.share_rounded, size: 19),
+                        label: const Text('مشاركة',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Share.shareXFiles([XFile(filePath)]);
+                        },
+                      ),
+                    ),
+                    if (isPdf) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          icon: const Icon(Icons.print_rounded, size: 19),
+                          label: const Text('طباعة فورية',
+                              style: TextStyle(fontWeight: FontWeight.w700)),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            final bytes = await File(filePath).readAsBytes();
+                            await Printing.layoutPdf(onLayout: (_) => bytes);
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
             ),
-          FilledButton.icon(
-            icon: const Icon(Icons.open_in_new_rounded, size: 18),
-            label: const Text('فتح الملف'),
-            onPressed: () {
-              Navigator.pop(ctx);
-              OpenFilex.open(filePath);
-            },
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Future<void> _buildNationalIdA4() async {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ACTIONS / GENERATORS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<void> _buildIdCardA4() async {
     if (_idFrontPath == null || _idBackPath == null) return;
     setState(() {
       _isProcessing = true;
-      _statusText = 'جارٍ توليد ورقة A4 بالأبعاد الرسمية لبطاقة الرقم القومي...';
+      _statusText = 'جارٍ دمج بطاقة الهوية في مستند A4 معياري...';
     });
 
     try {
@@ -369,81 +647,16 @@ class _GovernmentDocumentsScreenState
         isActualSize: _idActualSize,
       );
       if (!mounted) return;
-      _showResultDialog(
+      _showResultModal(
         filePath: pdfPath,
-        title: 'تم دمج بطاقة الرقم القومي بنجاح',
+        title: 'تم دمج بطاقة الهوية بنجاح',
         subtitle:
-            'ورقة A4 الرسمية جاهزة ومجهزة بخطوط القص ومطابقة لمتطلبات التقديم الحكومي المصري والتعاملات البنكية.',
+            'ورقة A4 رسمية ومجهزة بخطوط القص ومطابقة للمواصفة القياسية العالمية ISO/IEC 7810 ID-1.',
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء الإنشاء: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
-    }
-  }
-
-  Future<void> _compressForGovernmentPortal() async {
-    if (_compressionImagePath == null) return;
-    setState(() => _isCompressing = true);
-
-    try {
-      final service = ref.read(governmentPresetServiceProvider);
-      final outPath = await service.compressToTargetSizeAndSave(
-        _compressionImagePath!,
-        targetKb: _selectedTargetKb,
-      );
-      if (!mounted) return;
-      final originalSize = File(_compressionImagePath!).lengthSync();
-      final newSize = File(outPath).lengthSync();
-      final reduction =
-          originalSize > 0 ? (((originalSize - newSize) / originalSize) * 100).round() : 0;
-
-      _showResultDialog(
-        filePath: outPath,
-        title: 'تم ضغط الصورة للموقع الحكومي',
-        subtitle:
-            'الحجم قبل الضغط: ${formatFileSize(originalSize)}\nالحجم بعد الضغط: ${formatFileSize(newSize)} (تم توفير $reduction%)\nالملف جاهز للرفع على بوابات التقديم الرسمية.',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل الضغط: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _isCompressing = false);
-    }
-  }
-
-  Future<void> _buildPersonalPhotoGrid() async {
-    if (_photoImagePath == null) return;
-    setState(() {
-      _isProcessing = true;
-      _statusText = 'جارٍ إعداد شبكة الصور الشخصية للطباعة...';
-    });
-
-    try {
-      final service = ref.read(governmentPresetServiceProvider);
-      final pdfPath = await service.buildPersonalPhotoGrid(
-        _photoImagePath!,
-        _selectedPhotoType,
-      );
-      if (!mounted) return;
-      final typeLabel = _selectedPhotoType == GovDocType.personalPhoto3x4
-          ? '3×4 سم (8 صور)'
-          : '4×6 سم (4 صور)';
-      _showResultDialog(
-        filePath: pdfPath,
-        title: 'تم إعداد صفحة الصور الشخصية $typeLabel',
-        subtitle:
-            'ورقة A4 مصممة بمركز الصفحة ومجهزة بإطارات القص، جاهزة للطباعة على ورق الصور أو العادي.',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل الإعداد: $e')),
+        SnackBar(content: Text('حدث خطأ أثناء دمج البطاقة: $e')),
       );
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -454,23 +667,26 @@ class _GovernmentDocumentsScreenState
     if (_passportImagePath == null) return;
     setState(() {
       _isProcessing = true;
-      _statusText = 'جارٍ تنسيق صفحة جواز السفر على A4...';
+      _statusText = 'جارٍ تنسيق وثيقة السفر وفق معايير ICAO الدولية...';
     });
 
     try {
       final service = ref.read(governmentPresetServiceProvider);
-      final pdfPath = await service.buildPassportPage(_passportImagePath!);
+      final pdfPath = await service.buildPassportPage(
+        _passportImagePath!,
+        isLandscape: _passportLandscape,
+      );
       if (!mounted) return;
-      _showResultDialog(
+      _showResultModal(
         filePath: pdfPath,
-        title: 'تم تجهيز جواز السفر على A4',
+        title: 'تم تجهيز ورقة جواز السفر A4',
         subtitle:
-            'تم توسيط وثيقة السفر وتأطيرها بنقاء عالي وتنسيق طولي مطابق لاشتراطات السفارات والجهات الرسمية.',
+            'نسخة رسمية واضحة ومجهزة للتقديم في السفارات واستخراج التأشيرات.',
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل تجهيز جواز السفر: $e')),
+        SnackBar(content: Text('فشل تجهيز صفحة الجواز: $e')),
       );
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -481,88 +697,164 @@ class _GovernmentDocumentsScreenState
     if (_certificateImagePath == null) return;
     setState(() {
       _isProcessing = true;
-      _statusText = 'جارٍ تنسيق الشهادة الرسمية على A4 عرضي...';
+      _statusText = 'جارٍ تأطير وتنسيق المستند الرسمي...';
     });
 
     try {
       final service = ref.read(governmentPresetServiceProvider);
-      final pdfPath = await service.buildCertificatePage(_certificateImagePath!);
+      final pdfPath = await service.buildCertificatePage(
+        _certificateImagePath!,
+        isLandscape: _certificateLandscape,
+      );
       if (!mounted) return;
-      _showResultDialog(
+      _showResultModal(
         filePath: pdfPath,
-        title: 'تم تجهيز الشهادة الرسمية',
+        title: 'تم تنسيق الوثيقة الرسمية بنجاح',
         subtitle:
-            'تم توسيط الشهادة وتأطيرها بإطار رسمي مذهب عرضي جاهز للأرشفة والتقديم الجامعي والحكومي.',
+            'ملف A4 بإطار معتمد وأبعاد منسقة صالحة للجهات الرسمية والجامعات.',
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل تجهيز الشهادة: $e')),
+        SnackBar(content: Text('فشل تنسيق المستند: $e')),
       );
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
   }
 
+  Future<void> _buildPhotoGrid() async {
+    if (_photoImagePath == null) return;
+    setState(() {
+      _isProcessing = true;
+      _statusText = 'جارٍ ترتيب شبكة الصور الشخصية للطباعة...';
+    });
+
+    try {
+      final service = ref.read(governmentPresetServiceProvider);
+      final pdfPath = await service.buildPersonalPhotoGrid(
+        _photoImagePath!,
+        _selectedPhotoType,
+      );
+      if (!mounted) return;
+      _showResultModal(
+        filePath: pdfPath,
+        title: 'تم إنشاء ورقة الصور الشخصية A4',
+        subtitle:
+            'ورقة مجهزة بمقاسات دقيقة وعلامات القص وجاهزة للطباعة الورقية فوراً.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('فشل إعداد ورقة الصور: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _compressDocument() async {
+    if (_compressImagePath == null) return;
+    setState(() {
+      _isProcessing = true;
+      _statusText = 'جارٍ ضغط المستند ليكون أقل من $_selectedTargetKb KB...';
+    });
+
+    try {
+      final service = ref.read(governmentPresetServiceProvider);
+      final outPath = await service.compressToTargetSizeAndSave(
+        _compressImagePath!,
+        targetKb: _selectedTargetKb,
+      );
+      if (!mounted) return;
+      final originalSize = File(_compressImagePath!).lengthSync();
+      final newSize = File(outPath).lengthSync();
+
+      _showResultModal(
+        filePath: outPath,
+        title: 'تم ضغط المستند بنجاح',
+        subtitle:
+            'الحجم قبل: ${formatFileSize(originalSize)} ← الحجم الجديد: ${formatFileSize(newSize)} (مطابق لسقف البوابة)',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('فشل ضغط المستند: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD SCREEN
+  // ═══════════════════════════════════════════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
-    final palette = context.appThemePalette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'الأوراق الحكومية المصرية',
+          'استوديو الهوية والوثائق',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-          tabs: const [
-            Tab(icon: Icon(Icons.badge_rounded, size: 20), text: 'بطاقة الرقم القومي'),
-            Tab(icon: Icon(Icons.speed_rounded, size: 20), text: 'ضغط البوابات'),
-            Tab(icon: Icon(Icons.photo_library_rounded, size: 20), text: 'صور شخصية'),
-            Tab(icon: Icon(Icons.workspace_premium_rounded, size: 20), text: 'جواز وشهادات'),
-          ],
-        ),
+        centerTitle: true,
+        elevation: 0,
       ),
       body: Stack(
         children: [
-          TabBarView(
-            controller: _tabController,
+          Column(
             children: [
-              _buildNationalIdTab(palette),
-              _buildPortalCompressionTab(palette),
-              _buildPersonalPhotosTab(palette),
-              _buildPassportAndCertificatesTab(palette),
+              // ── Apple Top Segmented Bar ──
+              _buildAppleSegmentedBar(isDark),
+
+              // ── Active Studio Content ──
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _buildActiveStudio(isDark),
+                ),
+              ),
             ],
           ),
-          if (_isProcessing || _isCompressing)
+
+          // ── Processing Overlay ──
+          if (_isProcessing)
             Container(
-              color: Colors.black45,
+              color: Colors.black54,
               alignment: Alignment.center,
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 22,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 16),
-                      Text(
-                        _statusText ?? 'جارٍ المعالجة...',
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        textAlign: TextAlign.center,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(strokeWidth: 3),
+                    const SizedBox(height: 18),
+                    Text(
+                      _statusText ?? 'جارٍ المعالجة...',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                       ),
-                    ],
-                  ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -571,104 +863,149 @@ class _GovernmentDocumentsScreenState
     );
   }
 
+  // ── Top Apple Segmented Pill Bar ──
+  Widget _buildAppleSegmentedBar(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          children: OfficialDocMode.values.map((mode) {
+            final isSelected = _currentMode == mode;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: InkWell(
+                onTap: () => setState(() => _currentMode = mode),
+                borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF007AFF)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF007AFF)
+                          : Colors.transparent,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        mode.icon,
+                        size: 17,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.white70 : Colors.black87),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        mode.label,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight:
+                              isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? Colors.white70 : Colors.black87),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveStudio(bool isDark) {
+    switch (_currentMode) {
+      case OfficialDocMode.idCard:
+        return _buildIdCardStudio(isDark);
+      case OfficialDocMode.passport:
+        return _buildPassportStudio(isDark);
+      case OfficialDocMode.certificate:
+        return _buildCertificateStudio(isDark);
+      case OfficialDocMode.photos:
+        return _buildPhotoStudio(isDark);
+      case OfficialDocMode.compress:
+        return _buildCompressionStudio(isDark);
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // TAB 1: بطاقة الرقم القومي
+  // STUDIO 1: ID & DRIVER LICENSE (2-IN-1)
   // ═══════════════════════════════════════════════════════════════════════════
-  Widget _buildNationalIdTab(AppThemePalette palette) {
+
+  Widget _buildIdCardStudio(bool isDark) {
     final canBuild = _idFrontPath != null && _idBackPath != null;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      key: const ValueKey('id_card_studio'),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       children: [
-        // Intro Notice
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2563EB).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.2)),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.info_outline_rounded, color: Color(0xFF2563EB), size: 22),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'دمج وجه وظهر البطاقة في ورقة A4 واحدة بالأبعاد القياسية ID-1 مع خطوط القص، مقبولة رسمياً في كافة المصالح الحكومية والبنوك المصرية.',
-                  style: TextStyle(fontSize: 12, height: 1.4),
-                ),
-              ),
-            ],
-          ),
+        // Subtitle badge
+        _buildStudioHeader(
+          title: 'بطاقة الهوية ورخصة القيادة (2 في 1)',
+          description:
+              'دمج الوجه الأمامي والخلفي في ورقة A4 واحدة بالأبعاد القياسية ISO/IEC 7810 ID-1 مع خطوط القص المعتمدة عالمياً.',
+          badge: 'معياري دولي',
+          icon: Icons.badge_rounded,
+          accentColor: const Color(0xFF007AFF),
+          isDark: isDark,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
 
-        // Live A4 Page Preview Card
+        // Dual Slots Card
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Page Header Simulation
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Flexible(
-                    child: Text(
-                      'جمهورية مصر العربية',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'معاينة A4',
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                  const Flexible(
-                    child: Text(
-                      'بطاقة الرقم القومي',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(height: 16),
-
-              // Front Card Slot
-              _buildIdCardSlot(
+              // Front slot
+              _buildSlotItem(
                 label: 'الوجه الأمامي للبطاقة (Front)',
                 imagePath: _idFrontPath,
+                aspectRatio: 85.6 / 54, // ISO card ratio
+                isDark: isDark,
                 onPick: () async {
                   final p = await _pickImageWithSource(
                     context,
-                    title: 'اختيار الوجه الأمامي للبطاقة',
+                    title: 'التقاط الوجه الأمامي للبطاقة',
+                    subtitle: 'تأكد من إضاءة جيدة ووضوح أركان البطاقة الأربعة',
                   );
                   if (p != null) setState(() => _idFrontPath = p);
                 },
@@ -681,32 +1018,46 @@ class _GovernmentDocumentsScreenState
                 onClear: () => setState(() => _idFrontPath = null),
               ),
 
-              const SizedBox(height: 8),
-              // Cut line simulation
+              const SizedBox(height: 12),
+              // Divider guide
               Row(
                 children: [
-                  const Text('✂', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      height: 1,
-                      color: Colors.grey.withValues(alpha: 0.35),
+                  Text(
+                    '✂',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white38 : Colors.black38,
                     ),
                   ),
-                  const Text('خط القص الرسمي',
-                      style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      height: 1,
+                      color: isDark ? Colors.white12 : Colors.black12,
+                    ),
+                  ),
+                  Text(
+                    'خط القص القياسي A4',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
 
-              // Back Card Slot
-              _buildIdCardSlot(
+              // Back slot
+              _buildSlotItem(
                 label: 'الوجه الخلفي للبطاقة (Back)',
                 imagePath: _idBackPath,
+                aspectRatio: 85.6 / 54,
+                isDark: isDark,
                 onPick: () async {
                   final p = await _pickImageWithSource(
                     context,
-                    title: 'اختيار الوجه الخلفي للبطاقة',
+                    title: 'التقاط الوجه الخلفي للبطاقة',
+                    subtitle: 'تأكد من ظهور الباركود أو الشرائح الإلكترونية بوضوح',
                   );
                   if (p != null) setState(() => _idBackPath = p);
                 },
@@ -724,223 +1075,535 @@ class _GovernmentDocumentsScreenState
 
         const SizedBox(height: 16),
 
-        // Scale Toggle: Actual vs Enlarged
+        // Scale Toggle (Actual vs Enlarged)
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+            ),
           ),
           child: Row(
             children: [
-              const Icon(Icons.straighten_rounded, size: 20, color: Colors.blueGrey),
-              SizedBox(width: 10),
-              const Expanded(
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.straighten_rounded,
+                  color: Color(0xFF007AFF),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'المقاس الفعلي الطبيعي (1:1)',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      _idActualSize
+                          ? 'المقاس الفعلي القياسي (1:1)'
+                          : 'مقاس مكبر عالي الوضوح (1.35x)',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                      ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      '85.6 × 54 مم (أوقف التكبير لطباعة الحجم الطبيعي للبطاقة)',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                      _idActualSize
+                          ? '85.6 × 54 مم • مقاس فيزيائي مطابق للطباعة الورقية'
+                          : 'أفضل للتقديم الإلكتروني، البنوك، وقراءة البيانات',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white54 : Colors.black45,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Switch(
+              Switch.adaptive(
                 value: _idActualSize,
                 onChanged: (val) => setState(() => _idActualSize = val),
+                activeThumbColor: const Color(0xFF007AFF),
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
 
-        // Action Button
+        // Primary Action Button
         FilledButton.icon(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
-            backgroundColor: const Color(0xFF2563EB),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: const Color(0xFF007AFF),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
           ),
-          icon: const Icon(Icons.picture_as_pdf_rounded),
+          icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
           label: Text(
             canBuild
-                ? 'دمج البطاقة وتوليد مستند A4 رسمي'
-                : 'التقط أو اختر الوجهين لتوليد الملف',
+                ? 'دمج البطاقة وتصدير PDF (A4)'
+                : 'التقط وجهي البطاقة للمتابعة',
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
           ),
-          onPressed: canBuild ? _buildNationalIdA4 : null,
+          onPressed: canBuild ? _buildIdCardA4 : null,
         ),
       ],
     );
   }
 
-  Widget _buildIdCardSlot({
-    required String label,
-    required String? imagePath,
-    required VoidCallback onPick,
-    required VoidCallback onRotate,
-    required VoidCallback onClear,
-  }) {
-    final hasImage = imagePath != null && File(imagePath).existsSync();
-
-    return Container(
-      height: 130,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: hasImage ? Colors.transparent : Colors.grey.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: hasImage
-              ? const Color(0xFF2563EB)
-              : Colors.grey.withValues(alpha: 0.3),
-          width: hasImage ? 1.5 : 1,
-        ),
-      ),
-      child: hasImage
-          ? Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Center(
-                    child: Image.file(
-                      File(imagePath),
-                      fit: BoxFit.contain,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 6,
-                  left: 6,
-                  child: Row(
-                    children: [
-                      IconButton.filledTonal(
-                        iconSize: 18,
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.rotate_right_rounded),
-                        tooltip: 'تدوير 90 درجة',
-                        onPressed: onRotate,
-                      ),
-                      const SizedBox(width: 4),
-                      IconButton.filledTonal(
-                        iconSize: 18,
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.refresh_rounded),
-                        tooltip: 'تغيير الصورة',
-                        onPressed: onPick,
-                      ),
-                      const SizedBox(width: 4),
-                      IconButton.filledTonal(
-                        iconSize: 18,
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.close_rounded, color: Colors.red),
-                        tooltip: 'حذف',
-                        onPressed: onClear,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: onPick,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.add_photo_alternate_rounded,
-                        size: 32, color: Color(0xFF2563EB)),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'اضغط للتصوير أو الاختيار من المعرض',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
-  // TAB 2: ضغط البوابات الحكومية
+  // STUDIO 2: PASSPORT STUDIO
   // ═══════════════════════════════════════════════════════════════════════════
-  Widget _buildPortalCompressionTab(AppThemePalette palette) {
+
+  Widget _buildPassportStudio(bool isDark) {
     final hasImage =
-        _compressionImagePath != null && File(_compressionImagePath!).existsSync();
-    final originalSize =
-        hasImage ? File(_compressionImagePath!).lengthSync() : 0;
+        _passportImagePath != null && File(_passportImagePath!).existsSync();
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      key: const ValueKey('passport_studio'),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       children: [
-        // Notice
+        _buildStudioHeader(
+          title: 'جواز السفر الدولي (صفحة البيانات)',
+          description:
+              'تنسيق وثيقة السفر بدقة مع إطار رسمي مطابق لمتطلبات الطيران المدني الدولي ICAO Doc 9303 للتأشيرات والسفارات.',
+          badge: 'ICAO معتمد',
+          icon: Icons.menu_book_rounded,
+          accentColor: const Color(0xFF5856D6),
+          isDark: isDark,
+        ),
+        const SizedBox(height: 18),
+
+        // Document slot card
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.amber.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: const Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(Icons.speed_rounded, color: Colors.amber, size: 24),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'يضمن التطبيق عدم تجاوز سقف الحجم المطلوب إطلاقاً حتى يقبله موقع التقديم الحكومي دون رسالة "حجم الملف يتعدى الحد المسموح".',
-                  style: TextStyle(fontSize: 12, height: 1.4),
-                ),
+              _buildSlotItem(
+                label: 'صفحة بيانات جواز السفر',
+                imagePath: _passportImagePath,
+                aspectRatio: 1.42,
+                isDark: isDark,
+                onPick: () async {
+                  final p = await _pickImageWithSource(
+                    context,
+                    title: 'التقاط صفحة جواز السفر',
+                    subtitle: 'تأكد من شمول شريط القراءة الآلية (MRZ) أسفل الصفحة',
+                  );
+                  if (p != null) setState(() => _passportImagePath = p);
+                },
+                onRotate: () async {
+                  if (_passportImagePath != null) {
+                    final rot = await _rotateImage(_passportImagePath!);
+                    if (rot != null) setState(() => _passportImagePath = rot);
+                  }
+                },
+                onClear: () => setState(() => _passportImagePath = null),
               ),
             ],
           ),
         ),
+
         const SizedBox(height: 16),
+
+        // Orientation Selector
+        _buildOrientationSelector(
+          isLandscape: _passportLandscape,
+          onChanged: (val) => setState(() => _passportLandscape = val),
+          isDark: isDark,
+        ),
+
+        const SizedBox(height: 22),
+
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: const Color(0xFF5856D6),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
+          ),
+          icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
+          label: Text(
+            hasImage
+                ? 'تصدير ورقة جواز السفر A4'
+                : 'التقط أو اختر صورة الجواز',
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
+          onPressed: hasImage ? _buildPassportPage : null,
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STUDIO 3: CERTIFICATES & OFFICIAL DOCUMENTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildCertificateStudio(bool isDark) {
+    final hasImage = _certificateImagePath != null &&
+        File(_certificateImagePath!).existsSync();
+
+    return ListView(
+      key: const ValueKey('certificate_studio'),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      children: [
+        _buildStudioHeader(
+          title: 'الشهادات والمستندات والعقود الرسمية',
+          description:
+              'تنسيق الشهادات الأكاديمية والمهنية وتأطيرها بدقة عالية في صفحة A4 مجهزة للأرشفة والجهات الحكومية والشركات.',
+          badge: 'A4 رسمي',
+          icon: Icons.workspace_premium_rounded,
+          accentColor: const Color(0xFFFF9500),
+          isDark: isDark,
+        ),
+        const SizedBox(height: 18),
+
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _buildSlotItem(
+            label: 'الشهادة أو الوثيقة الرسمية',
+            imagePath: _certificateImagePath,
+            aspectRatio: _certificateLandscape ? 1.41 : (1 / 1.41),
+            isDark: isDark,
+            onPick: () async {
+              final p = await _pickImageWithSource(
+                context,
+                title: 'اختيار الشهادة أو الوثيقة',
+                subtitle: 'شهادات التخرج، العقود، أو خطابات التوثيق الرسمية',
+              );
+              if (p != null) setState(() => _certificateImagePath = p);
+            },
+            onRotate: () async {
+              if (_certificateImagePath != null) {
+                final rot = await _rotateImage(_certificateImagePath!);
+                if (rot != null) setState(() => _certificateImagePath = rot);
+              }
+            },
+            onClear: () => setState(() => _certificateImagePath = null),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        _buildOrientationSelector(
+          isLandscape: _certificateLandscape,
+          onChanged: (val) => setState(() => _certificateLandscape = val),
+          isDark: isDark,
+        ),
+
+        const SizedBox(height: 22),
+
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: const Color(0xFFFF9500),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
+          ),
+          icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
+          label: Text(
+            hasImage
+                ? 'تصدير المستند الرسمي A4'
+                : 'التقط أو اختر صورة الوثيقة',
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
+          onPressed: hasImage ? _buildCertificatePage : null,
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STUDIO 4: UNIVERSAL PHOTO & VISA STUDIO
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildPhotoStudio(bool isDark) {
+    final hasImage =
+        _photoImagePath != null && File(_photoImagePath!).existsSync();
+
+    return ListView(
+      key: const ValueKey('photo_studio'),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      children: [
+        _buildStudioHeader(
+          title: 'استوديو صور التأشيرة وجواز السفر',
+          description:
+              'تجهيز شبكة صور شخصية متعددة على ورقة A4 واحدة جاهزة للطباعة فوراً بمقاسات شنغن، أمريكا 2×2، والمقاسات العالمية.',
+          badge: 'سفر وتأشيرات',
+          icon: Icons.photo_camera_front_rounded,
+          accentColor: const Color(0xFF34C759),
+          isDark: isDark,
+        ),
+        const SizedBox(height: 18),
+
+        // Photo slot card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _buildSlotItem(
+            label: 'صورتك الشخصية (خلفية بيضاء)',
+            imagePath: _photoImagePath,
+            aspectRatio: 1.0, // Square preview
+            isDark: isDark,
+            onPick: () async {
+              final p = await _pickImageWithSource(
+                context,
+                title: 'التقاط أو اختيار الصورة الشخصية',
+                subtitle: 'يفضل خلفية محايدة (بيضاء أو رمادية فاتحة)',
+              );
+              if (p != null) setState(() => _photoImagePath = p);
+            },
+            onRotate: () async {
+              if (_photoImagePath != null) {
+                final rot = await _rotateImage(_photoImagePath!);
+                if (rot != null) setState(() => _photoImagePath = rot);
+              }
+            },
+            onClear: () => setState(() => _photoImagePath = null),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Size format selection pills
+        Text(
+          'اختر المعيار والمقاس المطلوب:',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        Column(
+          children: [
+            _buildPhotoFormatOption(
+              type: GovDocType.personalPhoto35x45,
+              title: '35 × 45 مم (8 صور)',
+              subtitle: 'تأشيرات شنغن الأوروبية، بريطانيا، كندا، وأستراليا',
+              isSelected: _selectedPhotoType == GovDocType.personalPhoto35x45,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 8),
+            _buildPhotoFormatOption(
+              type: GovDocType.personalPhoto2x2,
+              title: '2 × 2 بوصة / 5 × 5 سم (6 صور)',
+              subtitle: 'تأشيرات الولايات المتحدة الأمريكية (US Visa) والجرين كارد والهند',
+              isSelected: _selectedPhotoType == GovDocType.personalPhoto2x2,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 8),
+            _buildPhotoFormatOption(
+              type: GovDocType.personalPhoto4x6,
+              title: '4 × 6 سم (4 صور)',
+              subtitle: 'جوازات السفر العربية، آسيا، وأغلب استمارات التقديم',
+              isSelected: _selectedPhotoType == GovDocType.personalPhoto4x6,
+              isDark: isDark,
+            ),
+            const SizedBox(height: 8),
+            _buildPhotoFormatOption(
+              type: GovDocType.personalPhoto3x4,
+              title: '3 × 4 سم (8 صور)',
+              subtitle: 'بطاقات الهوية الوطنية، رخص القيادة، والكارنيهات',
+              isSelected: _selectedPhotoType == GovDocType.personalPhoto3x4,
+              isDark: isDark,
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 22),
+
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: const Color(0xFF34C759),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
+          ),
+          icon: const Icon(Icons.print_rounded, size: 20),
+          label: Text(
+            hasImage ? 'إنشاء ورقة الصور للطباعة (A4)' : 'اختر الصورة الشخصية',
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
+          onPressed: hasImage ? _buildPhotoGrid : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhotoFormatOption({
+    required GovDocType type,
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: () => setState(() => _selectedPhotoType = type),
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF34C759).withValues(alpha: 0.12)
+              : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF34C759)
+                : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
+            width: isSelected ? 1.8 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: isSelected
+                  ? const Color(0xFF34C759)
+                  : (isDark ? Colors.white30 : Colors.black26),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w700,
+                      fontSize: 13.5,
+                      color: isSelected
+                          ? const Color(0xFF34C759)
+                          : (isDark ? Colors.white : Colors.black87),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? Colors.white54 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STUDIO 5: PRECISION COMPRESSION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildCompressionStudio(bool isDark) {
+    final hasImage =
+        _compressImagePath != null && File(_compressImagePath!).existsSync();
+    final originalSize =
+        hasImage ? File(_compressImagePath!).lengthSync() : 0;
+
+    return ListView(
+      key: const ValueKey('compression_studio'),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      children: [
+        _buildStudioHeader(
+          title: 'ضغط المستندات للبوابات والسفارات',
+          description:
+              'تقليص حجم المستندات بدقة هندسية لضمان عدم تجاوز السقف الحجمي المحدد لبوابات التوظيف ومواقع التقديم الإلكتروني.',
+          badge: 'ضمان القبول',
+          icon: Icons.speed_rounded,
+          accentColor: const Color(0xFFFF2D55),
+          isDark: isDark,
+        ),
+        const SizedBox(height: 18),
 
         // File Selector Card
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -949,49 +1612,49 @@ class _GovernmentDocumentsScreenState
                 Row(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       child: Image.file(
-                        File(_compressionImagePath!),
+                        File(_compressImagePath!),
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            p.basename(_compressionImagePath!),
+                            p.basename(_compressImagePath!),
                             style: const TextStyle(fontWeight: FontWeight.w700),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'الحجم الأصلي: ${formatFileSize(originalSize)}',
+                            'الحجم الحالي: ${formatFileSize(originalSize)}',
                             style: TextStyle(
                               fontSize: 12,
+                              fontWeight: FontWeight.w700,
                               color: originalSize > _selectedTargetKb * 1024
-                                  ? Colors.red
-                                  : Colors.green,
-                              fontWeight: FontWeight.bold,
+                                  ? const Color(0xFFFF2D55)
+                                  : const Color(0xFF34C759),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.change_circle_rounded),
-                      tooltip: 'تغيير الصورة',
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.change_circle_rounded, size: 22),
+                      tooltip: 'تغيير المستند',
                       onPressed: () async {
                         final pth = await _pickImageWithSource(
                           context,
-                          title: 'اختيار المستند المراد ضغطه',
+                          title: 'اختيار مستند جديد للضغط',
                         );
                         if (pth != null) {
-                          setState(() => _compressionImagePath = pth);
+                          setState(() => _compressImagePath = pth);
                         }
                       },
                     ),
@@ -1002,12 +1665,12 @@ class _GovernmentDocumentsScreenState
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  icon: const Icon(Icons.upload_file_rounded, size: 26),
+                  icon: const Icon(Icons.upload_file_rounded, size: 24),
                   label: const Text(
-                    'اختر المستند أو الصورة للضغط (كاميرا / معرض / مكتبة)',
+                    'اختر المستند المراد ضغطه (كاميرا / معرض / مكتبة)',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   onPressed: () async {
@@ -1016,7 +1679,7 @@ class _GovernmentDocumentsScreenState
                       title: 'اختيار المستند المراد ضغطه',
                     );
                     if (pth != null) {
-                      setState(() => _compressionImagePath = pth);
+                      setState(() => _compressImagePath = pth);
                     }
                   },
                 ),
@@ -1027,505 +1690,424 @@ class _GovernmentDocumentsScreenState
 
         const SizedBox(height: 18),
 
-        const Text(
-          'اختر السقف المطلوب للموقع الحكومي:',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+        Text(
+          'اختر الحد الأقصى المطلوب للموقع:',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
 
-        // Presets Grid
+        // Universal Preset Selector
         Column(
           children: GovernmentPresetService.portalPresets.map((preset) {
             final isSelected = _selectedTargetKb == preset.kb;
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              elevation: isSelected ? 2 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: isSelected
-                      ? palette.accent
-                      : Colors.grey.withValues(alpha: 0.2),
-                  width: isSelected ? 2 : 1,
-                ),
-              ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: isSelected
-                      ? palette.accent
-                      : Colors.grey.withValues(alpha: 0.15),
-                  foregroundColor: isSelected ? Colors.white : Colors.blueGrey,
-                  child: Icon(preset.icon, size: 20),
-                ),
-                title: Text(
-                  preset.label,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-                trailing: Text(
-                  '< ${preset.kb} KB',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: isSelected ? palette.accent : Colors.grey,
-                  ),
-                ),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
                 onTap: () => setState(() => _selectedTargetKb = preset.kb),
+                borderRadius: BorderRadius.circular(14),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFFF2D55).withValues(alpha: 0.1)
+                        : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFFFF2D55)
+                          : (isDark
+                              ? Colors.white12
+                              : Colors.black.withValues(alpha: 0.08)),
+                      width: isSelected ? 1.8 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: isSelected
+                            ? const Color(0xFFFF2D55)
+                            : (isDark ? Colors.white12 : Colors.black12),
+                        foregroundColor: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.white70 : Colors.black54),
+                        child: Icon(preset.icon, size: 17),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          preset.label,
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            fontSize: 13,
+                            color: isSelected
+                                ? const Color(0xFFFF2D55)
+                                : (isDark ? Colors.white : Colors.black87),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '< ${preset.kb} KB',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12.5,
+                          color: isSelected
+                              ? const Color(0xFFFF2D55)
+                              : (isDark ? Colors.white54 : Colors.black45),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           }).toList(),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
 
-        // Action Button
         FilledButton.icon(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
-            backgroundColor: Colors.amber.shade700,
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: const Color(0xFFFF2D55),
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
           ),
-          icon: const Icon(Icons.compress_rounded),
+          icon: const Icon(Icons.compress_rounded, size: 20),
           label: Text(
-            'ضغط الصورة لتكون أقل من $_selectedTargetKb KB بدقة',
+            hasImage
+                ? 'ضغط المستند لأقل من $_selectedTargetKb KB'
+                : 'اختر المستند لبدء الضغط',
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
           ),
-          onPressed: (hasImage && !_isCompressing)
-              ? _compressForGovernmentPortal
-              : null,
+          onPressed: hasImage ? _compressDocument : null,
         ),
       ],
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TAB 3: صور شخصية رسمية (3×4 و 4×6)
+  // REUSABLE APPLE COMPONENTS
   // ═══════════════════════════════════════════════════════════════════════════
-  Widget _buildPersonalPhotosTab(AppThemePalette palette) {
-    final hasImage =
-        _photoImagePath != null && File(_photoImagePath!).existsSync();
-    final is3x4 = _selectedPhotoType == GovDocType.personalPhoto3x4;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Intro Notice
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.photo_size_select_actual_rounded,
-                  color: Colors.green, size: 22),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'تجهيز شبكة صور شخصية متعددة على ورقة A4 واحدة بمركز الصفحة ومجهزة بخطوط القص للطباعة فوراً.',
-                  style: TextStyle(fontSize: 12, height: 1.4),
-                ),
-              ),
-            ],
-          ),
+  Widget _buildStudioHeader({
+    required String title,
+    required String description,
+    required String badge,
+    required IconData icon,
+    required Color accentColor,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: isDark ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: accentColor.withValues(alpha: isDark ? 0.25 : 0.18),
         ),
-        const SizedBox(height: 16),
-
-        // Image Selector
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: accentColor, size: 22),
           ),
-          child: hasImage
-              ? Row(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        File(_photoImagePath!),
-                        width: 70,
-                        height: 70,
-                        fit: BoxFit.cover,
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('تم اختيار الصورة الشخصية',
-                              style: TextStyle(fontWeight: FontWeight.w700)),
-                          SizedBox(height: 4),
-                          Text('جاهزة لترتيبها في شبكة الطباعة A4',
-                              style: TextStyle(fontSize: 11.5, color: Colors.grey)),
-                        ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
                       ),
-                    ),
-                    IconButton.filledTonal(
-                      icon: const Icon(Icons.refresh_rounded),
-                      tooltip: 'تغيير الصورة',
-                      onPressed: () async {
-                        final pth = await _pickImageWithSource(
-                          context,
-                          title: 'اختيار صورتك الشخصية',
-                        );
-                        if (pth != null) setState(() => _photoImagePath = pth);
-                      },
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                   ],
-                )
-              : OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 22),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_a_photo_rounded, size: 26),
-                  label: const Text(
-                    'التقط صورتك بالكاميرا أو اخترها من المعرض',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  onPressed: () async {
-                    final pth = await _pickImageWithSource(
-                      context,
-                      title: 'اختيار صورتك الشخصية',
-                    );
-                    if (pth != null) setState(() => _photoImagePath = pth);
-                  },
                 ),
-        ),
-
-        const SizedBox(height: 18),
-
-        // Photo Dimension Selector
-        const Text(
-          'اختر مقاس الصورة المطلوب:',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-        ),
-        const SizedBox(height: 10),
-
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _selectedPhotoType = GovDocType.personalPhoto3x4),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: is3x4 ? palette.accent.withValues(alpha: 0.12) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: is3x4 ? palette.accent : Colors.grey.withValues(alpha: 0.3),
-                      width: is3x4 ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '3×4 سم (8 صور)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          color: is3x4 ? palette.accent : null,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'للبطاقة والكارنيهات',
-                        style: TextStyle(fontSize: 10.5, color: Colors.grey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                    height: 1.4,
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _selectedPhotoType = GovDocType.personalPhoto4x6),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: !is3x4 ? palette.accent.withValues(alpha: 0.12) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: !is3x4 ? palette.accent : Colors.grey.withValues(alpha: 0.3),
-                      width: !is3x4 ? 2 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '4×6 سم (4 صور)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          color: !is3x4 ? palette.accent : null,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'للجواز والسفارات',
-                        style: TextStyle(fontSize: 10.5, color: Colors.grey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 18),
-
-        // Live preview sheet representation
-        Container(
-          height: 150,
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-          ),
-          child: Center(
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(
-                is3x4 ? 8 : 4,
-                (_) => Container(
-                  width: is3x4 ? 32 : 45,
-                  height: is3x4 ? 42 : 65,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(3),
-                    border: Border.all(color: Colors.grey.shade400, width: 0.5),
-                  ),
-                  child: hasImage
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: Image.file(
-                            File(_photoImagePath!),
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : const Icon(Icons.person, size: 20, color: Colors.grey),
-                ),
-              ),
+              ],
             ),
           ),
-        ),
-
-        const SizedBox(height: 20),
-
-        // Action Button
-        FilledButton.icon(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
-            backgroundColor: Colors.green.shade700,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-          icon: const Icon(Icons.print_rounded),
-          label: Text(
-            'إنشاء ورقة A4 للطباعة (${is3x4 ? '8 صور 3×4' : '4 صور 4×6'})',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-          ),
-          onPressed: hasImage ? _buildPersonalPhotoGrid : null,
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TAB 4: جواز السفر والشهادات الرسمية
-  // ═══════════════════════════════════════════════════════════════════════════
-  Widget _buildPassportAndCertificatesTab(AppThemePalette palette) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Intro Notice
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.deepPurple.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.deepPurple.withValues(alpha: 0.2)),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.workspace_premium_rounded,
-                  color: Colors.deepPurple, size: 22),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'تنسيق وثائق السفر والشهادات الأكاديمية والرسمية على صفحة A4 مخصصة بإطارات رسمية معتمدة.',
-                  style: TextStyle(fontSize: 12, height: 1.4),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-
-        // Passport Section
-        _buildDocCard(
-          title: 'جواز السفر (تنسيق طولي A4)',
-          subtitle:
-              'توسيط وثيقة السفر وتنسيق أبعادها بدقة مع إضافة ترويسة جمهورية مصر العربية وإطار التأشيرات.',
-          icon: Icons.menu_book_rounded,
-          iconColor: Colors.blue.shade700,
-          imagePath: _passportImagePath,
-          buttonText: 'توليد ورقة جواز السفر A4',
-          onPick: () async {
-            final pth = await _pickImageWithSource(
-              context,
-              title: 'اختيار صورة صفحة جواز السفر',
-            );
-            if (pth != null) setState(() => _passportImagePath = pth);
-          },
-          onClear: () => setState(() => _passportImagePath = null),
-          onGenerate: _buildPassportPage,
-        ),
-
-        const SizedBox(height: 18),
-
-        // Certificate Section
-        _buildDocCard(
-          title: 'الشهادات الرسمية (تنسيق عرضي A4)',
-          subtitle:
-              'تنسيق شهادات التخرج، الميلاد، والخبرة في إطار مذهب رسمي فاخر صالحة للتقديم والأرشفة.',
-          icon: Icons.card_membership_rounded,
-          iconColor: Colors.amber.shade800,
-          imagePath: _certificateImagePath,
-          buttonText: 'توليد الشهادة الرسمية A4',
-          onPick: () async {
-            final pth = await _pickImageWithSource(
-              context,
-              title: 'اختيار صورة الشهادة الرسمية',
-            );
-            if (pth != null) setState(() => _certificateImagePath = pth);
-          },
-          onClear: () => setState(() => _certificateImagePath = null),
-          onGenerate: _buildCertificatePage,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDocCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color iconColor,
+  Widget _buildSlotItem({
+    required String label,
     required String? imagePath,
-    required String buttonText,
+    required double aspectRatio,
+    required bool isDark,
     required VoidCallback onPick,
+    required VoidCallback onRotate,
     required VoidCallback onClear,
-    required VoidCallback onGenerate,
   }) {
     final hasImage = imagePath != null && File(imagePath).existsSync();
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: iconColor.withValues(alpha: 0.12),
-                child: Icon(icon, color: iconColor),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14.5,
+    return AspectRatio(
+      aspectRatio: aspectRatio.clamp(0.9, 1.8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: hasImage
+              ? Colors.transparent
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : Colors.black.withValues(alpha: 0.02)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: hasImage
+                ? const Color(0xFF007AFF)
+                : (isDark ? Colors.white24 : Colors.black26),
+            width: hasImage ? 1.5 : 1,
+            style: hasImage ? BorderStyle.solid : BorderStyle.solid,
+          ),
+        ),
+        child: hasImage
+            ? Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Center(
+                      child: Image.file(
+                        File(imagePath),
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: double.infinity,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 11.5, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          if (hasImage) ...[
-            Container(
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-              ),
-              child: Stack(
-                children: [
-                  Center(
-                    child: Image.file(
-                      File(imagePath),
-                      fit: BoxFit.contain,
+                  ),
+                  // Top badge
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
+                  // Floating action pills
                   Positioned(
-                    top: 6,
-                    left: 6,
-                    child: IconButton.filledTonal(
-                      iconSize: 18,
-                      visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.close_rounded, color: Colors.red),
-                      onPressed: onClear,
+                    bottom: 8,
+                    left: 8,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildGlassMiniButton(
+                          icon: Icons.rotate_right_rounded,
+                          tooltip: 'تدوير 90°',
+                          onTap: onRotate,
+                        ),
+                        const SizedBox(width: 6),
+                        _buildGlassMiniButton(
+                          icon: Icons.refresh_rounded,
+                          tooltip: 'تغيير الصورة',
+                          onTap: onPick,
+                        ),
+                        const SizedBox(width: 6),
+                        _buildGlassMiniButton(
+                          icon: Icons.close_rounded,
+                          tooltip: 'حذف',
+                          color: Colors.redAccent,
+                          onTap: onClear,
+                        ),
+                      ],
                     ),
                   ),
                 ],
+              )
+            : InkWell(
+                onTap: onPick,
+                borderRadius: BorderRadius.circular(16),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.add_a_photo_rounded,
+                          size: 26,
+                          color: Color(0xFF007AFF),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                          color: Color(0xFF007AFF),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'اضغط للمسح بالكاميرا أو الاختيار',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? Colors.white54 : Colors.black45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildGlassMiniButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          size: 17,
+          color: color ?? Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrientationSelector({
+    required bool isLandscape,
+    required ValueChanged<bool> onChanged,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isLandscape ? Icons.crop_landscape_rounded : Icons.crop_portrait_rounded,
+            color: const Color(0xFF007AFF),
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'اتجاه صفحة A4',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                ),
+                Text(
+                  'تحديد الوضع الأفقي أو الرأسي للمستند',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(
+                value: false,
+                label: Text('طولي', style: TextStyle(fontSize: 12)),
+              ),
+              ButtonSegment(
+                value: true,
+                label: Text('عرضي', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+            selected: {isLandscape},
+            onSelectionChanged: (set) => onChanged(set.first),
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: WidgetStateProperty.all(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-          ] else ...[
-            OutlinedButton.icon(
-              icon: const Icon(Icons.add_photo_alternate_rounded),
-              label: const Text('اختيار الوثيقة (كاميرا / معرض / مكتبة)'),
-              onPressed: onPick,
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: iconColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-            label: Text(
-              buttonText,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            onPressed: hasImage ? onGenerate : null,
           ),
         ],
       ),

@@ -31,7 +31,7 @@ import 'widgets/smart_data_extraction_sheet.dart';
 /// Categories for organizing tools in the hub
 enum ToolCategory {
   all('الكل', Icons.apps_rounded),
-  government('أوراق حكومية', Icons.account_balance_rounded),
+  government('هوية ووثائق', Icons.badge_rounded),
   intelligence('استخراج وذكاء', Icons.auto_awesome_rounded),
   pdf('أدوات PDF', Icons.picture_as_pdf_rounded),
   security('أمان وخصوصية', Icons.security_rounded);
@@ -45,7 +45,7 @@ enum ToolCategory {
       case ToolCategory.all:
         return 'جميع الأدوات';
       case ToolCategory.government:
-        return 'المستندات والأوراق الرسمية';
+        return 'الهوية والمستندات الرسمية';
       case ToolCategory.intelligence:
         return 'الذكاء الاصطناعي والاستخراج';
       case ToolCategory.pdf:
@@ -60,7 +60,7 @@ enum ToolCategory {
       case ToolCategory.all:
         return 'تصفح كافة الأدوات المتوفرة';
       case ToolCategory.government:
-        return 'قوالب مطابقة للمواصفات الرسمية المصرية وضغط بوابات التقديم';
+        return 'قوالب مطابقة للمواصفات الدولية ISO وضغط بوابات التقديم والسفارات';
       case ToolCategory.intelligence:
         return 'تحويل الجداول لإكسل، استخراج بيانات الرقم القومي، وفصل الكتب';
       case ToolCategory.pdf:
@@ -114,47 +114,47 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Government & Official Category ──
     ToolItem(
       id: 'gov_id_card',
-      title: 'بطاقة الرقم القومي (وش وضهر A4)',
+      title: 'بطاقة الهوية والقيادة (دمج وجهين A4)',
       subtitle:
-          'دمج وجه وظهر البطاقة في ورقة A4 واحدة بالأبعاد الرسمية القياسية ID-1 للتقديم في البوابات والجهات الرسمية.',
+          'دمج وجهي البطاقة في ورقة A4 واحدة بالأبعاد القياسية العالمية ISO/IEC 7810 ID-1 للتقديم في البنوك والسفارات والجهات الرسمية.',
       category: ToolCategory.government,
       icon: Icons.badge_rounded,
-      badge: 'رسمي مصري',
-      accentColor: Color(0xFFD97706),
-      keywords: ['بطاقة', 'رقم قومي', 'حكومي', 'وش وضهر', 'id', 'مصر'],
-    ),
-    ToolItem(
-      id: 'gov_portal_compress',
-      title: 'ضغط مخصص للبوابات الحكومية',
-      subtitle:
-          'تقليص حجم المستندات بدقة متناهية لأقل من (100KB أو 200KB أو 500KB أو 1MB) لتوافق مواقع التقديم والوظائف.',
-      category: ToolCategory.government,
-      icon: Icons.speed_rounded,
-      badge: 'أقل من 200KB',
-      accentColor: Color(0xFFEA580C),
-      keywords: ['ضغط', 'حكومي', 'بوابات', 'حجم', 'ميزانية', 'بريد'],
-    ),
-    ToolItem(
-      id: 'gov_photo_grid',
-      title: 'تخطيط الصور الشخصية (3×4 و 4×6)',
-      subtitle:
-          'تجهيز شبكة صور شخصية متعددة (8 صور 3×4 أو 4 صور 4×6) على ورقة A4 واحدة جاهزة للطباعة والتسليم فوراً.',
-      category: ToolCategory.government,
-      icon: Icons.photo_library_rounded,
-      badge: 'طباعة فورية',
-      accentColor: Color(0xFF0284C7),
-      keywords: ['صور', 'شخصية', '3x4', '4x6', 'جواز', 'كارنيه', 'طباعة'],
+      badge: 'معياري دولي',
+      accentColor: Color(0xFF007AFF),
+      keywords: ['بطاقة', 'هوية', 'رخصة', 'قيادة', 'إقامة', 'id', 'وش وضهر', 'رسمي'],
     ),
     ToolItem(
       id: 'gov_passport_cert',
       title: 'جواز السفر والشهادات الرسمية',
       subtitle:
-          'توسيط دقيق وتنسيق عالي الجودة للشهادات وجوازات السفر على صفحة A4 طولياً أو عرضياً بدون تشويه.',
+          'توسيط وتنسيق عالي الدقة لوثائق السفر بمعايير ICAO الدولية، والشهادات الأكاديمية والعقود الرسمية على A4.',
       category: ToolCategory.government,
-      icon: Icons.workspace_premium_rounded,
-      badge: 'A4 معتمد',
-      accentColor: Color(0xFF7C3AED),
-      keywords: ['جواز', 'شهادة', 'تخرج', 'ميلاد', 'رسمي'],
+      icon: Icons.menu_book_rounded,
+      badge: 'ICAO معتمد',
+      accentColor: Color(0xFF5856D6),
+      keywords: ['جواز', 'سفر', 'شهادة', 'تخرج', 'عقد', 'رسمي', 'passport'],
+    ),
+    ToolItem(
+      id: 'gov_photo_grid',
+      title: 'استوديو صور التأشيرة وجواز السفر',
+      subtitle:
+          'تجهيز شبكة صور شخصية متعددة على ورقة A4 واحدة جاهزة للطباعة والقص فوراً بمقاسات شنغن، أمريكا 2×2، 4×6، و 3×4.',
+      category: ToolCategory.government,
+      icon: Icons.photo_camera_front_rounded,
+      badge: 'سفر وتأشيرات',
+      accentColor: Color(0xFF34C759),
+      keywords: ['صور', 'شخصية', 'تأشيرة', 'شنغن', 'امريكا', 'سفر', 'جواز', 'طباعة', 'visa'],
+    ),
+    ToolItem(
+      id: 'gov_portal_compress',
+      title: 'ضغط المستندات للبوابات والسفارات',
+      subtitle:
+          'تقليص حجم المستندات بدقة هندسية لأقل من (100KB أو 200KB أو 500KB أو 1MB) لضمان القبول الفوري في بوابات التقديم.',
+      category: ToolCategory.government,
+      icon: Icons.speed_rounded,
+      badge: 'ضمان القبول',
+      accentColor: Color(0xFFFF2D55),
+      keywords: ['ضغط', 'بوابات', 'تقديم', 'سفارات', 'توظيف', 'حجم', 'مستند'],
     ),
 
     // ── Intelligence & Extraction Category ──
@@ -368,12 +368,41 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
   void _onToolSelected(ToolItem tool) {
     switch (tool.id) {
       case 'gov_id_card':
-      case 'gov_portal_compress':
-      case 'gov_photo_grid':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const GovernmentDocumentsScreen(
+              initialMode: OfficialDocMode.idCard,
+            ),
+          ),
+        );
+        break;
+
       case 'gov_passport_cert':
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => const GovernmentDocumentsScreen(),
+            builder: (_) => const GovernmentDocumentsScreen(
+              initialMode: OfficialDocMode.passport,
+            ),
+          ),
+        );
+        break;
+
+      case 'gov_photo_grid':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const GovernmentDocumentsScreen(
+              initialMode: OfficialDocMode.photos,
+            ),
+          ),
+        );
+        break;
+
+      case 'gov_portal_compress':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const GovernmentDocumentsScreen(
+              initialMode: OfficialDocMode.compress,
+            ),
           ),
         );
         break;

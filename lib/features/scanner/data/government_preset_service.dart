@@ -13,15 +13,15 @@ import 'package:pdf/widgets.dart' as pw;
 // Enumerations
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Supported Egyptian-government document types.
+/// Supported official document and identity types.
 enum GovDocType {
-  /// National ID card (ISO/IEC 7810 ID-1: 85.6 mm × 53.98 mm).
+  /// National ID or driving license card (ISO/IEC 7810 ID-1: 85.6 mm × 53.98 mm).
   nationalId,
 
-  /// Passport booklet page.
+  /// Passport booklet page (ICAO Doc 9303).
   passport,
 
-  /// Official certificate (e.g. birth/death/graduation).
+  /// Official certificate or document.
   certificate,
 
   /// Personal photograph 3 cm × 4 cm.
@@ -29,14 +29,20 @@ enum GovDocType {
 
   /// Personal photograph 4 cm × 6 cm.
   personalPhoto4x6,
+
+  /// Schengen / EU / UK Passport Photo 3.5 cm × 4.5 cm (35×45 mm).
+  personalPhoto35x45,
+
+  /// US Visa / Green Card / India 2 × 2 inches (5.08 cm × 5.08 cm).
+  personalPhoto2x2,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Service
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Builds PDF layouts and image presets tailored for Egyptian government
-/// submission portals.
+/// Builds PDF layouts and image presets conforming to international identity
+/// standards and official submission portal specifications.
 ///
 /// All PDF files are written to the application documents directory and their
 /// paths are returned so the caller can share/print them.
@@ -45,27 +51,32 @@ class GovernmentPresetService {
 
   // ── Portal compression presets ─────────────────────────────────────────────
 
-  /// Common Egyptian portal file-size limits with icons for use in a UI list.
+  /// Universal portal and email file-size limits with icons for use in a UI list.
   static const List<({String label, int kb, IconData icon})> portalPresets = [
     (
-      label: 'بوابة ميزانية الدولة (<100KB)',
+      label: 'ضغط فائق للمواقع المحدودة (<100KB)',
       kb: 100,
-      icon: Icons.account_balance_rounded,
+      icon: Icons.speed_rounded,
     ),
     (
-      label: 'معظم البوابات الحكومية (<200KB)',
+      label: 'معظم بوابات التوظيف والخدمات (<200KB)',
       kb: 200,
       icon: Icons.admin_panel_settings_rounded,
     ),
     (
-      label: 'منصة الشهادات والتراخيص (<500KB)',
+      label: 'منصات التأشيرات والسفارات والجامعات (<500KB)',
       kb: 500,
       icon: Icons.workspace_premium_rounded,
     ),
     (
-      label: 'البريد المصري الإلكتروني (<1MB)',
+      label: 'البريد والمراسلات القياسية (<1MB)',
       kb: 1024,
       icon: Icons.email_rounded,
+    ),
+    (
+      label: 'جودة عالية للأرشفة الرسمية (<2MB)',
+      kb: 2048,
+      icon: Icons.high_quality_rounded,
     ),
   ];
 
@@ -81,18 +92,19 @@ class GovernmentPresetService {
     }
   }
 
-  /// Creates an A4 PDF with the national-ID front image on the top half and
+  /// Creates an A4 PDF with the identity card front image on the top half and
   /// the back image on the bottom half.
   ///
   /// Features:
   /// - Exact official dimensions: ID-1 standard (85.6 mm × 53.98 mm) or enlarged (1.35x)
   /// - Centered layout with card frames and rounded corners
-  /// - Egyptian national header and cut guideline separator (✂)
+  /// - International standard header and cut guideline separator (✂)
   /// - Official verification footer
   Future<String> buildNationalIdA4(
     String frontImagePath,
     String backImagePath, {
     bool isActualSize = false,
+    String? title,
   }) async {
     final frontBytes = await File(frontImagePath).readAsBytes();
     final backBytes = await File(backImagePath).readAsBytes();
@@ -132,19 +144,18 @@ class GovernmentPresetService {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'جمهورية مصر العربية',
+                      title ?? 'وثيقة إثبات الهوية الرسمية',
                       textDirection: pw.TextDirection.rtl,
                       style: pw.TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: pw.FontWeight.bold,
                         color: PdfColors.blueGrey900,
                       ),
                     ),
                     pw.Text(
-                      'بطاقة تحقيق الشخصية (الرقم القومي)',
-                      textDirection: pw.TextDirection.rtl,
+                      'OFFICIAL IDENTITY CARD (ISO/IEC 7810 ID-1)',
                       style: pw.TextStyle(
-                        fontSize: 13,
+                        fontSize: 10,
                         fontWeight: pw.FontWeight.bold,
                         color: PdfColors.blue900,
                       ),
@@ -229,7 +240,7 @@ class GovernmentPresetService {
                       ),
                     ),
                     pw.Text(
-                      'خط القص الرسمي للتقديم',
+                      'خط القص القياسي المعتمد',
                       textDirection: pw.TextDirection.rtl,
                       style: const pw.TextStyle(
                         fontSize: 9,
@@ -309,7 +320,7 @@ class GovernmentPresetService {
                       ),
                     ),
                     pw.Text(
-                      'مسح ضوئي ذكي معتمد • بدون إنترنت',
+                      'نسخة رسمية معتمدة • مسح ضوئي عالي الدقة',
                       textDirection: pw.TextDirection.rtl,
                       style: const pw.TextStyle(
                         fontSize: 8.5,
@@ -325,11 +336,14 @@ class GovernmentPresetService {
       ),
     );
 
-    return _savePdf(pdf, 'national_id_a4');
+    return _savePdf(pdf, 'identity_card_a4');
   }
 
   /// Creates an A4 PDF with [imagePath] centred on the page with official framing.
-  Future<String> buildPassportPage(String imagePath) async {
+  Future<String> buildPassportPage(
+    String imagePath, {
+    bool isLandscape = false,
+  }) async {
     final bytes = await File(imagePath).readAsBytes();
     final font = await _loadCairoFont();
 
@@ -342,13 +356,13 @@ class GovernmentPresetService {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 36),
+        pageFormat: isLandscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 36, vertical: 32),
         build: (context) => pw.Column(
           children: [
             pw.Container(
               padding: const pw.EdgeInsets.only(bottom: 12),
-              margin: const pw.EdgeInsets.only(bottom: 24),
+              margin: const pw.EdgeInsets.only(bottom: 20),
               decoration: const pw.BoxDecoration(
                 border: pw.Border(
                   bottom: pw.BorderSide(color: PdfColors.grey400, width: 1),
@@ -358,7 +372,7 @@ class GovernmentPresetService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'جمهورية مصر العربية - وثيقة سفر',
+                    'وثيقة سفر رسمية - صورة الجواز',
                     textDirection: pw.TextDirection.rtl,
                     style: pw.TextStyle(
                       fontSize: 13,
@@ -367,9 +381,9 @@ class GovernmentPresetService {
                     ),
                   ),
                   pw.Text(
-                    'PASSPORT COPY',
+                    'PASSPORT COPY (ICAO DOC 9303)',
                     style: pw.TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.blue900,
                     ),
@@ -400,7 +414,7 @@ class GovernmentPresetService {
             ),
             pw.SizedBox(height: 16),
             pw.Text(
-              'نسخة معتمدة مطابقة لأصل وثيقة السفر لغايات استخراج التأشيرات والتقديم الرسمي',
+              'نسخة معتمدة مطابقة لأصل وثيقة السفر لغايات استخراج التأشيرات والتقديم الرسمي والدولي',
               textDirection: pw.TextDirection.rtl,
               style: const pw.TextStyle(
                 fontSize: 9,
@@ -415,8 +429,11 @@ class GovernmentPresetService {
     return _savePdf(pdf, 'passport_page');
   }
 
-  /// Creates a **landscape** A4 PDF with [imagePath] centred with an official certificate border.
-  Future<String> buildCertificatePage(String imagePath) async {
+  /// Creates an A4 PDF with [imagePath] centred with an official document border.
+  Future<String> buildCertificatePage(
+    String imagePath, {
+    bool isLandscape = true,
+  }) async {
     final bytes = await File(imagePath).readAsBytes();
     final font = await _loadCairoFont();
 
@@ -429,7 +446,7 @@ class GovernmentPresetService {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4.landscape,
+        pageFormat: isLandscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(28),
         build: (context) => pw.Container(
           padding: const pw.EdgeInsets.all(12),
@@ -458,7 +475,7 @@ class GovernmentPresetService {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'شهادة رسمية موثقة - صالحة للجهات الحكومية والجامعات',
+                      'وثيقة رسمية معتمدة - صالحة للجهات الحكومية والجامعات والشركات',
                       textDirection: pw.TextDirection.rtl,
                       style: const pw.TextStyle(
                         fontSize: 9,
@@ -466,7 +483,7 @@ class GovernmentPresetService {
                       ),
                     ),
                     pw.Text(
-                      'OFFICIAL CERTIFICATE ARCHIVE',
+                      'OFFICIAL CERTIFICATE & ARCHIVE',
                       style: const pw.TextStyle(
                         fontSize: 8.5,
                         color: PdfColors.grey600,
@@ -486,26 +503,15 @@ class GovernmentPresetService {
 
   /// Creates an A4 PDF with a grid of copies of [imagePath].
   ///
-  /// | [type]            | Photo size | Grid   | Copies |
-  /// |-------------------|-----------|--------|--------|
-  /// | personalPhoto3x4  | 3 × 4 cm  | 4 × 2  | 8      |
-  /// | personalPhoto4x6  | 4 × 6 cm  | 2 × 2  | 4      |
-  ///
-  /// Features:
-  /// - Exact physical dimensions (1 cm ≈ 28.346 pt)
-  /// - Centered on A4 sheet
-  /// - Scissor cut borders (line outline) for easy scissors cutting
-  /// - Official sheet header and footer
+  /// Supports:
+  /// - [GovDocType.personalPhoto3x4]: 3 × 4 cm (8 copies, 4×2)
+  /// - [GovDocType.personalPhoto4x6]: 4 × 6 cm (4 copies, 2×2)
+  /// - [GovDocType.personalPhoto35x45]: 3.5 × 4.5 cm (8 copies, 4×2) - Schengen/UK/EU
+  /// - [GovDocType.personalPhoto2x2]: 5.08 × 5.08 cm (6 copies, 3×2) - US Visa / 2x2"
   Future<String> buildPersonalPhotoGrid(
     String imagePath,
     GovDocType type,
   ) async {
-    assert(
-      type == GovDocType.personalPhoto3x4 ||
-          type == GovDocType.personalPhoto4x6,
-      'buildPersonalPhotoGrid only supports personalPhoto3x4 and personalPhoto4x6',
-    );
-
     final bytes = await File(imagePath).readAsBytes();
     final memImage = pw.MemoryImage(bytes);
     final font = await _loadCairoFont();
@@ -518,7 +524,7 @@ class GovernmentPresetService {
 
     // Physical sizes in PDF points (1 pt = 1/72 inch; 1 cm ≈ 28.346 pt)
     const cmToPt = 28.3465;
-    const spacingPt = 10.0;
+    const spacingPt = 12.0;
 
     final double photoW;
     final double photoH;
@@ -527,20 +533,46 @@ class GovernmentPresetService {
     final String typeTitle;
     final String typeDesc;
 
-    if (type == GovDocType.personalPhoto3x4) {
-      photoW = 3.0 * cmToPt; // 85.04 pt
-      photoH = 4.0 * cmToPt; // 113.39 pt
-      cols = 4;
-      rows = 2;
-      typeTitle = 'استوديو الصور الشخصية - مقاس 3×4 سم (8 صور)';
-      typeDesc = 'مخصصة لبطاقة الرقم القومي، رخص القيادة، والكارنيهات الجامعية';
-    } else {
-      photoW = 4.0 * cmToPt; // 113.39 pt
-      photoH = 6.0 * cmToPt; // 170.08 pt
-      cols = 2;
-      rows = 2;
-      typeTitle = 'استوديو الصور الشخصية - مقاس 4×6 سم (4 صور)';
-      typeDesc = 'مخصصة لجوازات السفر، السفارات، واستمارات التقدم الرسمية';
+    switch (type) {
+      case GovDocType.personalPhoto3x4:
+        photoW = 3.0 * cmToPt; // 85.04 pt
+        photoH = 4.0 * cmToPt; // 113.39 pt
+        cols = 4;
+        rows = 2;
+        typeTitle = 'استوديو الصور الشخصية - مقاس 3×4 سم (8 صور)';
+        typeDesc = 'مخصصة لبطاقات الهوية، رخص القيادة، والكارنيهات';
+        break;
+      case GovDocType.personalPhoto4x6:
+        photoW = 4.0 * cmToPt; // 113.39 pt
+        photoH = 6.0 * cmToPt; // 170.08 pt
+        cols = 2;
+        rows = 2;
+        typeTitle = 'استوديو الصور الشخصية - مقاس 4×6 سم (4 صور)';
+        typeDesc = 'مخصصة لجوازات السفر واستمارات التقديم والمعاملات الرسمية';
+        break;
+      case GovDocType.personalPhoto35x45:
+        photoW = 3.5 * cmToPt; // 99.21 pt
+        photoH = 4.5 * cmToPt; // 127.56 pt
+        cols = 4;
+        rows = 2;
+        typeTitle = 'استوديو صور التأشيرة - مقاس 35×45 مم (8 صور)';
+        typeDesc = 'معتمدة لتأشيرات شنغن الأوروبية، بريطانيا، كندا، وأستراليا';
+        break;
+      case GovDocType.personalPhoto2x2:
+        photoW = 5.08 * cmToPt; // 144 pt (2 inches)
+        photoH = 5.08 * cmToPt; // 144 pt (2 inches)
+        cols = 3;
+        rows = 2;
+        typeTitle = 'استوديو صور التأشيرة - مقاس 2×2 بوصة / 5×5 سم (6 صور)';
+        typeDesc = 'معتمدة لتأشيرات الولايات المتحدة الأمريكية (US Visa) والجرين كارد والهند';
+        break;
+      default:
+        photoW = 4.0 * cmToPt;
+        photoH = 6.0 * cmToPt;
+        cols = 2;
+        rows = 2;
+        typeTitle = 'استوديو الصور الشخصية (4 صور)';
+        typeDesc = 'مجهزة للطباعة المباشرة على ورقة A4';
     }
 
     pdf.addPage(
@@ -649,7 +681,23 @@ class GovernmentPresetService {
       ),
     );
 
-    final label = type == GovDocType.personalPhoto3x4 ? '3x4' : '4x6';
+    final String label;
+    switch (type) {
+      case GovDocType.personalPhoto3x4:
+        label = '3x4';
+        break;
+      case GovDocType.personalPhoto4x6:
+        label = '4x6';
+        break;
+      case GovDocType.personalPhoto35x45:
+        label = '35x45mm';
+        break;
+      case GovDocType.personalPhoto2x2:
+        label = '2x2inch';
+        break;
+      default:
+        label = 'custom';
+    }
     return _savePdf(pdf, 'photo_grid_$label');
   }
 
