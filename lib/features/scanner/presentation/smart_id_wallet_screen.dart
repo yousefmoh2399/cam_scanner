@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../data/native_scanner_bridge.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/smart_id_wallet_service.dart';
+import 'id_card_a4_screen.dart';
 
 class SmartIdWalletScreen extends ConsumerStatefulWidget {
   const SmartIdWalletScreen({super.key});
@@ -81,21 +82,17 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
     }
   }
 
-  Future<void> _printA4Sheet(SmartIdCard card) async {
-    HapticFeedback.mediumImpact();
-    try {
-      final pdfBytes = await _walletService.buildA4PrintSheetPdf(card);
-      await Printing.layoutPdf(
-        onLayout: (_) => pdfBytes,
-        name: '${card.title}_A4_Print_Sheet.pdf',
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تعذر تجهيز الورقة للطباعة: $e')),
-        );
-      }
-    }
+  void _openInIdCardA4Studio(SmartIdCard card) {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => IdCardA4Screen(
+          initialFrontPath: card.frontImagePath,
+          initialBackPath: card.backImagePath,
+          initialTitle: card.title,
+        ),
+      ),
+    );
   }
 
   void _shareCardImages(SmartIdCard card) {
@@ -521,9 +518,9 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
                 // Print A4 Sheet with Crop Marks
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _printA4Sheet(card),
-                    icon: const Icon(Icons.crop_rounded, size: 16),
-                    label: const Text('ورقة A4 للقص'),
+                    onPressed: () => _openInIdCardA4Studio(card),
+                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+                    label: const Text('ورقة A4 (1:1)'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       shape: RoundedRectangleBorder(

@@ -14,6 +14,7 @@ import '../../../shared/providers/providers.dart';
 import '../data/government_preset_service.dart';
 import '../data/native_scanner_bridge.dart';
 import 'widgets/apple_bottom_nav_bar.dart';
+import 'id_card_a4_screen.dart';
 
 /// Available document modes in the official studio.
 enum OfficialDocMode {
@@ -81,7 +82,7 @@ class _GovernmentDocumentsScreenState
   // ── ID Card State ──
   String? _idFrontPath;
   String? _idBackPath;
-  bool _idActualSize = false; // false = 1.35x enlarged, true = 1:1 ISO scale
+  bool _idActualSize = true; // default: true = 1:1 ISO scale (85.6mm x 53.98mm)
 
   // ── Passport State ──
   String? _passportImagePath;
@@ -976,7 +977,70 @@ class _GovernmentDocumentsScreenState
           accentColor: const Color(0xFF007AFF),
           isDark: isDark,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
+
+        // Banner to launch advanced A4 studio
+        InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => IdCardA4Screen(
+                  initialFrontPath: _idFrontPath,
+                  initialBackPath: _idBackPath,
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                    : [const Color(0xFFEFF6FF), const Color(0xFFDBEAFE)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF007AFF).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Color(0xFF007AFF),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'استوديو A4 المتقدم للهوية (1:1)',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                      ),
+                      Text(
+                        'تخطيطات متعددة (بجانب بعض/رأسي)، علامات أمنية ضد التزوير، ومعاينة حية',
+                        style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF007AFF)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
 
         // Dual Slots Card
         Container(

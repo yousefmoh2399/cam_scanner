@@ -14,6 +14,7 @@ import '../government_documents_screen.dart';
 import '../scanner_session_screen.dart';
 import '../tools_hub_screen.dart';
 import '../vault_screen.dart';
+import '../id_card_a4_screen.dart';
 
 /// An Apple Human Interface Guidelines bottom navigation bar featuring:
 /// - Frosted glass blur backdrop filter
@@ -344,15 +345,13 @@ class AppleBottomNavBar extends ConsumerWidget {
                     sheetCtx: sheetCtx,
                     icon: Icons.badge_rounded,
                     color: const Color(0xFF5856D6),
-                    title: 'مسح بطاقة هوية (وش وضهر A4)',
-                    subtitle: 'دمج فوري بمقاس ID-1 القياسي للبنوك والسفارات',
+                    title: 'بطاقة هوية وش وظهر A4 (مقياس 1:1)',
+                    subtitle: 'دمج بالأبعاد الطبيعية الحقيقية مع علامة أمنية وطباعة فورية',
                     onTap: () {
                       Navigator.pop(sheetCtx);
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const GovernmentDocumentsScreen(
-                            initialMode: OfficialDocMode.idCard,
-                          ),
+                          builder: (_) => const IdCardA4Screen(),
                         ),
                       );
                     },

@@ -38,6 +38,7 @@ import 'widgets/pdf_security_sheet.dart';
 import 'book_curve_flattener_screen.dart';
 import 'smart_id_wallet_screen.dart';
 import 'transferred_files_screen.dart';
+import 'id_card_a4_screen.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -125,13 +126,13 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Government & Official Category ──
     ToolItem(
       id: 'gov_id_card',
-      title: 'بطاقة الهوية والقيادة',
-      subtitle: 'دمج وجهي البطاقة في ورقة A4 بمقاييس دولية',
+      title: 'بطاقة وش وظهر A4 (مقياس 1:1)',
+      subtitle: 'دمج وجهي البطاقة في A4 بالأبعاد الحقيقية 1:1 مع علامة أمنية وطباعة فورية',
       category: ToolCategory.government,
       icon: Icons.badge_rounded,
-      badge: 'ISO ID-1',
+      badge: 'مقياس 1:1',
       accentColor: Color(0xFF007AFF),
-      keywords: ['بطاقة', 'هوية', 'رخصة', 'قيادة', 'إقامة', 'id', 'وش وضهر', 'رسمي'],
+      keywords: ['بطاقة', 'هوية', 'رخصة', 'قيادة', 'إقامة', 'id', 'وش وضهر', 'رسمي', 'a4', '1:1', 'طباعة'],
     ),
     ToolItem(
       id: 'gov_passport_cert',
@@ -463,9 +464,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       case 'gov_id_card':
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => const GovernmentDocumentsScreen(
-              initialMode: OfficialDocMode.idCard,
-            ),
+            builder: (_) => const IdCardA4Screen(),
           ),
         );
         break;
