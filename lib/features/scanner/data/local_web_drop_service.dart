@@ -292,7 +292,7 @@ class LocalWebDropService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CamScanner Web Drop • نقل المستندات عبر الواي فاي</title>
+  <title> Web Drop • نقل المستندات عبر الواي فاي</title>
   <style>
     :root {
       --bg: #F5F5F7;
@@ -363,7 +363,7 @@ class LocalWebDropService {
     <div class="logo-box">
       <div class="logo-icon">📄</div>
       <div class="logo-text">
-        <h1>CamScanner Web Drop</h1>
+        <h1> Web Drop</h1>
         <p>نقل مباشر للمستندات بين الهاتف والكمبيوتر عبر الواي فاي</p>
       </div>
     </div>

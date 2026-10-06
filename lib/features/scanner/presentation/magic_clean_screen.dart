@@ -12,9 +12,11 @@ class MagicCleanScreen extends StatefulWidget {
   const MagicCleanScreen({
     super.key,
     required this.imagePath,
+    this.autoRemoveShadow = false,
   });
 
   final String imagePath;
+  final bool autoRemoveShadow;
 
   @override
   State<MagicCleanScreen> createState() => _MagicCleanScreenState();
@@ -53,6 +55,13 @@ class _MagicCleanScreenState extends State<MagicCleanScreen> {
           _currentBytes = bytes;
           _isLoading = false;
         });
+        if (widget.autoRemoveShadow) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _autoRemoveShadowAndGlare();
+            }
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -227,6 +236,39 @@ class _MagicCleanScreenState extends State<MagicCleanScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('خطأ أثناء المعالجة: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _autoRemoveShadowAndGlare() async {
+    setState(() => _isProcessing = true);
+    HapticFeedback.mediumImpact();
+
+    try {
+      final cleanedBytes = await _service.removeShadowAndGlare(
+        imageBytes: _currentBytes,
+      );
+
+      if (mounted) {
+        setState(() {
+          _pushUndo(cleanedBytes);
+          _strokes.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ تمت إزالة ظل الهاتف وضبط الإضاءة بنجاح'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Color(0xFF34C759),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ أثناء إزالة الظل: $e')),
         );
       }
     } finally {
@@ -459,38 +501,53 @@ class _MagicCleanScreenState extends State<MagicCleanScreen> {
                           ],
 
                           // Tool Action Bar
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _buildToolButton(
-                                icon: Icons.brush_rounded,
-                                label: 'الممحاة اليدوية',
-                                isSelected: _isBrushMode,
-                                onTap: () => setState(() => _isBrushMode = !_isBrushMode),
-                                accentColor: palette.accent,
-                              ),
-                              _buildToolButton(
-                                icon: Icons.back_hand_rounded,
-                                label: 'إزالة الأصابع',
-                                isSelected: false,
-                                onTap: _autoRemoveFingers,
-                                accentColor: const Color(0xFF34C759),
-                              ),
-                              _buildToolButton(
-                                icon: Icons.radio_button_checked_rounded,
-                                label: 'ثقوب الملفات',
-                                isSelected: false,
-                                onTap: _autoRemovePunchHoles,
-                                accentColor: const Color(0xFFFF9500),
-                              ),
-                              _buildToolButton(
-                                icon: Icons.cleaning_services_rounded,
-                                label: 'تبييض الورقة',
-                                isSelected: false,
-                                onTap: _autoWhitenBackground,
-                                accentColor: const Color(0xFF5856D6),
-                              ),
-                            ],
+                          SizedBox(
+                            height: 74,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              children: [
+                                _buildToolButton(
+                                  icon: Icons.brush_rounded,
+                                  label: 'الممحاة اليدوية',
+                                  isSelected: _isBrushMode,
+                                  onTap: () => setState(() => _isBrushMode = !_isBrushMode),
+                                  accentColor: palette.accent,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildToolButton(
+                                  icon: Icons.wb_sunny_rounded,
+                                  label: 'إزالة ظل الهاتف',
+                                  isSelected: false,
+                                  onTap: _autoRemoveShadowAndGlare,
+                                  accentColor: const Color(0xFFFF9500),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildToolButton(
+                                  icon: Icons.back_hand_rounded,
+                                  label: 'إزالة الأصابع',
+                                  isSelected: false,
+                                  onTap: _autoRemoveFingers,
+                                  accentColor: const Color(0xFF34C759),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildToolButton(
+                                  icon: Icons.radio_button_checked_rounded,
+                                  label: 'ثقوب الملفات',
+                                  isSelected: false,
+                                  onTap: _autoRemovePunchHoles,
+                                  accentColor: const Color(0xFFFF2D55),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildToolButton(
+                                  icon: Icons.cleaning_services_rounded,
+                                  label: 'تبييض الورقة',
+                                  isSelected: false,
+                                  onTap: _autoWhitenBackground,
+                                  accentColor: const Color(0xFF5856D6),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

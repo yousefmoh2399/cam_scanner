@@ -22,6 +22,7 @@ import 'document_viewer_screen.dart';
 import 'scanner_session_screen.dart';
 import 'trash_screen.dart';
 import 'vault_screen.dart';
+import 'web_drop_screen.dart';
 import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
@@ -1384,6 +1385,38 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ],
               ),
               actions: [
+                // Web Drop / نقل للكمبيوتر محلياً
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Tooltip(
+                    message: 'نقل للكمبيوتر محلياً (Web Drop)',
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const WebDropScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.wifi_tethering_rounded,
+                          size: 19,
+                          color: Color(0xFF007AFF),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
                 // Trash / سلة المحذوفات button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -1714,6 +1747,80 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
               ),
             ),
+
+            // ── Quick Web Drop Capsule Banner (When not searching) ──
+            if (_searchQuery.trim().isEmpty && _activeFolderId == null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const WebDropScreen(),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF0F5FF),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.22),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF007AFF).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.wifi_tethering_rounded,
+                              size: 19,
+                              color: Color(0xFF007AFF),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'نقل للكمبيوتر والماك (Web Drop)',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                    color: Color(0xFF007AFF),
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'تصفح وحمل ملفاتك أو اسحب ملفات جديدة عبر المتصفح محلياً',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF8E8E93),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 13,
+                            color: Color(0xFF007AFF),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
             // ── Highlighted OCR Snippets when searching inside pages ──
             if (_searchQuery.trim().isNotEmpty && _ocrSearchHits.isNotEmpty)

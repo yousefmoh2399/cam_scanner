@@ -214,7 +214,7 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
 • الكلمات المضافة (+): ${r.addedCount}
 • الكلمات المحذوفة (-): ${r.deletedCount}
 
-تم الفحص بنجاح بدون إنترنت بواسطة تطبيق CamScanner Pro.
+تم الفحص بنجاح بدون إنترنت بواسطة تطبيق  .
 ''';
     Share.share(summary, subject: 'تقرير مقارنة الفروقات بين المستندات');
   }

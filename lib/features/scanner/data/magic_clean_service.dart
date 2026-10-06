@@ -349,4 +349,116 @@ class MagicCleanService {
 
     return Uint8List.fromList(img.encodeJpg(image, quality: 92));
   }
+
+  /// Automatically detects and eliminates uneven room lighting and harsh phone shadows
+  Future<Uint8List> removeShadowAndGlare({
+    required Uint8List imageBytes,
+  }) async {
+    return compute(_shadowGlareIsolate, {
+      'bytes': imageBytes,
+    });
+  }
+
+  static Uint8List _shadowGlareIsolate(Map<String, dynamic> params) {
+    final rawBytes = params['bytes'] as Uint8List;
+    final image = img.decodeImage(rawBytes);
+    if (image == null) return rawBytes;
+
+    final w = image.width;
+    final h = image.height;
+
+    // 1. Build downsampled 2D illumination grid (approx. 40x40 blocks)
+    const gridSize = 40;
+    final gridCols = (w / gridSize).ceil();
+    final gridRows = (h / gridSize).ceil();
+    final lightMap = List.generate(gridRows, (_) => List<double>.filled(gridCols, 240.0));
+
+    // Sample the brightest pixels in each block to model local background paper luminance
+    for (int gy = 0; gy < gridRows; gy++) {
+      final startY = gy * gridSize;
+      final endY = math.min(h, startY + gridSize);
+
+      for (int gx = 0; gx < gridCols; gx++) {
+        final startX = gx * gridSize;
+        final endX = math.min(w, startX + gridSize);
+
+        int count = 0;
+        double sumLum = 0;
+
+        for (int y = startY; y < endY; y += 3) {
+          for (int x = startX; x < endX; x += 3) {
+            final p = image.getPixel(x, y);
+            final lum = 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+            if (lum > 140) {
+              sumLum += lum;
+              count++;
+            }
+          }
+        }
+
+        lightMap[gy][gx] = count > 0 ? (sumLum / count).clamp(90.0, 255.0) : 230.0;
+      }
+    }
+
+    // 2. Smooth the illumination grid to eliminate sharp cell boundaries
+    final smoothedLight = List.generate(gridRows, (_) => List<double>.filled(gridCols, 240.0));
+    for (int gy = 0; gy < gridRows; gy++) {
+      for (int gx = 0; gx < gridCols; gx++) {
+        double sum = 0;
+        int neighbours = 0;
+        for (int dy = -1; dy <= 1; dy++) {
+          for (int dx = -1; dx <= 1; dx++) {
+            final ny = gy + dy;
+            final nx = gx + dx;
+            if (ny >= 0 && ny < gridRows && nx >= 0 && nx < gridCols) {
+              sum += lightMap[ny][nx];
+              neighbours++;
+            }
+          }
+        }
+        smoothedLight[gy][gx] = sum / neighbours;
+      }
+    }
+
+    // 3. Normalize pixels by local illumination field
+    for (int y = 0; y < h; y++) {
+      final gy = ((y / h) * gridRows).floor().clamp(0, gridRows - 1);
+
+      for (int x = 0; x < w; x++) {
+        final gx = ((x / w) * gridCols).floor().clamp(0, gridCols - 1);
+        final localPaperLight = smoothedLight[gy][gx];
+
+        final p = image.getPixel(x, y);
+        final lum = 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+
+        // If it's dark ink (text, signature, stamp), keep it dark and sharp
+        if (lum < 110) {
+          const darkScale = 0.88;
+          image.setPixelRgb(
+            x,
+            y,
+            (p.r * darkScale).round(),
+            (p.g * darkScale).round(),
+            (p.b * darkScale).round(),
+          );
+        } else {
+          // Normalize background paper by dividing out shadow gradient
+          final scale = 255.0 / localPaperLight;
+          final normR = (p.r * scale).round().clamp(0, 255);
+          final normG = (p.g * scale).round().clamp(0, 255);
+          final normB = (p.b * scale).round().clamp(0, 255);
+
+          // If normalized pixel is near paper level, whiten it completely
+          final normLum = 0.299 * normR + 0.587 * normG + 0.114 * normB;
+          if (normLum > 200) {
+            image.setPixelRgb(x, y, 255, 255, 255);
+          } else {
+            image.setPixelRgb(x, y, normR, normG, normB);
+          }
+        }
+      }
+    }
+
+    return Uint8List.fromList(img.encodeJpg(image, quality: 92));
+  }
 }

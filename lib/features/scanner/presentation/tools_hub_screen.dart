@@ -33,6 +33,7 @@ import 'document_diff_screen.dart';
 import 'magic_clean_screen.dart';
 import 'stamp_studio_screen.dart';
 import 'web_drop_screen.dart';
+import 'smart_contract_studio_screen.dart';
 import 'widgets/pdf_security_sheet.dart';
 
 /// Categories for organizing tools in the hub
@@ -159,6 +160,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       accentColor: Color(0xFFFF2D55),
       keywords: ['ضغط', 'بوابات', 'تقديم', 'سفارات', 'توظيف', 'حجم', 'مستند'],
     ),
+    ToolItem(
+      id: 'gov_smart_contracts',
+      title: 'استوديو العقود والقوالب الذكية',
+      subtitle: 'توليد عقود بيع وإيجار وإيصالات أمانة وتفقيط المبالغ',
+      category: ToolCategory.government,
+      icon: Icons.gavel_rounded,
+      badge: 'قوالب قانونية',
+      accentColor: Color(0xFF5856D6),
+      keywords: ['عقد', 'عقود', 'إيجار', 'بيع', 'أمانة', 'إيصال', 'شقة', 'سيارة', 'قانوني'],
+    ),
 
     // ── Intelligence & Extraction Category ──
     ToolItem(
@@ -200,6 +211,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       badge: 'ذكاء محلي',
       accentColor: Color(0xFFFF2D55),
       keywords: ['ممحاة', 'أصابع', 'ثقوب', 'دباسة', 'بقع', 'تنظيف', 'ورق', 'magic', 'clean'],
+    ),
+    ToolItem(
+      id: 'ai_shadow_remover',
+      title: 'إزالة ظل الهاتف وضبط الإضاءة',
+      subtitle: 'معادلة الإضاءة وإزالة ظلال اليد لتسوية خلفية الورقة',
+      category: ToolCategory.intelligence,
+      icon: Icons.wb_sunny_rounded,
+      badge: 'Shadow Killer',
+      accentColor: Color(0xFFFF9500),
+      keywords: ['ظل', 'ظلال', 'إضاءة', 'هاتف', 'نور', 'فلاش', 'shadow', 'glare'],
     ),
     ToolItem(
       id: 'ai_doc_diff',
@@ -544,6 +565,18 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       case 'sec_pdf_lock':
         _showPdfSecurityLauncher();
         break;
+
+      case 'gov_smart_contracts':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const SmartContractStudioScreen(),
+          ),
+        );
+        break;
+
+      case 'ai_shadow_remover':
+        _showShadowRemoverLauncher();
+        break;
     }
   }
 
@@ -623,6 +656,95 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => MagicCleanScreen(imagePath: doc.pages.first.imagePath),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showShadowRemoverLauncher() async {
+    final docs = ref.read(pendingUploadsControllerProvider).value ?? [];
+    if (docs.isEmpty) {
+      final res = await FilePicker.platform.pickFiles(type: FileType.image);
+      if (res != null && res.files.single.path != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MagicCleanScreen(
+              imagePath: res.files.single.path!,
+              autoRemoveShadow: true,
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'إزالة ظل الهاتف: اختر مستند لتسوية إضاءته',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFFF9500)),
+              title: const Text('اختيار صورة من معرض الصور'),
+              onTap: () => Navigator.pop(ctx, 'pick_external'),
+            ),
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                itemCount: docs.length,
+                itemBuilder: (c, idx) {
+                  final d = docs[idx];
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.wb_sunny_rounded, color: Color(0xFFFF9500)),
+                    title: Text(d.fileName, maxLines: 1),
+                    subtitle: Text('${d.pageCount} صفحة'),
+                    onTap: () => Navigator.pop(ctx, d.id),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == null || !mounted) return;
+
+    if (choice == 'pick_external') {
+      final res = await FilePicker.platform.pickFiles(type: FileType.image);
+      if (res != null && res.files.single.path != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MagicCleanScreen(
+              imagePath: res.files.single.path!,
+              autoRemoveShadow: true,
+            ),
+          ),
+        );
+      }
+    } else {
+      final doc = docs.firstWhere((d) => d.id == choice);
+      if (doc.pages.isNotEmpty && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MagicCleanScreen(
+              imagePath: doc.pages.first.imagePath,
+              autoRemoveShadow: true,
+            ),
           ),
         );
       }
@@ -1661,7 +1783,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final childAspectRatio =
-        isTablet ? 0.95 : (screenWidth < 370 ? 0.76 : 0.82);
+        isTablet ? 1.55 : (screenWidth < 370 ? 1.30 : 1.42);
 
     final isDefaultGroupedView =
         _selectedCategory == ToolCategory.all && _searchQuery.trim().isEmpty;
@@ -2249,51 +2371,54 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.12)
-              : Colors.black.withValues(alpha: 0.08),
-          width: 0.5,
+              ? Colors.white.withValues(alpha: 0.10)
+              : Colors.black.withValues(alpha: 0.07),
+          width: 0.6,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 8,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => _onToolSelected(tool),
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _onToolSelected(tool);
+          },
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top Row: Icon + Badge
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      width: 42,
-                      height: 42,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         color: tool.accentColor.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         tool.icon,
                         color: tool.accentColor,
-                        size: 22,
+                        size: 18,
                       ),
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
+                        horizontal: 6,
+                        vertical: 2.5,
                       ),
                       decoration: BoxDecoration(
                         color: tool.accentColor.withValues(alpha: 0.12),
@@ -2302,7 +2427,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       child: Text(
                         tool.badge,
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 9,
                           fontWeight: FontWeight.w800,
                           color: tool.accentColor,
                         ),
@@ -2310,64 +2435,36 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
                 // Title
                 Text(
                   tool.title,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                    height: 1.25,
+                    fontSize: 12.5,
+                    height: 1.2,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
 
                 // Subtitle
                 Expanded(
                   child: Text(
                     tool.subtitle,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withValues(alpha: 0.65),
-                      height: 1.35,
+                          .withValues(alpha: 0.60),
+                      height: 1.25,
                     ),
-                    maxLines: 3,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 6),
-
-                // Bottom Action Row
-                Row(
-                  children: [
-                    Text(
-                      'فتح الأداة',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: tool.accentColor,
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: tool.accentColor.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 11,
-                        color: tool.accentColor,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -2386,10 +2483,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     required AppThemePalette palette,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E22) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
@@ -2397,38 +2494,41 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => _onToolSelected(tool),
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _onToolSelected(tool);
+          },
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Tool Icon Box
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: tool.accentColor.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(
                     tool.icon,
                     color: tool.accentColor,
-                    size: 25,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
 
                 // Tool Content
                 Expanded(
@@ -2437,78 +2537,62 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     children: [
                       Row(
                         children: [
+                          Expanded(
+                            child: Text(
+                              tool.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2.5,
+                              horizontal: 6,
+                              vertical: 2,
                             ),
                             decoration: BoxDecoration(
                               color: tool.accentColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                             child: Text(
                               tool.badge,
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w800,
                                 color: tool.accentColor,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            tool.category.label,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.45),
-                            ),
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        tool.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         tool.subtitle,
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 10.5,
                           color: Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withValues(alpha: 0.65),
-                          height: 1.35,
+                              .withValues(alpha: 0.60),
                         ),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: tool.accentColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 12,
-                    color: tool.accentColor,
-                  ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 13,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.3),
                 ),
               ],
             ),
