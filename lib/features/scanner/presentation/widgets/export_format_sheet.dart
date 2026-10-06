@@ -476,29 +476,39 @@ class _SaveAndExportSheetContentState
                           'ضغط الحجم:',
                           style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
                         ),
-                        const Spacer(),
-                        DropdownButtonHideUnderline(
-                          child: DropdownButton<PdfCompressionPreset>(
-                            value: _compressionPreset,
-                            isDense: true,
-                            borderRadius: BorderRadius.circular(12),
-                            items: PdfCompressionPreset.values
-                                .map(
-                                  (preset) => DropdownMenuItem(
-                                    value: preset,
-                                    child: Text(
-                                      preset.labelAr,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                HapticFeedback.selectionClick();
-                                setState(() => _compressionPreset = val);
-                              }
-                            },
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<PdfCompressionPreset>(
+                                value: _compressionPreset,
+                                isDense: true,
+                                isExpanded: true,
+                                alignment: AlignmentDirectional.centerEnd,
+                                borderRadius: BorderRadius.circular(12),
+                                items: PdfCompressionPreset.values
+                                    .map(
+                                      (preset) => DropdownMenuItem(
+                                        value: preset,
+                                        alignment: AlignmentDirectional.centerEnd,
+                                        child: Text(
+                                          preset.labelAr,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    HapticFeedback.selectionClick();
+                                    setState(() => _compressionPreset = val);
+                                  }
+                                },
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -523,7 +533,9 @@ class _SaveAndExportSheetContentState
                       ),
                     ],
                     const Divider(height: 12, thickness: 0.5),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         InkWell(
                           onTap: () {
