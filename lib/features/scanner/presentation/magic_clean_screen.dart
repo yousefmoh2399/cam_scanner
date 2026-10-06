@@ -419,6 +419,9 @@ class _MagicCleanScreenState extends State<MagicCleanScreen> {
                                     Image.memory(
                                       displayBytes,
                                       fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => const Center(
+                                        child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                                      ),
                                     ),
                                     if (_isBrushMode && _strokes.isNotEmpty)
                                       CustomPaint(

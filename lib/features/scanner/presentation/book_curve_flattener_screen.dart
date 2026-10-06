@@ -52,7 +52,14 @@ class _BookCurveFlattenerScreenState
 
   Future<void> _loadImage() async {
     try {
-      final bytes = await File(widget.imagePath).readAsBytes();
+      final file = File(widget.imagePath);
+      if (!file.existsSync() || await file.length() == 0) {
+        throw Exception('ملف الصورة غير متوفر أو فارغ');
+      }
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) {
+        throw Exception('ملف الصورة فارغ (0 بايت)');
+      }
       if (mounted) {
         setState(() {
           _originalBytes = bytes;
@@ -461,13 +468,36 @@ class _BookCurveFlattenerScreenState
 
   Widget _buildComparisonViewer() {
     if (_flattenedBytes == null) {
-      return Image.memory(_originalBytes, fit: BoxFit.contain);
+      return Image.memory(
+        _originalBytes,
+        fit: BoxFit.contain,
+        errorBuilder: (ctx, err, st) => const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('تعذر فك ترميز الصورة الأصلية'),
+            ],
+          ),
+        ),
+      );
     }
 
     if (!_isComparing) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.memory(_flattenedBytes!, fit: BoxFit.contain),
+        child: Image.memory(
+          _flattenedBytes!,
+          fit: BoxFit.contain,
+          errorBuilder: (ctx, err, st) => Image.memory(
+            _originalBytes,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Center(
+              child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+            ),
+          ),
+        ),
       );
     }
 
@@ -485,6 +515,7 @@ class _BookCurveFlattenerScreenState
                 child: Image.memory(
                   _originalBytes,
                   fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
 
@@ -495,6 +526,7 @@ class _BookCurveFlattenerScreenState
                   child: Image.memory(
                     _flattenedBytes!,
                     fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
                 ),
               ),

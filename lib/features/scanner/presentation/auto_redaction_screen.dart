@@ -352,11 +352,17 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
                                     Image.memory(
                                       _previewBytes!,
                                       fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => const Center(
+                                        child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                                      ),
                                     )
                                   else if (_selectedImagePath != null)
                                     Image.file(
                                       File(_selectedImagePath!),
                                       fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => const Center(
+                                        child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                                      ),
                                     ),
                                   // Live drawing feedback rectangle
                                   if (_drawStart != null && _drawCurrent != null)

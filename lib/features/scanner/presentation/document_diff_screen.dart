@@ -458,6 +458,9 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
                   child: Image.file(
                     File(_pathB!),
                     fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                    ),
                   ),
                 ),
               ),
@@ -474,6 +477,9 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
                     child: Image.file(
                       File(_pathA!),
                       fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+                      ),
                     ),
                   ),
                 ),

@@ -404,6 +404,26 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
                                 child: Image.file(
                                   File(displayImagePath),
                                   fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, st) => Container(
+                                    color: cardColor.withValues(alpha: 0.15),
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.badge_rounded, color: cardColor, size: 36),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            card.title,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: cardColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
 
@@ -765,7 +785,13 @@ class _AddCardSheetState extends ConsumerState<_AddCardSheet> {
         child: imagePath != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(13),
-                child: Image.file(File(imagePath), fit: BoxFit.cover),
+                child: Image.file(
+                  File(imagePath),
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, st) => const Center(
+                    child: Icon(Icons.broken_image_rounded, color: Colors.grey),
+                  ),
+                ),
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,

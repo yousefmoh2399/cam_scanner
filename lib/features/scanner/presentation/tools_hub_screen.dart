@@ -637,17 +637,6 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
   Future<void> _showBookCurveLauncher() async {
     final docs = ref.read(pendingUploadsControllerProvider).value ?? [];
-    if (docs.isEmpty) {
-      final res = await FilePicker.platform.pickFiles(type: FileType.image);
-      if (res != null && res.files.single.path != null && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => BookCurveFlattenerScreen(imagePath: res.files.single.path!),
-          ),
-        );
-      }
-      return;
-    }
 
     final choice = await showModalBottomSheet<String>(
       context: context,
@@ -667,26 +656,45 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             ),
             const Divider(),
             ListTile(
+              leading: const Icon(Icons.camera_alt_rounded, color: Color(0xFF007AFF)),
+              title: const Text('تصوير صفحة كتاب بالكاميرا'),
+              subtitle: const Text('التقاط فوري لصفحة منحنية وضبط حوافها'),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
               leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFF59E0B)),
               title: const Text('اختيار صورة من معرض الصور'),
               onTap: () => Navigator.pop(ctx, 'pick_external'),
             ),
-            SizedBox(
-              height: 220,
-              child: ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (c, idx) {
-                  final d = docs[idx];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.auto_stories_rounded),
-                    title: Text(d.fileName, maxLines: 1),
-                    subtitle: Text('${d.pageCount} صفحة'),
-                    onTap: () => Navigator.pop(ctx, d.id),
-                  );
-                },
+            if (docs.isNotEmpty) ...[
+              const Divider(),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'أو اختر من مستنداتك الممسوحة مسبقاً:',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey),
+                  ),
+                ),
               ),
-            ),
+              SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (c, idx) {
+                    final d = docs[idx];
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.auto_stories_rounded),
+                      title: Text(d.fileName, maxLines: 1),
+                      subtitle: Text('${d.pageCount} صفحة'),
+                      onTap: () => Navigator.pop(ctx, d.id),
+                    );
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -694,23 +702,57 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     if (choice == null || !mounted) return;
 
-    if (choice == 'pick_external') {
+    if (choice == 'camera') {
+      try {
+        final draftsDir = await ref.read(localDocumentStoreProvider).getDraftsDirectory();
+        final results = await NativeScannerBridge.startScan(
+          destDir: draftsDir.path,
+          batch: false,
+        );
+        if (results.isNotEmpty && mounted) {
+          final path = results.first.path;
+          if (File(path).existsSync()) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => BookCurveFlattenerScreen(imagePath: path),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر تشغيل الكاميرا: $e')),
+          );
+        }
+      }
+    } else if (choice == 'pick_external') {
       final res = await FilePicker.platform.pickFiles(type: FileType.image);
       if (res != null && res.files.single.path != null && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => BookCurveFlattenerScreen(imagePath: res.files.single.path!),
-          ),
-        );
+        final path = res.files.single.path!;
+        if (File(path).existsSync()) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BookCurveFlattenerScreen(imagePath: path),
+            ),
+          );
+        }
       }
     } else {
       final doc = docs.firstWhere((d) => d.id == choice);
       if (doc.pages.isNotEmpty && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => BookCurveFlattenerScreen(imagePath: doc.pages.first.imagePath),
-          ),
-        );
+        final path = doc.pages.first.imagePath;
+        if (File(path).existsSync()) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BookCurveFlattenerScreen(imagePath: path),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ملف الصفحة غير موجود على الجهاز')),
+          );
+        }
       }
     }
   }
