@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
@@ -37,6 +39,36 @@ enum ToolCategory {
   const ToolCategory(this.label, this.icon);
   final String label;
   final IconData icon;
+
+  String get sectionTitle {
+    switch (this) {
+      case ToolCategory.all:
+        return 'جميع الأدوات';
+      case ToolCategory.government:
+        return 'المستندات والأوراق الرسمية';
+      case ToolCategory.intelligence:
+        return 'الذكاء الاصطناعي والاستخراج';
+      case ToolCategory.pdf:
+        return 'أدوات وإدارة ملفات PDF';
+      case ToolCategory.security:
+        return 'الأمان والحماية والخصوصية';
+    }
+  }
+
+  String get sectionSubtitle {
+    switch (this) {
+      case ToolCategory.all:
+        return 'تصفح كافة الأدوات المتوفرة';
+      case ToolCategory.government:
+        return 'قوالب مطابقة للمواصفات الرسمية المصرية وضغط بوابات التقديم';
+      case ToolCategory.intelligence:
+        return 'تحويل الجداول لإكسل، استخراج بيانات الرقم القومي، وفصل الكتب';
+      case ToolCategory.pdf:
+        return 'دمج، تقسيم، وضغط ملفات الـ PDF مع الحفاظ على دقة النص';
+      case ToolCategory.security:
+        return 'تشفير عسكري بالخزنة، العلامة المائية، والحجب الأمني الفوري';
+    }
+  }
 }
 
 /// Metadata item describing each tool
@@ -76,6 +108,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
   ToolCategory _selectedCategory = ToolCategory.all;
   String _searchQuery = '';
   bool _isProcessing = false;
+  bool _isGridView = true;
 
   final List<ToolItem> _allTools = const [
     // ── Government & Official Category ──
@@ -284,6 +317,30 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       keywords: ['نسخ', 'احتياطي', 'استعادة', 'zip', 'أرشيف', 'تصدير'],
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadViewMode();
+  }
+
+  Future<void> _loadViewMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isGrid = prefs.getBool('tools_hub_grid_view');
+      if (isGrid != null && mounted) {
+        setState(() => _isGridView = isGrid);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _setViewMode(bool isGrid) async {
+    setState(() => _isGridView = isGrid);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('tools_hub_grid_view', isGrid);
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -1351,30 +1408,112 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     final palette = context.appThemePalette;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tools = _filteredTools;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    final childAspectRatio =
+        isTablet ? 0.95 : (screenWidth < 370 ? 0.76 : 0.82);
+
+    final isDefaultGroupedView =
+        _selectedCategory == ToolCategory.all && _searchQuery.trim().isEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'مركز الأدوات',
-          style: TextStyle(fontWeight: FontWeight.w800),
+        centerTitle: false,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'الأدوات',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 19,
+                letterSpacing: -0.4,
+              ),
+            ),
+            Text(
+              '${_allTools.length} أداة • أوفلاين 100%',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF8E8E93),
+              ),
+            ),
+          ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'تبديل الوضع الليلي',
-            icon: Icon(
-              isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          // View Mode Switcher (Grid vs List toggle)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _setViewMode(!_isGridView);
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF242426)
+                      : const Color(0xFFE5E5EA),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _isGridView
+                      ? Icons.view_agenda_rounded
+                      : Icons.grid_view_rounded,
+                  size: 18,
+                  color: isDark
+                      ? const Color(0xFFE5E5EA)
+                      : const Color(0xFF1C1C1E),
+                ),
+              ),
             ),
-            onPressed: () => ref
-                .read(userPreferencesControllerProvider.notifier)
-                .toggleDarkMode(),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.only(left: 12, right: 4),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                ref
+                    .read(userPreferencesControllerProvider.notifier)
+                    .toggleDarkMode();
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF242426)
+                      : const Color(0xFFE5E5EA),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                  size: 18,
+                  color: isDark
+                      ? const Color(0xFFE5E5EA)
+                      : const Color(0xFF1C1C1E),
+                ),
+              ),
+            ),
           ),
         ],
       ),
       body: Stack(
         children: [
           CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             slivers: [
-              // Search Input
+              // Search Bar
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -1382,7 +1521,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     controller: _searchController,
                     onChanged: (val) => setState(() => _searchQuery = val),
                     decoration: InputDecoration(
-                      hintText: 'ابحث في الأدوات (حكومي، إكسل، pdf، خزنة...)...',
+                      hintText:
+                          'ابحث في الأدوات (رقم قومي، إكسل، pdf، علامة مائية...)...',
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.45),
+                      ),
                       prefixIcon: Icon(
                         Icons.search_rounded,
                         color: palette.accent,
@@ -1413,7 +1560,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 ),
               ),
 
-              // Filter Category Chips
+              // Category Filter Chips
               SliverToBoxAdapter(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -1422,6 +1569,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   child: Row(
                     children: ToolCategory.values.map((cat) {
                       final isSelected = _selectedCategory == cat;
+                      final count = cat == ToolCategory.all
+                          ? _allTools.length
+                          : _allTools.where((t) => t.category == cat).length;
+
                       return Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: FilterChip(
@@ -1434,11 +1585,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                                 : (isDark ? Colors.white70 : Colors.black87),
                           ),
                           label: Text(
-                            cat.label,
+                            '${cat.label} ($count)',
                             style: TextStyle(
                               fontWeight: isSelected
                                   ? FontWeight.w800
                                   : FontWeight.w600,
+                              fontSize: 12.5,
                               color: isSelected
                                   ? Colors.white
                                   : (isDark ? Colors.white70 : Colors.black87),
@@ -1456,60 +1608,257 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 8)),
+              // Section Header / Quick Summary Bar
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        _searchQuery.trim().isNotEmpty
+                            ? 'نتائج البحث (${tools.length} أداة)'
+                            : (_selectedCategory == ToolCategory.all
+                                ? 'جميع الأقسام المنظمة (${_allTools.length} أداة)'
+                                : '${_selectedCategory.sectionTitle} (${tools.length})'),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const Spacer(),
+                      // Layout indication pill
+                      InkWell(
+                        onTap: () => _setViewMode(!_isGridView),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isGridView
+                                    ? Icons.grid_view_rounded
+                                    : Icons.view_agenda_rounded,
+                                size: 14,
+                                color: palette.accent,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _isGridView ? 'عرض شبكي' : 'عرض قائمة',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: palette.accent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
-              // Tool Cards
+              // Tool Items Content
               if (tools.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off_rounded,
-                          size: 56,
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'لا توجد أداة مطابقة لكلمات البحث',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withValues(alpha: 0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.search_off_rounded,
+                              size: 48,
+                              color:
+                                  Theme.of(context).colorScheme.outlineVariant,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 16),
+                          const Text(
+                            'لا توجد أداة مطابقة لكلمات البحث',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'جرب البحث بكلمات أخرى مثل: بطاقة، إكسل، PDF، خزنة',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.6),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.tonalIcon(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                                _selectedCategory = ToolCategory.all;
+                              });
+                            },
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('عرض جميع الأدوات'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 )
-              else
-                SliverPadding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final tool = tools[index];
-                        return _buildToolCard(
-                          context: context,
-                          tool: tool,
-                          isDark: isDark,
-                          palette: palette,
-                        );
-                      },
-                      childCount: tools.length,
-                    ),
-                  ),
-                ),
+              else if (isDefaultGroupedView)
+                // Grouped by Category when viewing All and no search query
+                ...[
+                  for (final cat in [
+                    ToolCategory.government,
+                    ToolCategory.intelligence,
+                    ToolCategory.pdf,
+                    ToolCategory.security,
+                  ]) ...[
+                    () {
+                      final categoryTools = _allTools
+                          .where((t) => t.category == cat)
+                          .toList();
+                      if (categoryTools.isEmpty) {
+                        return const SliverToBoxAdapter(
+                            child: SizedBox.shrink());
+                      }
 
-              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                      return SliverMainAxisGroup(
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: _buildSectionHeader(
+                              category: cat,
+                              count: categoryTools.length,
+                              isDark: isDark,
+                              palette: palette,
+                            ),
+                          ),
+                          if (_isGridView)
+                            SliverPadding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              sliver: SliverGrid(
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: isTablet ? 3 : 2,
+                                  childAspectRatio: childAspectRatio,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                ),
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    return _buildGridCard(
+                                      context: context,
+                                      tool: categoryTools[index],
+                                      isDark: isDark,
+                                      palette: palette,
+                                    );
+                                  },
+                                  childCount: categoryTools.length,
+                                ),
+                              ),
+                            )
+                          else
+                            SliverPadding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    return _buildListCard(
+                                      context: context,
+                                      tool: categoryTools[index],
+                                      isDark: isDark,
+                                      palette: palette,
+                                    );
+                                  },
+                                  childCount: categoryTools.length,
+                                ),
+                              ),
+                            ),
+                          const SliverToBoxAdapter(
+                            child: SizedBox(height: 18),
+                          ),
+                        ],
+                      );
+                    }(),
+                  ],
+                ]
+              else
+                // Filtered or Search Mode: Flat list/grid
+                ...[
+                  if (_isGridView)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: isTablet ? 3 : 2,
+                          childAspectRatio: childAspectRatio,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return _buildGridCard(
+                              context: context,
+                              tool: tools[index],
+                              isDark: isDark,
+                              palette: palette,
+                            );
+                          },
+                          childCount: tools.length,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return _buildListCard(
+                              context: context,
+                              tool: tools[index],
+                              isDark: isDark,
+                              palette: palette,
+                            );
+                          },
+                          childCount: tools.length,
+                        ),
+                      ),
+                    ),
+                ],
+
+              const SliverToBoxAdapter(child: SizedBox(height: 48)),
             ],
           ),
 
           if (_isProcessing)
             Container(
-              color: Colors.black45,
+              color: Colors.black54,
               child: const Center(
                 child: Card(
                   child: Padding(
@@ -1534,14 +1883,234 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
-  Widget _buildToolCard({
+  // ── Helper Widgets ──
+
+  Widget _buildSectionHeader({
+    required ToolCategory category,
+    required int count,
+    required bool isDark,
+    required AppThemePalette palette,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: palette.accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              category.icon,
+              size: 18,
+              color: palette.accent,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  category.sectionTitle,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+                Text(
+                  category.sectionSubtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$count أدوات',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.75),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Grid Card Design ──
+
+  Widget _buildGridCard({
     required BuildContext context,
     required ToolItem tool,
     required bool isDark,
     required AppThemePalette palette,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.12)
+              : Colors.black.withValues(alpha: 0.08),
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _onToolSelected(tool),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Row: Icon + Badge
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: tool.accentColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        tool.icon,
+                        color: tool.accentColor,
+                        size: 22,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: tool.accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        tool.badge,
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: tool.accentColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Title
+                Text(
+                  tool.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+
+                // Subtitle
+                Expanded(
+                  child: Text(
+                    tool.subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.65),
+                      height: 1.35,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Bottom Action Row
+                Row(
+                  children: [
+                    Text(
+                      'فتح الأداة',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: tool.accentColor,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: tool.accentColor.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 11,
+                        color: tool.accentColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── List Card Design ──
+
+  Widget _buildListCard({
+    required BuildContext context,
+    required ToolItem tool,
+    required bool isDark,
+    required AppThemePalette palette,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E22) : Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -1553,8 +2122,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -1565,9 +2134,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           borderRadius: BorderRadius.circular(18),
           onTap: () => _onToolSelected(tool),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Tool Icon Box
                 Container(
@@ -1580,7 +2149,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   child: Icon(
                     tool.icon,
                     color: tool.accentColor,
-                    size: 26,
+                    size: 25,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -1590,44 +2159,60 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: tool.accentColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          tool.badge,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: tool.accentColor,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: tool.accentColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              tool.badge,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: tool.accentColor,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Text(
+                            tool.category.label,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.45),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 5),
                       Text(
                         tool.title,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 14.5,
+                          fontSize: 14,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         tool.subtitle,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           color: Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withValues(alpha: 0.68),
-                          height: 1.4,
+                              .withValues(alpha: 0.65),
+                          height: 1.35,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -1635,14 +2220,19 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 14,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.3),
+                const SizedBox(width: 8),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: tool.accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 12,
+                    color: tool.accentColor,
+                  ),
                 ),
               ],
             ),

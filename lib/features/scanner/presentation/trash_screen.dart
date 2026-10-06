@@ -264,13 +264,11 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E1E22) : Colors.white,
+                    color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .outlineVariant
-                          .withValues(alpha: 0.6),
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      width: 0.5,
                     ),
                   ),
                   child: ListTile(

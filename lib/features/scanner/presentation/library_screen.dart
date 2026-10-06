@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1267,6 +1268,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final activeFolder = _activeFolder;
 
     return Scaffold(
+      extendBody: true,
+      backgroundColor: isDark ? const Color(0xFF101012) : const Color(0xFFF7F8FA),
       appBar: _isMultiSelectMode
           ? AppBar(
               leading: IconButton(
@@ -1302,26 +1305,51 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               ],
             )
           : AppBar(
+              centerTitle: false,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              backgroundColor: isDark
+                  ? const Color(0xFF101012)
+                  : const Color(0xFFF7F8FA),
               leading: activeFolder != null
-                  ? IconButton(
-                      onPressed: () => setState(() => _activeFolderId = null),
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      tooltip: 'العودة للمكتبة الرئيسية',
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          setState(() => _activeFolderId = null);
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF242426)
+                                : const Color(0xFFE5E5EA),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 16,
+                          ),
+                        ),
+                      ),
                     )
                   : Padding(
-                      padding: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.only(right: 14),
                       child: Center(
                         child: Container(
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: palette.accent.withValues(alpha: 0.14),
+                            color: palette.accent.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
                             Icons.document_scanner_rounded,
                             color: palette.accent,
-                            size: 22,
+                            size: 21,
                           ),
                         ),
                       ),
@@ -1332,44 +1360,88 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   Text(
                     activeFolder != null
                         ? activeFolder.name
-                        : 'الماسح الذكي',
+                        : 'المستندات',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      fontSize: 18,
+                      fontSize: 19,
+                      letterSpacing: -0.4,
                     ),
                   ),
                   Text(
                     activeFolder != null
                         ? '${visibleDocs.length} مستند بالمجلد'
-                        : '${allDocs.length} مستند • آمن محلياً',
+                        : '${allDocs.length} مستند • معالجة محلية',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF8E8E93),
                     ),
                   ),
                 ],
               ),
               actions: [
-                IconButton(
-                  tooltip: _isGridView ? 'عرض كقائمة' : 'عرض كشبكة',
-                  onPressed: () => setState(() => _isGridView = !_isGridView),
-                  icon: Icon(
-                    _isGridView
-                        ? Icons.view_agenda_rounded
-                        : Icons.grid_view_rounded,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _isGridView = !_isGridView);
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF242426)
+                            : const Color(0xFFE5E5EA),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isGridView
+                            ? Icons.view_agenda_rounded
+                            : Icons.grid_view_rounded,
+                        size: 18,
+                        color: isDark
+                            ? const Color(0xFFE5E5EA)
+                            : const Color(0xFF1C1C1E),
+                      ),
+                    ),
                   ),
                 ),
-                PopupMenuButton<String>(
-                  tooltip: 'خيارات إضافية',
-                  icon: const Icon(Icons.more_vert_rounded),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 10, right: 4),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF242426)
+                          : const Color(0xFFE5E5EA),
+                      shape: BoxShape.circle,
+                    ),
+                    child: PopupMenuButton<String>(
+                      tooltip: 'خيارات إضافية',
+                      icon: Icon(
+                        Icons.more_horiz_rounded,
+                        size: 19,
+                        color: isDark
+                            ? const Color(0xFFE5E5EA)
+                            : const Color(0xFF1C1C1E),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.black.withValues(alpha: 0.06),
+                          width: 0.5,
+                        ),
+                      ),
                   onSelected: (val) {
                     if (val == 'select_mode') {
                       setState(() {
@@ -1480,72 +1552,49 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                             isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
                             size: 18,
                           ),
-                          const SizedBox(width: 10),
                           Text(isDark ? 'الوضع النهاري' : 'الوضع الليلي'),
                         ],
                       ),
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'library_scan_fab',
-        onPressed: _startNewScanSession,
-        backgroundColor: palette.accent,
-        foregroundColor: Colors.white,
-        elevation: 4,
-        icon: const Icon(Icons.camera_alt_rounded, size: 22),
-        label: const Text(
-          'مسح ضوئي',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
-            letterSpacing: 0.3,
+          ],
+        ),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: FloatingActionButton.extended(
+          heroTag: 'library_scan_fab',
+          onPressed: () {
+            HapticFeedback.mediumImpact();
+            _startNewScanSession();
+          },
+          backgroundColor: palette.accent,
+          foregroundColor: Colors.white,
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+            side: BorderSide(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1,
+            ),
+          ),
+          icon: const Icon(Icons.camera_alt_rounded, size: 21),
+          label: const Text(
+            'مسح ضوئي',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              letterSpacing: -0.2,
+            ),
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0,
-        height: 64,
-        elevation: 3,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        onDestinationSelected: (index) {
-          if (index == 0) {
-            if (_activeFolderId != null) {
-              setState(() => _activeFolderId = null);
-            }
-          } else if (index == 1) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ToolsHubScreen(),
-              ),
-            );
-          } else if (index == 2) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const TrashScreen(),
-              ),
-            );
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.description_outlined),
-            selectedIcon: Icon(Icons.description_rounded),
-            label: 'المستندات',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.widgets_outlined),
-            selectedIcon: Icon(Icons.widgets_rounded),
-            label: 'الأدوات',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.delete_outline_rounded),
-            selectedIcon: Icon(Icons.delete_rounded),
-            label: 'المحذوفات',
-          ),
-        ],
+      bottomNavigationBar: _buildAppleBottomNavigationBar(
+        context: context,
+        isDark: isDark,
+        palette: palette,
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -1555,48 +1604,79 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // ── Modern Search Bar ──
+            // ── Apple iOS Search Bar ──
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: SizedBox(
-                  height: 48,
+                  height: 42,
                   child: TextField(
                     controller: _searchController,
                     onChanged: _onSearchQueryChanged,
                     textAlignVertical: TextAlignVertical.center,
+                    style: const TextStyle(fontSize: 13.5),
                     decoration: InputDecoration(
-                      hintText: 'ابحث بالاسم أو داخل نصوص الصفحات...',
-                      hintStyle: TextStyle(
+                      hintText: 'البحث في المستندات والنصوص...',
+                      hintStyle: const TextStyle(
                         fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        color: Color(0xFF8E8E93),
+                        fontWeight: FontWeight.w400,
                       ),
-                      prefixIcon: Icon(Icons.search_rounded, color: palette.accent, size: 20),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: Color(0xFF8E8E93),
+                        size: 19,
+                      ),
                       suffixIcon: _searchQuery.isEmpty
                           ? null
                           : IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 18),
+                              icon: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF8E8E93),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
                               onPressed: () {
+                                HapticFeedback.lightImpact();
                                 _searchController.clear();
                                 _onSearchQueryChanged('');
                               },
                             ),
                       filled: true,
-                      fillColor: isDark ? const Color(0xFF1E1E22) : const Color(0xFFF2F4F7),
+                      fillColor: isDark
+                          ? const Color(0xFF242426)
+                          : const Color(0xFFE5E5EA),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.black.withValues(alpha: 0.04),
+                          width: 0.5,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.black.withValues(alpha: 0.04),
+                          width: 0.5,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: palette.accent, width: 1.5),
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: palette.accent,
+                          width: 1.2,
+                        ),
                       ),
                     ),
                   ),
@@ -1727,22 +1807,26 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                 child: Row(
                   children: [
-                    Text(
-                      activeFolder != null
-                          ? 'مستندات "${activeFolder.name}" (${visibleDocs.length})'
-                          : (_searchQuery.trim().isNotEmpty
-                              ? 'نتائج البحث (${visibleDocs.length})'
-                              : (_showFavoritesOnly
-                                  ? 'المفضلة (${visibleDocs.length})'
-                                  : (_selectedCategoryFilter != null
-                                      ? '$_selectedCategoryFilter (${visibleDocs.length})'
-                                      : 'المستندات (${visibleDocs.length})'))),
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
+                    Expanded(
+                      child: Text(
+                        activeFolder != null
+                            ? 'مستندات "${activeFolder.name}" (${visibleDocs.length})'
+                            : (_searchQuery.trim().isNotEmpty
+                                ? 'نتائج البحث (${visibleDocs.length})'
+                                : (_showFavoritesOnly
+                                    ? 'المفضلة (${visibleDocs.length})'
+                                    : (_selectedCategoryFilter != null
+                                        ? '$_selectedCategoryFilter (${visibleDocs.length})'
+                                        : 'المستندات (${visibleDocs.length})'))),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     if (visibleDocs.isNotEmpty)
                       Text(
                         'اسحب المستند لنقله لمجلد',
@@ -1804,6 +1888,158 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
   }
 
+  Widget _buildAppleBottomNavigationBar({
+    required BuildContext context,
+    required bool isDark,
+    required AppThemePalette palette,
+  }) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final activeColor = palette.accent;
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        child: Container(
+          padding: EdgeInsets.only(
+            bottom: bottomPadding > 0 ? bottomPadding : 10,
+            top: 7,
+            left: 20,
+            right: 20,
+          ),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xD8161618)
+                : const Color(0xE8FFFFFF),
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.08),
+                width: 0.5,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.04),
+                blurRadius: 18,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildAppleNavItem(
+                index: 0,
+                label: 'المستندات',
+                icon: Icons.folder_copy_outlined,
+                activeIcon: Icons.folder_copy_rounded,
+                isSelected: true,
+                activeColor: activeColor,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  if (_activeFolderId != null) {
+                    setState(() => _activeFolderId = null);
+                  }
+                },
+              ),
+              _buildAppleNavItem(
+                index: 1,
+                label: 'الأدوات',
+                icon: Icons.apps_outlined,
+                activeIcon: Icons.apps_rounded,
+                isSelected: false,
+                activeColor: activeColor,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ToolsHubScreen(),
+                    ),
+                  );
+                },
+              ),
+              _buildAppleNavItem(
+                index: 2,
+                label: 'المحذوفات',
+                icon: Icons.delete_outline_rounded,
+                activeIcon: Icons.delete_rounded,
+                isSelected: false,
+                activeColor: activeColor,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const TrashScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppleNavItem({
+    required int index,
+    required String label,
+    required IconData icon,
+    required IconData activeIcon,
+    required bool isSelected,
+    required Color activeColor,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    const inactiveColor = Color(0xFF8E8E93);
+
+    return InkWell(
+      onTap: onTap,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3.5),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? activeColor.withValues(alpha: isDark ? 0.22 : 0.12)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                isSelected ? activeIcon : icon,
+                size: 23,
+                color: isSelected ? activeColor : inactiveColor,
+              ),
+            ),
+            const SizedBox(height: 2),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? activeColor : inactiveColor,
+                letterSpacing: -0.2,
+              ),
+              child: Text(label),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilterPill({
     required String label,
     required bool isSelected,
@@ -1814,36 +2050,62 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     Color? iconColor,
   }) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(16),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6.5),
         decoration: BoxDecoration(
           color: isSelected
-              ? palette.accent.withValues(alpha: 0.16)
-              : (isDark ? const Color(0xFF1E1E22) : const Color(0xFFF2F4F7)),
-          borderRadius: BorderRadius.circular(20),
+              ? palette.accent
+              : (isDark ? const Color(0xFF242426) : const Color(0xFFE5E5EA)),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? palette.accent
-                : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
-            width: isSelected ? 1.5 : 1,
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05)),
+            width: 0.5,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: palette.accent.withValues(alpha: 0.28),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 14, color: iconColor ?? (isSelected ? palette.accent : null)),
+              Icon(
+                icon,
+                size: 13,
+                color: isSelected
+                    ? Colors.white
+                    : (iconColor ?? const Color(0xFF8E8E93)),
+              ),
               const SizedBox(width: 5),
             ],
             Text(
               label,
               style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected ? palette.accent : null,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected
+                    ? Colors.white
+                    : (isDark ? const Color(0xFFE5E5EA) : const Color(0xFF1C1C1E)),
+                letterSpacing: -0.2,
               ),
             ),
           ],
@@ -2820,7 +3082,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Row(
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 6,
+                              runSpacing: 2,
                               children: [
                                 Text(
                                   formatDate(doc.createdAt),
@@ -2831,36 +3096,37 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                     ).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
-                                if (_activeFolderId == null && doc.folderId != null) ...[
+                                if (_activeFolderId == null && doc.folderId != null)
                                   Builder(
                                     builder: (context) {
                                       final folder = _findFolderById(doc.folderId);
                                       if (folder == null) return const SizedBox.shrink();
-                                      return Padding(
-                                        padding: const EdgeInsets.only(right: 8),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.folder_rounded,
-                                              size: 12,
-                                              color: palette.warning,
-                                            ),
-                                            const SizedBox(width: 3),
-                                            Text(
+                                      return Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.folder_rounded,
+                                            size: 12,
+                                            color: palette.warning,
+                                          ),
+                                          const SizedBox(width: 3),
+                                          ConstrainedBox(
+                                            constraints: const BoxConstraints(maxWidth: 80),
+                                            child: Text(
                                               folder.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                               style: TextStyle(
                                                 fontSize: 10.5,
                                                 fontWeight: FontWeight.w700,
                                                 color: palette.warning,
                                               ),
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                        ],
                                       );
                                     },
                                   ),
-                                ],
                               ],
                             ),
                           ],

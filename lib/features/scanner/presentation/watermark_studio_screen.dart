@@ -341,7 +341,7 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
               // ── Document Selection Row ──
               Card(
                 elevation: 0,
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
@@ -408,7 +408,7 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
               Container(
                 height: 280,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
+                  color: isDark ? const Color(0xFF000000) : const Color(0xFFE5E5EA),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark ? Colors.white12 : Colors.black12,

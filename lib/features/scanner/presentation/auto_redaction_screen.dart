@@ -267,7 +267,7 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
             // ── Top Info Banner ──
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFEE2E2),
+              color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFFFECEC),
               child: Row(
                 children: [
                   const Icon(Icons.security_update_warning_rounded, color: Colors.red, size: 22),
@@ -289,7 +289,7 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
             // ── Interactive Document Preview Area ──
             Expanded(
               child: Container(
-                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFCBD5E1),
+                color: isDark ? const Color(0xFF000000) : const Color(0xFFE5E5EA),
                 child: Center(
                   child: _selectedImagePath == null
                       ? ElevatedButton.icon(
@@ -450,7 +450,9 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
                               size: 16,
                               color: Colors.white,
                             ),
-                            backgroundColor: const Color(0xFF1E293B),
+                            backgroundColor: isDark
+                                ? const Color(0xFF2C2C2E)
+                                : const Color(0xFF1C1C1E),
                             label: Text(
                               target.label,
                               style: const TextStyle(

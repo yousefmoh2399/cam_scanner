@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:printing/printing.dart';
@@ -150,67 +151,65 @@ class _SaveAndExportSheetContentState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final palette = context.appThemePalette;
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isPdfFormat = _selectedFormat == ExportFormat.pdf ||
         _selectedFormat == ExportFormat.searchablePdf;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, bottomInset + 20),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset + 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161E2E) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
       ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ),
+            // Top Bar
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: palette.accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    Icons.ios_share_rounded,
-                    color: palette.accent,
-                    size: 24,
+                InkWell(
+                  onTap: () => Navigator.of(context).pop(),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF2C2C2E)
+                          : const Color(0xFFE5E5EA),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 17,
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.showNameInput
-                            ? 'حفظ وتصدير المستند'
+                            ? 'تصدير وحفظ المستند'
                             : 'تحويل وتصدير الصيغة',
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 18,
+                          fontSize: 16,
+                          letterSpacing: -0.3,
                         ),
                       ),
                       Text(
-                        '${formatPageCount(widget.pageCount)} • يعمل بدون إنترنت 100%',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        '${formatPageCount(widget.pageCount)} • معالجة أوفلاين 100%',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF8E8E93),
                         ),
                       ),
                     ],
@@ -218,278 +217,449 @@ class _SaveAndExportSheetContentState
                 ),
               ],
             ),
+
             if (widget.showNameInput) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _nameController,
-                      onChanged: (_) => setState(() {}),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'اسم المستند',
-                        hintText: 'مثال: عقد_عمل_2026',
-                        prefixIcon: Icon(
-                          Icons.description_outlined,
-                          color: palette.accent,
-                        ),
-                        suffixIcon: _nameController.text.isEmpty
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 18),
-                                onPressed: () {
-                                  _nameController.clear();
-                                  setState(() {});
-                                },
-                              ),
-                      ),
-                    ),
-                  ),
-                  if (widget.previewImagePaths != null &&
-                      widget.previewImagePaths!.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Tooltip(
-                      message: 'اقتراح اسم ذكي من أول سطر نصي (OCR)',
-                      child: FilledButton.tonalIcon(
-                        onPressed: _isSuggestingTitle
-                            ? null
-                            : _suggestSmartTitleFromFirstPage,
-                        icon: _isSuggestingTitle
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.auto_awesome_rounded, size: 18),
-                        label: const Text('اسم ذكي'),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-            const SizedBox(height: 16),
-            Text(
-              'اختر صيغة الحفظ والتصدير:',
-              style: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 10),
-            _buildFormatCard(
-              context: context,
-              format: ExportFormat.pdf,
-              icon: Icons.picture_as_pdf_rounded,
-              badgeText: 'الأسرع (0ms)',
-              color: const Color(0xFFE11D48),
-            ),
-            const SizedBox(height: 8),
-            _buildFormatCard(
-              context: context,
-              format: ExportFormat.searchablePdf,
-              icon: Icons.manage_search_rounded,
-              badgeText: 'PDF قابل للبحث والنسخ',
-              color: const Color(0xFF9333EA),
-            ),
-            const SizedBox(height: 8),
-            _buildFormatCard(
-              context: context,
-              format: ExportFormat.docx,
-              icon: Icons.article_rounded,
-              badgeText: 'Word OCR + صور',
-              color: const Color(0xFF2563EB),
-            ),
-            const SizedBox(height: 8),
-            _buildFormatCard(
-              context: context,
-              format: ExportFormat.xlsx,
-              icon: Icons.table_chart_rounded,
-              badgeText: 'جداول ذكية + أرقام + RTL',
-              color: const Color(0xFF059669),
-            ),
-
-            // OCR Language Mode selector when an OCR format is chosen
-            if (_selectedFormat.usesOcr) ...[
-              const SizedBox(height: 14),
-              Text(
-                'لغة التعرف الضوئي على النصوص (Tesseract OCR Offline):',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: OcrLanguageMode.values.map((mode) {
-                  final selected = _languageMode == mode;
-                  return ChoiceChip(
-                    label: Text(
-                      mode.labelAr,
-                      style: TextStyle(
-                        fontWeight:
-                            selected ? FontWeight.w800 : FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _languageMode = mode),
-                  );
-                }).toList(),
-              ),
-            ],
-
-            // Target-Size Compression & Optional Watermark/Date Stamp for PDF formats
-            if (isPdfFormat) ...[
-              const SizedBox(height: 14),
-              Text(
-                'ضغط حجم ملف الـ PDF (للبوابات الحكومية والإيميل):',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<PdfCompressionPreset>(
-                initialValue: _compressionPreset,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.compress_rounded, size: 20),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                items: PdfCompressionPreset.values
-                    .map(
-                      (preset) => DropdownMenuItem(
-                        value: preset,
-                        child: Text(
-                          preset.labelAr,
-                          style: const TextStyle(fontSize: 13.5),
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _compressionPreset = val);
-                  }
-                },
-              ),
-              if (_compressionPreset == PdfCompressionPreset.manual) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text('جودة الصور:', style: TextStyle(fontSize: 12.5)),
-                    Expanded(
-                      child: Slider(
-                        value: _manualQuality,
-                        min: 20,
-                        max: 95,
-                        divisions: 15,
-                        label: '${_manualQuality.round()}%',
-                        onChanged: (v) => setState(() => _manualQuality = v),
-                      ),
-                    ),
-                    Text(
-                      '${_manualQuality.round()}%',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 8),
-              ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                title: Text(
-                  'خيارات إضافية (علامة مائية مخصصة / ختم التاريخ)',
-                  style: theme.textTheme.bodySmall?.copyWith(
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 42,
+                child: TextField(
+                  controller: _nameController,
+                  onChanged: (_) => setState(() {}),
+                  textAlignVertical: TextAlignVertical.center,
+                  style: const TextStyle(
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
-                ),
-                children: [
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'إضافة علامة مائية نصية مخصصة (اختياري)',
-                      style: TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'اسم المستند...',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                    fillColor: isDark
+                        ? const Color(0xFF2C2C2E)
+                        : const Color(0xFFF2F2F7),
+                    filled: true,
+                    prefixIcon: const Icon(
+                      Icons.description_outlined,
+                      size: 18,
+                      color: Color(0xFF8E8E93),
                     ),
-                    value: _enableWatermark,
-                    onChanged: (v) => setState(() => _enableWatermark = v),
-                  ),
-                  if (_enableWatermark)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: TextField(
-                        controller: _watermarkController,
-                        decoration: const InputDecoration(
-                          labelText: 'نص العلامة المائية',
-                          hintText: 'مثال: سري للغاية / نسخة طبق الأصل',
-                        ),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_nameController.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                            onPressed: () {
+                              _nameController.clear();
+                              setState(() {});
+                            },
+                          ),
+                        if (widget.previewImagePaths != null &&
+                            widget.previewImagePaths!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6, right: 2),
+                            child: InkWell(
+                              onTap: _isSuggestingTitle
+                                  ? null
+                                  : _suggestSmartTitleFromFirstPage,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: palette.accent.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: _isSuggestingTitle
+                                    ? const SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1.5,
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.auto_awesome_rounded,
+                                            size: 13,
+                                            color: palette.accent,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'اسم ذكي',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: palette.accent,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: palette.accent,
+                        width: 1.2,
                       ),
                     ),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'إضافة ختم التاريخ أسفل الصفحات',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    value: _includeDateStamp,
-                    onChanged: (v) => setState(() => _includeDateStamp = v),
                   ),
-                ],
+                ),
               ),
             ],
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+            Text(
+              'اختر صيغة التصدير:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // ── Apple 2x2 Compact Format Cards Grid ──
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('إلغاء'),
+                  child: _buildCompactFormatCard(
+                    format: ExportFormat.pdf,
+                    icon: Icons.picture_as_pdf_rounded,
+                    title: 'PDF قياسي',
+                    badge: 'فوري (0ms)',
+                    color: const Color(0xFFFF3B30),
+                    isDark: isDark,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
-                  flex: 2,
-                  child: FilledButton.icon(
-                    onPressed: (widget.showNameInput &&
-                            _nameController.text.trim().isEmpty)
-                        ? null
-                        : () {
-                            final effectiveName =
-                                _nameController.text.trim().isEmpty
-                                    ? widget.initialFileName
-                                    : _nameController.text.trim();
-                            Navigator.of(context).pop(
-                              SaveAndExportChoice(
-                                fileName: effectiveName,
-                                format: _selectedFormat,
-                                languageMode: _languageMode,
-                                compressionPreset: _compressionPreset,
-                                manualJpegQuality: _manualQuality.round(),
-                                watermarkText: _enableWatermark
-                                    ? _watermarkController.text.trim()
-                                    : null,
-                                includeDateStamp: _includeDateStamp,
-                              ),
-                            );
-                          },
-                    icon: const Icon(Icons.check_circle_rounded),
-                    label: Text(
-                      'تصدير كـ ${_selectedFormat.extension.toUpperCase()}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
+                  child: _buildCompactFormatCard(
+                    format: ExportFormat.searchablePdf,
+                    icon: Icons.manage_search_rounded,
+                    title: 'PDF للبحث',
+                    badge: 'OCR نصوص',
+                    color: const Color(0xFFAF52DE),
+                    isDark: isDark,
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactFormatCard(
+                    format: ExportFormat.docx,
+                    icon: Icons.article_rounded,
+                    title: 'Word مستند',
+                    badge: '.docx وصور',
+                    color: const Color(0xFF007AFF),
+                    isDark: isDark,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactFormatCard(
+                    format: ExportFormat.xlsx,
+                    icon: Icons.table_chart_rounded,
+                    title: 'Excel جداول',
+                    badge: '.xlsx و RTL',
+                    color: const Color(0xFF34C759),
+                    isDark: isDark,
+                  ),
+                ),
+              ],
+            ),
+
+            // OCR Language Mode selector (Segmented pill bar)
+            if (_selectedFormat.usesOcr) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+                    width: 0.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language_rounded, size: 16, color: Color(0xFF8E8E93)),
+                    const SizedBox(width: 6),
+                    const Text('لغة OCR:', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    ...OcrLanguageMode.values.map((mode) {
+                      final isSelected = _languageMode == mode;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _languageMode = mode);
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? (isDark ? const Color(0xFF3A3A3C) : Colors.white)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              mode.labelAr,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected
+                                    ? (isDark ? Colors.white : Colors.black)
+                                    : const Color(0xFF8E8E93),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+
+            // Target-Size Compression for PDF formats
+            if (isPdfFormat) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+                    width: 0.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.speed_rounded, size: 16, color: Color(0xFF8E8E93)),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'ضغط الحجم:',
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                        ),
+                        const Spacer(),
+                        DropdownButtonHideUnderline(
+                          child: DropdownButton<PdfCompressionPreset>(
+                            value: _compressionPreset,
+                            isDense: true,
+                            borderRadius: BorderRadius.circular(12),
+                            items: PdfCompressionPreset.values
+                                .map(
+                                  (preset) => DropdownMenuItem(
+                                    value: preset,
+                                    child: Text(
+                                      preset.labelAr,
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                HapticFeedback.selectionClick();
+                                setState(() => _compressionPreset = val);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_compressionPreset == PdfCompressionPreset.manual) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text('جودة الصور:', style: TextStyle(fontSize: 11)),
+                          Expanded(
+                            child: Slider(
+                              value: _manualQuality,
+                              min: 20,
+                              max: 95,
+                              divisions: 15,
+                              label: '${_manualQuality.round()}%',
+                              onChanged: (v) => setState(() => _manualQuality = v),
+                            ),
+                          ),
+                          Text('${_manualQuality.round()}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ],
+                    const Divider(height: 12, thickness: 0.5),
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _enableWatermark = !_enableWatermark);
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: _enableWatermark
+                                  ? palette.accent.withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _enableWatermark ? Icons.check_circle_rounded : Icons.water_drop_outlined,
+                                  size: 13,
+                                  color: _enableWatermark ? palette.accent : const Color(0xFF8E8E93),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'علامة مائية',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: _enableWatermark ? FontWeight.w700 : FontWeight.w500,
+                                    color: _enableWatermark ? palette.accent : const Color(0xFF8E8E93),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _includeDateStamp = !_includeDateStamp);
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: _includeDateStamp
+                                  ? palette.accent.withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _includeDateStamp ? Icons.check_circle_rounded : Icons.calendar_today_outlined,
+                                  size: 13,
+                                  color: _includeDateStamp ? palette.accent : const Color(0xFF8E8E93),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'ختم التاريخ',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: _includeDateStamp ? FontWeight.w700 : FontWeight.w500,
+                                    color: _includeDateStamp ? palette.accent : const Color(0xFF8E8E93),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_enableWatermark) ...[
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: 36,
+                        child: TextField(
+                          controller: _watermarkController,
+                          style: const TextStyle(fontSize: 12),
+                          decoration: InputDecoration(
+                            hintText: 'نص العلامة المائية...',
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                            fillColor: isDark ? const Color(0xFF3A3A3C) : Colors.white,
+                            filled: true,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Apple Primary Export Button
+            FilledButton.icon(
+              onPressed: (widget.showNameInput &&
+                      _nameController.text.trim().isEmpty)
+                  ? null
+                  : () {
+                      HapticFeedback.mediumImpact();
+                      final effectiveName = _nameController.text.trim().isEmpty
+                          ? widget.initialFileName
+                          : _nameController.text.trim();
+                      Navigator.of(context).pop(
+                        SaveAndExportChoice(
+                          fileName: effectiveName,
+                          format: _selectedFormat,
+                          languageMode: _languageMode,
+                          compressionPreset: _compressionPreset,
+                          manualJpegQuality: _manualQuality.round(),
+                          watermarkText: _enableWatermark
+                              ? _watermarkController.text.trim()
+                              : null,
+                          includeDateStamp: _includeDateStamp,
+                        ),
+                      );
+                    },
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.ios_share_rounded, size: 19),
+              label: Text(
+                'تصدير كـ ${_selectedFormat.extension.toUpperCase()}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
             ),
           ],
         ),
@@ -497,99 +667,89 @@ class _SaveAndExportSheetContentState
     );
   }
 
-  Widget _buildFormatCard({
-    required BuildContext context,
+  Widget _buildCompactFormatCard({
     required ExportFormat format,
     required IconData icon,
-    required String badgeText,
+    required String title,
+    required String badge,
     required Color color,
+    required bool isDark,
   }) {
-    final theme = Theme.of(context);
     final isSelected = _selectedFormat == format;
-    final isDark = theme.brightness == Brightness.dark;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () => setState(() => _selectedFormat = format),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedFormat = format);
+      },
+      borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(13),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
           color: isSelected
-              ? color.withValues(alpha: isDark ? 0.18 : 0.08)
-              : (isDark
-                  ? theme.colorScheme.surfaceContainerHigh
-                  : const Color(0xFFF8FAFC)),
-          borderRadius: BorderRadius.circular(18),
+              ? color.withValues(alpha: isDark ? 0.16 : 0.08)
+              : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7)),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? color : theme.colorScheme.outlineVariant,
-            width: isSelected ? 2.0 : 1.0,
+            color: isSelected
+                ? color
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.06)),
+            width: isSelected ? 1.5 : 0.5,
           ),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(9),
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
+                color: color.withValues(alpha: isDark ? 0.22 : 0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          format.title,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Text(
-                          badgeText,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
                   Text(
-                    format.subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11.5,
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    badge,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: isSelected
+                          ? color
+                          : const Color(0xFF8E8E93),
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(
-              isSelected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
-              color: isSelected ? color : theme.colorScheme.outline,
-              size: 22,
-            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle_rounded,
+                color: color,
+                size: 17,
+              ),
           ],
         ),
       ),

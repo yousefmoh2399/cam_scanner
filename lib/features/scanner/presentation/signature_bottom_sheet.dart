@@ -210,8 +210,8 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF18181B) : const Color(0xFFF8FAFC),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),

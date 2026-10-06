@@ -964,7 +964,7 @@ class _ScannerSessionScreenState extends ConsumerState<ScannerSessionScreen> {
                           end: Alignment.bottomLeft,
                           colors: isDark
                               ? [
-                                  const Color(0xFF1E293B),
+                                  const Color(0xFF2C2C2E),
                                   const Color(0xFF1C1C1E),
                                 ]
                               : [

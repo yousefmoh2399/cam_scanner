@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ChatCustomTheme {
-  const ChatCustomTheme({this.accentColorHex = '#3390EC'});
+  const ChatCustomTheme({this.accentColorHex = '#007AFF'});
   final String accentColorHex;
 }
 
@@ -35,7 +35,7 @@ class ChatAppearanceCatalog {
       final val = int.tryParse('FF$cleaned', radix: 16);
       if (val != null) return Color(val);
     }
-    return const Color(0xFF3390EC);
+    return const Color(0xFF007AFF);
   }
 
   // ignore: library_private_types_in_public_api
@@ -48,8 +48,8 @@ class ChatAppearanceCatalog {
     return _ResolvedAppearance(
       accent: accent,
       wallpaperColors: isDark
-          ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
-          : [const Color(0xFFF8FAFC), const Color(0xFFEFF6FF)],
+          ? [const Color(0xFF000000), const Color(0xFF1C1C1E)]
+          : [const Color(0xFFF2F2F7), const Color(0xFFFFFFFF)],
       patternColor: accent,
     );
   }
@@ -156,57 +156,22 @@ class AppThemedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.appThemePalette;
     final theme = Theme.of(context);
     final body = padding == null
         ? child
         : Padding(padding: padding!, child: child);
 
-    final isLight = theme.brightness == Brightness.light;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        IgnorePointer(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: isLight ? theme.scaffoldBackgroundColor : null,
-              gradient: isLight
-                  ? null
-                  : LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: palette.backdropColors,
-                      stops: _buildGradientStops(palette.backdropColors.length),
-                    ),
-            ),
-            child: isLight
-                ? const SizedBox.expand()
-                : CustomPaint(
-                    painter: _AppBackdropPainter(
-                      color: palette.backdropPatternColor,
-                      isDark: palette.isDark,
-                    ),
-                  ),
-          ),
-        ),
-        body,
-      ],
+    return ColoredBox(
+      color: theme.scaffoldBackgroundColor,
+      child: body,
     );
-  }
-
-  List<double> _buildGradientStops(int length) {
-    if (length <= 1) {
-      return const [0];
-    }
-    return List<double>.generate(length, (index) => index / (length - 1));
   }
 }
 
 class AppTheme {
-  static const _seed = Color(0xFF3390EC);
-  static const _accent = Color(0xFF64B5F6);
-  static const _success = Color(0xFF38B873);
+  // Apple iOS System Palette
+  static const _seed = Color(0xFF007AFF);
+  static const _success = Color(0xFF34C759);
 
   static ThemeData lightTheme([
     ChatPreferences preferences = ChatPreferences.defaults,
@@ -221,66 +186,56 @@ class AppTheme {
     ChatPreferences preferences,
   ) {
     final isDark = brightness == Brightness.dark;
+
+    // Apple iOS 17/18 System Colors
+    final accent = isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF);
+    final scaffoldBackground = isDark
+        ? const Color(0xFF000000)
+        : const Color(0xFFF2F2F7);
+    final surface = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final surfaceContainer = isDark
+        ? const Color(0xFF2C2C2E)
+        : const Color(0xFFFFFFFF);
+    final surfaceContainerHigh = isDark
+        ? const Color(0xFF3A3A3C)
+        : const Color(0xFFE5E5EA);
+    final surfaceContainerHighest = isDark
+        ? const Color(0xFF48484A)
+        : const Color(0xFFD1D1D6);
+
+    // Apple 0.5px hairline divider/border
+    final outline = isDark
+        ? const Color(0x38FFFFFF)
+        : const Color(0x1F000000);
+
     final seedScheme = ColorScheme.fromSeed(
       brightness: brightness,
       seedColor: _seedColorFor(preferences),
-      primary: isDark ? const Color(0xFF74B6F4) : _seed,
-      secondary: _accent,
-      tertiary: _success,
-      surface: isDark ? const Color(0xFF1F2C38) : const Color(0xFFF8FAFC),
-    );
-
-    final resolved = ChatAppearanceCatalog.resolveAppearance(
-      preferences: preferences,
-      isDark: isDark,
-      colorScheme: seedScheme,
-    );
-    final accent = resolved.accent;
-    final backdropBase = isDark
-        ? _averageColor(resolved.wallpaperColors)
-        : const Color(0xFFF8FAFC);
-
-    final scaffoldBackground = isDark
-        ? _blend(const Color(0xFF0B0F19), backdropBase, 0.04)
-        : const Color(0xFFF8FAFC);
-    final surface = isDark
-        ? _blend(const Color(0xFF161E2E), backdropBase, 0.03)
-        : Colors.white;
-    final surfaceContainer = _blend(surface, accent, isDark ? 0.04 : 0.02);
-    final surfaceContainerHigh = _blend(surface, accent, isDark ? 0.06 : 0.03);
-    final surfaceContainerHighest = _blend(
-      surface,
-      accent,
-      isDark ? 0.09 : 0.05,
-    );
-    final outline = _blend(
-      isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-      accent,
-      isDark ? 0.06 : 0.03,
+      primary: accent,
+      secondary: accent,
+      tertiary: isDark ? const Color(0xFF30D158) : _success,
+      surface: surface,
     );
 
     final colorScheme = seedScheme.copyWith(
       primary: accent,
-      secondary: _blend(
-        accent,
-        isDark ? Colors.white : const Color(0xFF102033),
-        isDark ? 0.18 : 0.10,
-      ),
-      tertiary: _success,
+      onPrimary: Colors.white,
+      secondary: accent,
+      tertiary: isDark ? const Color(0xFF30D158) : _success,
       surface: surface,
       surfaceContainer: surfaceContainer,
       surfaceContainerHigh: surfaceContainerHigh,
       surfaceContainerHighest: surfaceContainerHighest,
       surfaceContainerLowest: isDark
-          ? _blend(surface, Colors.black, 0.12)
-          : const Color(0xFFF8FAFC),
-      primaryContainer: _blend(accent, backdropBase, isDark ? 0.38 : 0.22),
-      onPrimaryContainer: isDark ? Colors.white : const Color(0xFF0E2234),
-      secondaryContainer: _blend(accent, surface, isDark ? 0.28 : 0.18),
-      onSecondaryContainer: isDark ? Colors.white : const Color(0xFF102033),
+          ? const Color(0xFF000000)
+          : const Color(0xFFF2F2F7),
+      primaryContainer: accent.withValues(alpha: isDark ? 0.25 : 0.12),
+      onPrimaryContainer: isDark ? const Color(0xFF70B4FF) : const Color(0xFF0056B3),
+      secondaryContainer: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+      onSecondaryContainer: isDark ? Colors.white : const Color(0xFF1C1C1E),
       outline: outline,
-      outlineVariant: outline.withValues(alpha: isDark ? 0.74 : 0.58),
-      error: const Color(0xFFD92D20),
+      outlineVariant: outline,
+      error: isDark ? const Color(0xFFFF453A) : const Color(0xFFFF3B30),
       errorContainer: isDark
           ? const Color(0xFF4C1211)
           : const Color(0xFFFEE4E2),
@@ -289,36 +244,28 @@ class AppTheme {
           : const Color(0xFF410002),
     );
 
-    // 100% Offline bundled Cairo font
+    // Cairo font with Apple typography weight and hierarchy
     final baseTextTheme = Typography.material2021().black.apply(
       fontFamily: 'Cairo',
-      bodyColor: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
-      displayColor: isDark ? Colors.white : const Color(0xFF0F172A),
+      bodyColor: isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E),
+      displayColor: isDark ? Colors.white : const Color(0xFF000000),
     );
 
     final palette = AppThemePalette(
       accent: accent,
-      accentSoft: accent.withValues(alpha: isDark ? 0.18 : 0.12),
-      accentStrong: _blend(accent, isDark ? Colors.white : Colors.black, 0.16),
-      success: _blend(_success, accent, isDark ? 0.14 : 0.08),
-      warning: _blend(const Color(0xFFF59E0B), accent, 0.08),
-      danger: const Color(0xFFD92D20),
+      accentSoft: accent.withValues(alpha: isDark ? 0.20 : 0.12),
+      accentStrong: accent,
+      success: isDark ? const Color(0xFF30D158) : const Color(0xFF34C759),
+      warning: isDark ? const Color(0xFFFF9F0A) : const Color(0xFFFF9500),
+      danger: isDark ? const Color(0xFFFF453A) : const Color(0xFFFF3B30),
       backdropColors: isDark
-          ? [
-              _blend(resolved.wallpaperColors.first, scaffoldBackground, 0.12),
-              scaffoldBackground,
-              _blend(resolved.wallpaperColors.last, scaffoldBackground, 0.18),
-            ]
-          : [scaffoldBackground, scaffoldBackground, scaffoldBackground],
-      backdropPatternColor: resolved.patternColor,
+          ? [const Color(0xFF000000), const Color(0xFF1C1C1E)]
+          : [const Color(0xFFF2F2F7), const Color(0xFFF2F2F7)],
+      backdropPatternColor: Colors.transparent,
       heroGradientColors: [
-        _blend(accent, resolved.wallpaperColors.first, isDark ? 0.26 : 0.18),
-        _blend(accent, resolved.wallpaperColors.last, isDark ? 0.34 : 0.26),
-        _blend(
-          accent,
-          isDark ? const Color(0xFF08111A) : Colors.white,
-          isDark ? 0.20 : 0.10,
-        ),
+        accent,
+        accent.withValues(alpha: 0.85),
+        accent.withValues(alpha: 0.70),
       ],
       isDark: isDark,
     );
@@ -331,74 +278,89 @@ class AppTheme {
       textTheme: baseTextTheme,
       scaffoldBackgroundColor: scaffoldBackground,
       canvasColor: surface,
-      splashFactory: InkSparkle.splashFactory,
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: isDark ? Colors.white10 : Colors.black12,
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
+        showDragHandle: true,
+        dragHandleColor: isDark ? const Color(0xFF545458) : const Color(0xFFC7C7CC),
         clipBehavior: Clip.antiAlias,
       ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
         backgroundColor: Colors.transparent,
-        foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
+        foregroundColor: isDark ? Colors.white : const Color(0xFF000000),
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: baseTextTheme.titleLarge?.copyWith(
+        titleTextStyle: TextStyle(
           fontFamily: 'Cairo',
-          fontWeight: FontWeight.w800,
-          color: isDark ? Colors.white : const Color(0xFF0F172A),
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : const Color(0xFF000000),
+          letterSpacing: -0.3,
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         color: surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: outline, width: 0.5),
         ),
         margin: EdgeInsets.zero,
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: outline, width: 0.5),
+        ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: surfaceContainer,
-        elevation: 6,
+        color: surface,
+        elevation: 10,
+        shadowColor: Colors.black26,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: outline, width: 0.5),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 54),
+          minimumSize: const Size(0, 50),
           backgroundColor: accent,
           foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(14),
           ),
           textStyle: const TextStyle(
             fontFamily: 'Cairo',
+            fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 52),
-          side: BorderSide(color: colorScheme.outlineVariant),
+          minimumSize: const Size(0, 50),
+          side: BorderSide(color: outline, width: 1),
           foregroundColor: accent,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(14),
           ),
           textStyle: const TextStyle(
             fontFamily: 'Cairo',
+            fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -407,80 +369,98 @@ class AppTheme {
         style: IconButton.styleFrom(
           foregroundColor: accent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: accent, width: 1.4),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accent, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: colorScheme.error),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colorScheme.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(color: colorScheme.error, width: 1.4),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colorScheme.error, width: 1.5),
         ),
         filled: true,
-        fillColor: surfaceContainerHigh.withValues(alpha: isDark ? 0.92 : 0.85),
+        fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 16,
+          horizontal: 16,
+          vertical: 12,
+        ),
+        hintStyle: TextStyle(
+          color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF8E8E93),
+          fontFamily: 'Cairo',
+          fontSize: 15,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: isDark
-            ? const Color(0xFF1C2B38)
-            : const Color(0xFF17304A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ? const Color(0xFF2C2C2E)
+            : const Color(0xFF1C1C1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         contentTextStyle: const TextStyle(
           fontFamily: 'Cairo',
           color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
         ),
       ),
-      dividerTheme: DividerThemeData(color: colorScheme.outlineVariant),
+      dividerTheme: DividerThemeData(
+        color: outline,
+        thickness: 0.5,
+        space: 1,
+      ),
       chipTheme: ChipThemeData(
-        backgroundColor: surfaceContainerHigh,
-        selectedColor: accent.withValues(alpha: 0.14),
+        backgroundColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+        selectedColor: accent,
         side: BorderSide.none,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         labelStyle: TextStyle(
           fontFamily: 'Cairo',
-          color: isDark ? Colors.white : const Color(0xFF16335C),
+          color: isDark ? Colors.white : const Color(0xFF000000),
           fontWeight: FontWeight.w600,
         ),
       ),
       tabBarTheme: TabBarThemeData(
         dividerColor: Colors.transparent,
-        labelColor: isDark ? Colors.white : const Color(0xFF12325C),
-        unselectedLabelColor: isDark
-            ? const Color(0xFF93A7BC)
-            : const Color(0xFF708499),
+        labelColor: isDark ? Colors.white : Colors.black,
+        unselectedLabelColor: const Color(0xFF8E8E93),
         indicator: BoxDecoration(
-          color: accent.withValues(alpha: isDark ? 0.22 : 0.14),
-          borderRadius: BorderRadius.circular(999),
+          color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         labelStyle: const TextStyle(
           fontFamily: 'Cairo',
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
         ),
         unselectedLabelStyle: const TextStyle(
           fontFamily: 'Cairo',
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
         ),
       ),
       extensions: [palette],
@@ -489,111 +469,16 @@ class AppTheme {
 
   static Color _seedColorFor(ChatPreferences preferences) {
     return switch (preferences.themeId) {
-      'mint' => const Color(0xFF10B981),
-      'violet' => const Color(0xFF7C3AED),
-      'sunset' => const Color(0xFFF59E0B),
-      'mono' => const Color(0xFF64748B),
+      'mint' => const Color(0xFF34C759),
+      'violet' => const Color(0xFFAF52DE),
+      'sunset' => const Color(0xFFFF9500),
+      'mono' => const Color(0xFF8E8E93),
       'custom' => ChatAppearanceCatalog.colorFromHex(
         preferences.customTheme.accentColorHex,
       ),
       _ => _seed,
     };
   }
-
-  static Color _averageColor(List<Color> colors) {
-    if (colors.isEmpty) {
-      return const Color(0xFFEAF0F6);
-    }
-    var alpha = 0.0;
-    var red = 0.0;
-    var green = 0.0;
-    var blue = 0.0;
-    for (final color in colors) {
-      alpha += color.a;
-      red += color.r;
-      green += color.g;
-      blue += color.b;
-    }
-    final length = colors.length.toDouble();
-    return Color.fromARGB(
-      (alpha / length).round(),
-      (red / length).round(),
-      (green / length).round(),
-      (blue / length).round(),
-    );
-  }
-
-  static Color _blend(Color base, Color overlay, double amount) {
-    return Color.lerp(base, overlay, amount.clamp(0, 1)) ?? base;
-  }
 }
 
-class _AppBackdropPainter extends CustomPainter {
-  const _AppBackdropPainter({required this.color, required this.isDark});
 
-  final Color color;
-  final bool isDark;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final strokePaint = Paint()
-      ..color = color.withValues(alpha: isDark ? 0.18 : 0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    final fillPaint = Paint()
-      ..color = color.withValues(alpha: isDark ? 0.08 : 0.05)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(
-      Offset(size.width * 0.12, size.height * 0.18),
-      42,
-      fillPaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.84, size.height * 0.14),
-      56,
-      strokePaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.78, size.height * 0.72),
-      72,
-      fillPaint,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.24, size.height * 0.86),
-      34,
-      strokePaint,
-    );
-
-    final path = Path()
-      ..moveTo(size.width * 0.08, size.height * 0.36)
-      ..quadraticBezierTo(
-        size.width * 0.28,
-        size.height * 0.24,
-        size.width * 0.42,
-        size.height * 0.38,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.60,
-        size.height * 0.54,
-        size.width * 0.86,
-        size.height * 0.42,
-      );
-    canvas.drawPath(path, strokePaint);
-
-    final roundedRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: Offset(size.width * 0.64, size.height * 0.28),
-        width: 22,
-        height: 22,
-      ),
-      const Radius.circular(7),
-    );
-    canvas.drawRRect(roundedRect, strokePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _AppBackdropPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.isDark != isDark;
-  }
-}
