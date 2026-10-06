@@ -15,6 +15,8 @@ import '../scanner_session_screen.dart';
 import '../tools_hub_screen.dart';
 import '../vault_screen.dart';
 import '../id_card_a4_screen.dart';
+import '../notebook_lines_remover_screen.dart';
+import '../object_counter_screen.dart';
 
 /// An Apple Human Interface Guidelines bottom navigation bar featuring:
 /// - Frosted glass blur backdrop filter
@@ -352,6 +354,36 @@ class AppleBottomNavBar extends ConsumerWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const IdCardA4Screen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildQuickActionTile(
+                    sheetCtx: sheetCtx,
+                    icon: Icons.border_color_rounded,
+                    color: const Color(0xFF007AFF),
+                    title: 'إزالة خطوط الدفاتر والشبكات 📓',
+                    subtitle: 'تبييض ورق الكشاكيل وحذف التسطير مع إبقاء خط اليد',
+                    onTap: () {
+                      Navigator.pop(sheetCtx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const NotebookLinesRemoverScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildQuickActionTile(
+                    sheetCtx: sheetCtx,
+                    icon: Icons.pin_rounded,
+                    color: const Color(0xFFFF9500),
+                    title: 'عداد العناصر والأشياء التلقائي 🔢',
+                    subtitle: 'عد الأنابيب، الكراتين، والأدوية وتقرير جرد PDF',
+                    onTap: () {
+                      Navigator.pop(sheetCtx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ObjectCounterScreen(),
                         ),
                       );
                     },

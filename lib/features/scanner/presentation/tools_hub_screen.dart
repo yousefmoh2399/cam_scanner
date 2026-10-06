@@ -39,6 +39,9 @@ import 'book_curve_flattener_screen.dart';
 import 'smart_id_wallet_screen.dart';
 import 'transferred_files_screen.dart';
 import 'id_card_a4_screen.dart';
+import 'notebook_lines_remover_screen.dart';
+import 'object_counter_screen.dart';
+import 'anti_moire_whiteboard_screen.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -255,6 +258,36 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       badge: '3D Dewarp',
       accentColor: Color(0xFFF59E0B),
       keywords: ['كتاب', 'مجلد', 'انحناء', 'تقوس', 'كعب', 'تسوية', 'مسطح', 'dewarp', 'curve', 'book'],
+    ),
+    ToolItem(
+      id: 'ai_notebook_remover',
+      title: 'إزالة خطوط الدفاتر والشبكات',
+      subtitle: 'إزالة خطوط التسطير الأفقية وشبكات الرسم البياني مع الحفاظ على الكتابة اليدوية',
+      category: ToolCategory.intelligence,
+      icon: Icons.border_color_rounded,
+      badge: 'جديد • كشكول 📓',
+      accentColor: Color(0xFF007AFF),
+      keywords: ['كشكول', 'دفتر', 'تسطير', 'خطوط', 'مربعات', 'رسم بياني', 'شبكة', 'notebook', 'grid', 'lines'],
+    ),
+    ToolItem(
+      id: 'ai_object_counter',
+      title: 'عداد العناصر والأشياء التلقائي',
+      subtitle: 'عد الأنابيب، الكراتين، حبات الدواء، والمستندات بنقاط مرقمة وتقرير جرد PDF',
+      category: ToolCategory.intelligence,
+      icon: Icons.pin_rounded,
+      badge: 'عداد AI 🔢',
+      accentColor: Color(0xFFFF9500),
+      keywords: ['عد', 'عداد', 'أنابيب', 'كراتين', 'بضائع', 'دواء', 'جرد', 'مخزن', 'counter', 'inventory', 'objects'],
+    ),
+    ToolItem(
+      id: 'ai_anti_moire_glare',
+      title: 'مزيل تموجات الشاشات والسبورة',
+      subtitle: 'إزالة تموجات Moiré من شاشات الحواسيب ولمعان إضاءة السبورة كلقطة شاشة رقمية',
+      category: ToolCategory.intelligence,
+      icon: Icons.screenshot_monitor_rounded,
+      badge: 'شاشات وسبورة 🖥️',
+      accentColor: Color(0xFF5856D6),
+      keywords: ['شاشة', 'كمبيوتر', 'تلفزيون', 'تموج', 'سبورة', 'لمعان', 'فلاش', 'moire', 'glare', 'whiteboard'],
     ),
 
     // ── PDF Tools Category ──
@@ -626,6 +659,30 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => const TransferredFilesScreen(),
+          ),
+        );
+        break;
+
+      case 'ai_notebook_remover':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const NotebookLinesRemoverScreen(),
+          ),
+        );
+        break;
+
+      case 'ai_object_counter':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const ObjectCounterScreen(),
+          ),
+        );
+        break;
+
+      case 'ai_anti_moire_glare':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const AntiMoireWhiteboardScreen(),
           ),
         );
         break;
