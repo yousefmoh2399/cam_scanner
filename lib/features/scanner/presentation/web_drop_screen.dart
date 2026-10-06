@@ -38,6 +38,8 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
       TransferredFilesService.instance;
   bool _isStarting = false;
   bool _showQrCode = false;
+  bool _isImportingFiles = false;
+  String _importStatusText = '';
 
   List<TransferredFile> _receivedFiles = [];
   StreamSubscription<List<SharedDropFile>>? _stagedSubscription;
@@ -66,10 +68,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
     });
 
     _loadRecentTransferred();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startServer();
-    });
+    // Server starts in OFF state by default so the user controls it manually
   }
 
   Future<void> _loadRecentTransferred() async {
@@ -197,15 +196,32 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
   }
 
   Future<void> _pickExternalFiles() async {
+    if (_isImportingFiles) return;
     HapticFeedback.lightImpact();
+    setState(() {
+      _isImportingFiles = true;
+      _importStatusText = 'جارٍ فتح مستعرض ملفات الهاتف...';
+    });
+
     try {
       final res = await FilePicker.platform.pickFiles(
         allowMultiple: true,
         type: FileType.any,
       );
+
       if (res != null && res.files.isNotEmpty) {
+        final totalCount = res.files.length;
         int added = 0;
-        for (final f in res.files) {
+
+        for (int i = 0; i < res.files.length; i++) {
+          final f = res.files[i];
+          if (mounted) {
+            setState(() {
+              _importStatusText =
+                  'جارٍ استيراد (${i + 1}/$totalCount): ${f.name} (${SharedDropFile.formatBytes(f.size)})...';
+            });
+          }
+
           if (f.path != null) {
             final drop = SharedDropFile(
               id: 'staged_${DateTime.now().millisecondsSinceEpoch}_${f.name.hashCode}',
@@ -220,8 +236,12 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
             added++;
           }
         }
+
         if (mounted) {
-          setState(() {});
+          setState(() {
+            _isImportingFiles = false;
+            _importStatusText = '';
+          });
           HapticFeedback.mediumImpact();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -230,7 +250,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                   const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text('تمت إضافة $added ملف للمشاركة • متاح للتحميل فوراً على الكمبيوتر!'),
+                    child: Text('تم استيراد $added ملف بنجاح • متاح للتحميل فوراً على الكمبيوتر!'),
                   ),
                 ],
               ),
@@ -239,9 +259,20 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
             ),
           );
         }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isImportingFiles = false;
+            _importStatusText = '';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isImportingFiles = false;
+          _importStatusText = '';
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('تعذر اختيار الملفات: $e')),
         );
@@ -338,6 +369,10 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                         color: Color(0xFF007AFF)),
                     onTap: () {
                       Navigator.pop(sheetCtx);
+                      setState(() {
+                        _isImportingFiles = true;
+                        _importStatusText = 'جارٍ تجهيز مستند "${doc.fileName}"...';
+                      });
                       final drop = SharedDropFile(
                         id: 'doc_${doc.id}',
                         name: doc.fileName,
@@ -348,16 +383,21 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                         isFromAppLibrary: true,
                       );
                       _webDropService.addStagedFile(drop);
-                      setState(() {});
-                      HapticFeedback.mediumImpact();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              '✅ تمت إضافة "${doc.fileName}" للتحميل الفوري على الكمبيوتر!'),
-                          backgroundColor: const Color(0xFF34C759),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      if (mounted) {
+                        setState(() {
+                          _isImportingFiles = false;
+                          _importStatusText = '';
+                        });
+                        HapticFeedback.mediumImpact();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                '✅ تمت إضافة "${doc.fileName}" للتحميل الفوري على الكمبيوتر!'),
+                            backgroundColor: const Color(0xFF34C759),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                     },
                   );
                 },
@@ -564,6 +604,45 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                       ),
                     ],
                   ),
+
+                  // Prominent Manual Start Button when server is OFF
+                  if (!isRunning) ...[
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF34C759),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        icon: _isStarting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.power_settings_new_rounded, size: 20),
+                        label: Text(
+                          _isStarting
+                              ? 'جارٍ تشغيل الخادم...'
+                              : 'تشغيل خادم المشاركة الآن',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                        onPressed: _isStarting ? null : () => _startServer(),
+                      ),
+                    ),
+                  ],
 
                   if (isRunning) ...[
                     const SizedBox(height: 12),
@@ -811,10 +890,24 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                         child: SizedBox(
                           height: 40,
                           child: FilledButton.icon(
-                            onPressed: _pickExternalFiles,
-                            icon: const Icon(Icons.file_upload_outlined, size: 17),
-                            label: const Text('ملف من الهاتف',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                            onPressed: _isImportingFiles ? null : _pickExternalFiles,
+                            icon: _isImportingFiles
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.file_upload_outlined, size: 17),
+                            label: Text(
+                              _isImportingFiles ? 'جارٍ الاستيراد...' : 'ملف من الهاتف',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                             style: FilledButton.styleFrom(
                               backgroundColor: const Color(0xFF007AFF),
                               padding: EdgeInsets.zero,
@@ -830,10 +923,12 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                         child: SizedBox(
                           height: 40,
                           child: FilledButton.tonalIcon(
-                            onPressed: _pickLibraryDocuments,
+                            onPressed: _isImportingFiles ? null : _pickLibraryDocuments,
                             icon: const Icon(Icons.folder_shared_outlined, size: 17),
-                            label: const Text('من المستندات',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                            label: const Text(
+                              'من المستندات',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
                             style: FilledButton.styleFrom(
                               padding: EdgeInsets.zero,
                               shape: RoundedRectangleBorder(
@@ -845,6 +940,60 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                       ),
                     ],
                   ),
+
+                  // Live Importing Progress Banner for large files
+                  if (_isImportingFiles) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Color(0xFF007AFF),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'جارٍ استيراد وتجهيز الملف للمشاركة...',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                                if (_importStatusText.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _importStatusText,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   // Staged Files List (Live queue available to PC)
                   if (staged.isNotEmpty) ...[
