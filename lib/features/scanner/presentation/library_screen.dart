@@ -197,9 +197,32 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       final docId = 'sh_${now.millisecondsSinceEpoch}';
       final importedPages = <ScannedPage>[];
 
+      final currentDocs =
+          ref.read(pendingUploadsControllerProvider).valueOrNull ?? [];
+
       for (final item in rawList.whereType<String>()) {
         final f = File(item);
         if (!await f.exists()) continue;
+
+        // Never re-import internal files generated or exported by our app
+        final normalized = item.replaceAll('\\', '/');
+        if (normalized.contains('com.yourname.docscanner') ||
+            normalized.contains('app_flutter') ||
+            normalized.contains('/Exports/') ||
+            normalized.contains('/Documents/') ||
+            normalized.contains('/Pages/')) {
+          continue;
+        }
+
+        // Avoid duplicating if file with same size and name already exists
+        final fSize = await f.length();
+        final baseName = p.basename(item);
+        if (currentDocs.any((d) =>
+            d.fileSizeBytes == fSize &&
+            (p.basename(d.filePath) == baseName || d.fileName == baseName))) {
+          continue;
+        }
+
         final ext = p.extension(item).toLowerCase();
         if (ext == '.pdf') {
           final pdfBytes = await f.readAsBytes();
@@ -1194,6 +1217,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       }
       if (_activeFolderId != null) {
         if (doc.folderId != _activeFolderId) return false;
+      } else {
+        // At the root level of the library:
+        // Hide documents that have been moved into folders so they don't linger outside!
+        if (query.isEmpty && !_showFavoritesOnly && _selectedCategoryFilter == null) {
+          if (doc.folderId != null && doc.folderId!.isNotEmpty) {
+            return false;
+          }
+        }
       }
       if (query.isNotEmpty) {
         final matchesMeta = doc.title.toLowerCase().contains(query) ||

@@ -618,10 +618,19 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    override fun getInitialRoute(): String {
+        return "/"
+    }
+
     private fun extractIncomingFilesFromIntent(incoming: Intent?): List<String> {
         if (incoming == null) return emptyList()
+        val action = incoming.action
+        // Only consume external shares (ACTION_SEND or ACTION_SEND_MULTIPLE)
+        if (action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE) {
+            return emptyList()
+        }
         val uris = ArrayList<android.net.Uri>()
-        when (incoming.action) {
+        when (action) {
             Intent.ACTION_SEND -> {
                 @Suppress("DEPRECATION")
                 val single = incoming.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
@@ -632,14 +641,15 @@ class MainActivity : FlutterFragmentActivity() {
                 val list = incoming.getParcelableArrayListExtra<android.net.Uri>(Intent.EXTRA_STREAM)
                 if (list != null) uris.addAll(list)
             }
-            Intent.ACTION_VIEW -> {
-                val dataUri = incoming.data
-                if (dataUri != null) uris.add(dataUri)
-            }
         }
         val copiedPaths = ArrayList<String>()
         for ((idx, uri) in uris.withIndex()) {
             try {
+                val uriStr = uri.toString()
+                // Never re-import internal files belonging to the app
+                if (uriStr.contains(packageName) || uriStr.contains("com.yourname.docscanner") || uriStr.contains("Exports")) {
+                    continue
+                }
                 val mime = contentResolver.getType(uri) ?: ""
                 val ext = if (mime.contains("pdf")) ".pdf" else ".jpg"
                 val dest = File(cacheDir, "incoming_${System.currentTimeMillis()}_$idx$ext")
