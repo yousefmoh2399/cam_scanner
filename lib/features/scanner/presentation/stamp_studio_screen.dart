@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/native_scanner_bridge.dart';
 import '../data/stamp_storage_service.dart';
+import 'scan_review_screen.dart';
 
 /// Screen for managing, creating, and selecting Digital Stamps & Seals (100% Offline).
 class StampStudioScreen extends StatefulWidget {
@@ -86,8 +87,15 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
     if (choice == 'camera') {
       try {
         final docResults = await NativeScannerBridge.startScan();
-        if (docResults.isNotEmpty) {
-          capturedPath = docResults.first.path;
+        if (docResults.isNotEmpty && mounted) {
+          final res = docResults.first;
+          capturedPath = await openScanReviewScreen(
+            context,
+            rawImagePath: res.path,
+            initialCorners: res.corners,
+            imageWidth: res.width,
+            imageHeight: res.height,
+          );
         }
       } on ScannerPermissionDeniedException catch (e) {
         if (mounted) {

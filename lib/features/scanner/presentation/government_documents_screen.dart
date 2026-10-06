@@ -15,6 +15,7 @@ import '../data/government_preset_service.dart';
 import '../data/native_scanner_bridge.dart';
 import 'widgets/apple_bottom_nav_bar.dart';
 import 'id_card_a4_screen.dart';
+import 'scan_review_screen.dart';
 
 /// Available document modes in the official studio.
 enum OfficialDocMode {
@@ -255,8 +256,15 @@ class _GovernmentDocumentsScreenState
           destDir: draftsDir.path,
           batch: false,
         );
-        if (scanResults.isNotEmpty) {
-          return scanResults.first.path;
+        if (scanResults.isNotEmpty && context.mounted) {
+          final res = scanResults.first;
+          return await openScanReviewScreen(
+            context,
+            rawImagePath: res.path,
+            initialCorners: res.corners,
+            imageWidth: res.width,
+            imageHeight: res.height,
+          );
         }
       } on ScannerPermissionDeniedException catch (e) {
         if (context.mounted) {
@@ -275,8 +283,12 @@ class _GovernmentDocumentsScreenState
         type: FileType.image,
         allowMultiple: false,
       );
-      if (result != null && result.files.isNotEmpty) {
-        return result.files.first.path;
+      if (result != null && result.files.isNotEmpty && result.files.first.path != null) {
+        if (!context.mounted) return null;
+        return await openScanReviewScreen(
+          context,
+          rawImagePath: result.files.first.path!,
+        );
       }
       return null;
     } else if (source == 'library') {

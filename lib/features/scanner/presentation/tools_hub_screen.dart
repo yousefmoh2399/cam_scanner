@@ -38,6 +38,7 @@ import 'widgets/pdf_security_sheet.dart';
 import 'book_curve_flattener_screen.dart';
 import 'smart_id_wallet_screen.dart';
 import 'transferred_files_screen.dart';
+import 'scan_review_screen.dart';
 import 'id_card_a4_screen.dart';
 import 'notebook_lines_remover_screen.dart';
 import 'object_counter_screen.dart';
@@ -1176,8 +1177,19 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       destDir: draftsDir.path,
                       batch: false,
                     );
-                    if (scanResults.isNotEmpty) {
-                      await _processImageToExcel(scanResults.first.path, 'جدول_ممسوح');
+                    if (scanResults.isNotEmpty && mounted) {
+                      final res = scanResults.first;
+                      final enhancedPath = await openScanReviewScreen(
+                        context,
+                        rawImagePath: res.path,
+                        initialCorners: res.corners,
+                        imageWidth: res.width,
+                        imageHeight: res.height,
+                        initialFilter: 'bw',
+                      );
+                      if (enhancedPath != null) {
+                        await _processImageToExcel(enhancedPath, 'جدول_ممسوح');
+                      }
                     }
                   } on ScannerPermissionDeniedException catch (e) {
                     if (mounted) {
@@ -1429,8 +1441,18 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       destDir: draftsDir.path,
                       batch: false,
                     );
-                    if (scanResults.isNotEmpty) {
-                      await _extractFromImagePath(scanResults.first.path, 'وثيقة_ممسوحة');
+                    if (scanResults.isNotEmpty && mounted) {
+                      final res = scanResults.first;
+                      final enhancedPath = await openScanReviewScreen(
+                        context,
+                        rawImagePath: res.path,
+                        initialCorners: res.corners,
+                        imageWidth: res.width,
+                        imageHeight: res.height,
+                      );
+                      if (enhancedPath != null) {
+                        await _extractFromImagePath(enhancedPath, 'وثيقة_ممسوحة');
+                      }
                     }
                   } on ScannerPermissionDeniedException catch (e) {
                     if (mounted) {

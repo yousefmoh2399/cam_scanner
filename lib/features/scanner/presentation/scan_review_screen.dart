@@ -20,12 +20,52 @@ class ScanReviewResult {
   final bool saveAllRemaining;
 }
 
+/// Helper to launch ScanReviewScreen for a standalone image capture/crop/enhancement.
+/// Returns the final processed & enhanced image path, or null if cancelled.
+Future<String?> openScanReviewScreen(
+  BuildContext context, {
+  required String rawImagePath,
+  List<double> initialCorners = const [],
+  int imageWidth = 0,
+  int imageHeight = 0,
+  String initialFilter = 'enhance',
+}) async {
+  List<double> corners = initialCorners;
+  if (corners.length != 8) {
+    try {
+      final detected = await NativeScannerBridge.detectCorners(rawImagePath);
+      if (detected.length == 8) {
+        corners = detected;
+      }
+    } catch (_) {}
+  }
+
+  if (!context.mounted) return null;
+
+  final dynamic result = await Navigator.of(context).push<dynamic>(
+    MaterialPageRoute(
+      builder: (_) => ScanReviewScreen(
+        rawImagePath: rawImagePath,
+        initialCorners: corners,
+        imageWidth: imageWidth,
+        imageHeight: imageHeight,
+        initialFilter: initialFilter,
+      ),
+    ),
+  );
+
+  if (result is String) return result;
+  if (result is ScanPage) return result.imagePath;
+  if (result is ScanReviewResult) return result.page.imagePath;
+  return null;
+}
+
 /// Screen for interactive review, manual quadrilateral cropping, filter selection with live thumbnails, and rotation.
 class ScanReviewScreen extends ConsumerStatefulWidget {
   const ScanReviewScreen({
     super.key,
     required this.rawImagePath,
-    required this.sessionId,
+    this.sessionId,
     this.pageId,
     this.initialCorners = const [],
     this.initialFilter = 'enhance',
@@ -37,7 +77,7 @@ class ScanReviewScreen extends ConsumerStatefulWidget {
   });
 
   final String rawImagePath;
-  final String sessionId;
+  final String? sessionId;
   final String? pageId;
   final List<double> initialCorners; // 8 normalized coordinates
   final String initialFilter;
@@ -300,46 +340,77 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
         maxSide: 2048,
       ).timeout(const Duration(seconds: 20));
 
-      // 3. Save directly into session files without memory overhead
-      final savedPath = await ref.read(localDocumentStoreProvider).savePageFile(
-            sessionId: widget.sessionId,
-            pageId: pageId,
-            sourcePath: fullFilteredPath,
-          );
+      if (widget.sessionId != null) {
+        // 3. Save directly into session files without memory overhead
+        final savedPath = await ref.read(localDocumentStoreProvider).savePageFile(
+              sessionId: widget.sessionId!,
+              pageId: pageId,
+              sourcePath: fullFilteredPath,
+            );
 
-      // 4. Preserve raw capture inside session directory for non-destructive re-warps
-      String preservedRawPath = widget.rawImagePath;
-      if (!preservedRawPath.contains(widget.sessionId)) {
-        preservedRawPath =
-            await ref.read(localDocumentStoreProvider).importRawScanFile(
-                  sessionId: widget.sessionId,
-                  sourcePath: widget.rawImagePath,
-                );
+        // 4. Preserve raw capture inside session directory for non-destructive re-warps
+        String preservedRawPath = widget.rawImagePath;
+        if (!preservedRawPath.contains(widget.sessionId!)) {
+          preservedRawPath =
+              await ref.read(localDocumentStoreProvider).importRawScanFile(
+                    sessionId: widget.sessionId!,
+                    sourcePath: widget.rawImagePath,
+                  );
+        }
+
+        // Clean up intermediate full-res files immediately
+        for (final p in intermediateFiles) {
+          try {
+            final f = File(p);
+            if (f.existsSync()) f.deleteSync();
+          } catch (_) {}
+        }
+
+        if (!mounted) return;
+        final scanPage = ScanPage(
+          id: pageId,
+          imagePath: savedPath,
+          createdAt: DateTime.now(),
+          originalPath: preservedRawPath,
+          corners: _corners,
+          filter: ImageFilterType.fromKey(_selectedFilter),
+          quarterTurns: _quarterRotations,
+        );
+        Navigator.of(context).pop(
+          saveAllRemaining
+              ? ScanReviewResult(page: scanPage, saveAllRemaining: true)
+              : scanPage,
+        );
+      } else {
+        // Standalone mode: save final image to draftsDir and return ScanPage
+        final finalEnhancedPath = '${draftsDir.path}/enhanced_$pageId.jpg';
+        final filteredFile = File(fullFilteredPath);
+        if (await filteredFile.exists()) {
+          await filteredFile.copy(finalEnhancedPath);
+        } else {
+          await File(fullWarpPath).copy(finalEnhancedPath);
+        }
+
+        // Clean up intermediate files
+        for (final p in intermediateFiles) {
+          try {
+            final f = File(p);
+            if (f.existsSync()) f.deleteSync();
+          } catch (_) {}
+        }
+
+        if (!mounted) return;
+        final scanPage = ScanPage(
+          id: pageId,
+          imagePath: finalEnhancedPath,
+          createdAt: DateTime.now(),
+          originalPath: widget.rawImagePath,
+          corners: _corners,
+          filter: ImageFilterType.fromKey(_selectedFilter),
+          quarterTurns: _quarterRotations,
+        );
+        Navigator.of(context).pop(scanPage);
       }
-
-      // Clean up intermediate full-res files immediately
-      for (final p in intermediateFiles) {
-        try {
-          final f = File(p);
-          if (f.existsSync()) f.deleteSync();
-        } catch (_) {}
-      }
-
-      if (!mounted) return;
-      final scanPage = ScanPage(
-        id: pageId,
-        imagePath: savedPath,
-        createdAt: DateTime.now(),
-        originalPath: preservedRawPath,
-        corners: _corners,
-        filter: ImageFilterType.fromKey(_selectedFilter),
-        quarterTurns: _quarterRotations,
-      );
-      Navigator.of(context).pop(
-        saveAllRemaining
-            ? ScanReviewResult(page: scanPage, saveAllRemaining: true)
-            : scanPage,
-      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -354,22 +425,25 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
 
   Future<void> _handleBackPress() async {
     if (_isBusy) return;
+    final isSession = widget.sessionId != null;
     final action = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text(
-          'الخروج من مراجعة الصفحة؟',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+        title: Text(
+          isSession ? 'الخروج من مراجعة الصفحة؟' : 'الخروج من مراجعة الصورة؟',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
-        content: const Text(
-          'هل تريد حفظ هذه الصفحة وإضافتها للمستند، أم إلغاء هذه اللقطة فقط؟',
-          style: TextStyle(fontSize: 14, height: 1.5),
+        content: Text(
+          isSession
+              ? 'هل تريد حفظ هذه الصفحة وإضافتها للمستند، أم إلغاء هذه اللقطة فقط؟'
+              : 'هل تريد حفظ الصورة المحسنة واستخدامها، أم إلغاء هذه اللقطة؟',
+          style: const TextStyle(fontSize: 14, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop('discard'),
             style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('إلغاء الصفحة'),
+            child: const Text('إلغاء اللقطة'),
           ),
           OutlinedButton(
             onPressed: () => Navigator.of(ctx).pop('cancel'),

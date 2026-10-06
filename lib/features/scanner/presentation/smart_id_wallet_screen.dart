@@ -12,6 +12,7 @@ import '../data/native_scanner_bridge.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/smart_id_wallet_service.dart';
 import 'id_card_a4_screen.dart';
+import 'scan_review_screen.dart';
 
 class SmartIdWalletScreen extends ConsumerStatefulWidget {
   const SmartIdWalletScreen({super.key});
@@ -580,14 +581,24 @@ class _AddCardSheetState extends ConsumerState<_AddCardSheet> {
         batch: false,
       );
 
-      if (results.isNotEmpty) {
-        setState(() {
-          if (isFront) {
-            _frontImagePath = results.first.path;
-          } else {
-            _backImagePath = results.first.path;
-          }
-        });
+      if (results.isNotEmpty && mounted) {
+        final res = results.first;
+        final processedPath = await openScanReviewScreen(
+          context,
+          rawImagePath: res.path,
+          initialCorners: res.corners,
+          imageWidth: res.width,
+          imageHeight: res.height,
+        );
+        if (processedPath != null && mounted) {
+          setState(() {
+            if (isFront) {
+              _frontImagePath = processedPath;
+            } else {
+              _backImagePath = processedPath;
+            }
+          });
+        }
       }
     } on ScannerPermissionDeniedException catch (e) {
       if (mounted) {
@@ -601,14 +612,20 @@ class _AddCardSheetState extends ConsumerState<_AddCardSheet> {
 
   Future<void> _pickFromGallery(bool isFront) async {
     final res = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (res != null && res.files.single.path != null) {
-      setState(() {
-        if (isFront) {
-          _frontImagePath = res.files.single.path;
-        } else {
-          _backImagePath = res.files.single.path;
-        }
-      });
+    if (res != null && res.files.single.path != null && mounted) {
+      final processedPath = await openScanReviewScreen(
+        context,
+        rawImagePath: res.files.single.path!,
+      );
+      if (processedPath != null && mounted) {
+        setState(() {
+          if (isFront) {
+            _frontImagePath = processedPath;
+          } else {
+            _backImagePath = processedPath;
+          }
+        });
+      }
     }
   }
 

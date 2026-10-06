@@ -646,17 +646,34 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
         final scanned = await NativeScannerBridge.startScan(batch: true);
         if (scanned.isNotEmpty && mounted) {
           final newPages = List<ScanPage>.from(_doc.pages);
-          for (final r in scanned) {
-            newPages.add(ScanPage(
-              id: const Uuid().v4(),
-              imagePath: r.path,
-              createdAt: DateTime.now(),
-            ));
+          for (int i = 0; i < scanned.length; i++) {
+            if (!mounted) break;
+            final r = scanned[i];
+            final reviewResult = await Navigator.of(context).push<dynamic>(
+              MaterialPageRoute(
+                builder: (_) => ScanReviewScreen(
+                  rawImagePath: r.path,
+                  sessionId: _doc.id,
+                  initialCorners: r.corners,
+                  imageWidth: r.width,
+                  imageHeight: r.height,
+                  pageIndex: i + 1,
+                  totalPages: scanned.length,
+                ),
+              ),
+            );
+            if (reviewResult is ScanPage) {
+              newPages.add(reviewResult);
+            } else if (reviewResult is ScanReviewResult) {
+              newPages.add(reviewResult.page);
+            }
           }
-          await _rebuildSavedPdf(newPages);
-          setState(() => _currentPageIndex = newPages.length - 1);
-          if (_pageController.hasClients) {
-            _pageController.jumpToPage(_currentPageIndex);
+          if (newPages.length > _doc.pages.length && mounted) {
+            await _rebuildSavedPdf(newPages);
+            setState(() => _currentPageIndex = newPages.length - 1);
+            if (_pageController.hasClients) {
+              _pageController.jumpToPage(_currentPageIndex);
+            }
           }
         }
       } on ScannerPermissionDeniedException catch (e) {

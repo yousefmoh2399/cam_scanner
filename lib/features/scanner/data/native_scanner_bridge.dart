@@ -359,6 +359,22 @@ class NativeScannerBridge {
     }
   }
 
+  /// Detects 4 document corners natively from an image file on disk.
+  /// Returns 8 normalized doubles [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]
+  /// or an empty list if no clear document quadrilateral was detected.
+  static Future<List<double>> detectCorners(String path) async {
+    try {
+      final res = await _channel.invokeMethod<List<dynamic>>('detectCorners', {
+        'path': path,
+      });
+      if (res == null) return const [];
+      return res.map((e) => (e as num).toDouble()).toList();
+    } catch (e) {
+      debugPrint('[NativeScannerBridge] detectCorners error: $e');
+      return const [];
+    }
+  }
+
   /// Evaluates document blurriness natively using Laplacian variance.
   /// Returns `isBlurry: true` if variance is below sharpness threshold (~80.0).
   static Future<({bool isBlurry, double variance})> checkBlur(String imagePath) async {

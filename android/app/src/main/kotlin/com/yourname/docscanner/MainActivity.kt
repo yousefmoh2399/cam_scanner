@@ -559,6 +559,76 @@ class MainActivity : FlutterFragmentActivity() {
                         tts?.stop()
                         result.success(true)
                     }
+                    "detectCorners" -> {
+                        val path = call.argument<String>("path")
+                        if (path.isNullOrBlank()) {
+                            result.error("INVALID_ARGS", "path is required", null)
+                            return@setMethodCallHandler
+                        }
+                        mainScope.launch(Dispatchers.Default) {
+                            nativeOpSemaphore.acquire()
+                            try {
+                                val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                                BitmapFactory.decodeFile(path, boundsOptions)
+                                val origW = boundsOptions.outWidth
+                                val origH = boundsOptions.outHeight
+                                if (origW <= 0 || origH <= 0) {
+                                    withContext(Dispatchers.Main) { result.success(emptyList<Double>()) }
+                                    return@launch
+                                }
+
+                                val maxTarget = 1024
+                                var sampleSize = 1
+                                while ((origW / sampleSize) > maxTarget || (origH / sampleSize) > maxTarget) {
+                                    sampleSize *= 2
+                                }
+
+                                val decodeOptions = BitmapFactory.Options().apply {
+                                    inSampleSize = sampleSize
+                                    inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+                                }
+                                val bmp = BitmapFactory.decodeFile(path, decodeOptions)
+                                if (bmp == null) {
+                                    withContext(Dispatchers.Main) { result.success(emptyList<Double>()) }
+                                    return@launch
+                                }
+                                val bmpW = bmp.width.toDouble()
+                                val bmpH = bmp.height.toDouble()
+
+                                val matBgra = Mat()
+                                org.opencv.android.Utils.bitmapToMat(bmp, matBgra)
+                                bmp.recycle()
+
+                                val gray = Mat()
+                                org.opencv.imgproc.Imgproc.cvtColor(matBgra, gray, org.opencv.imgproc.Imgproc.COLOR_BGRA2GRAY)
+                                matBgra.release()
+
+                                val quad = DocumentDetector.findQuad(gray)
+                                gray.release()
+
+                                val corners = if (quad != null && quad.size == 4) {
+                                    listOf(
+                                        quad[0].x / bmpW, quad[0].y / bmpH,
+                                        quad[1].x / bmpW, quad[1].y / bmpH,
+                                        quad[2].x / bmpW, quad[2].y / bmpH,
+                                        quad[3].x / bmpW, quad[3].y / bmpH
+                                    )
+                                } else {
+                                    emptyList<Double>()
+                                }
+
+                                withContext(Dispatchers.Main) {
+                                    result.success(corners)
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    result.success(emptyList<Double>())
+                                }
+                            } finally {
+                                nativeOpSemaphore.release()
+                            }
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }

@@ -16,6 +16,7 @@ import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/id_card_a4_service.dart';
 import '../data/native_scanner_bridge.dart';
+import 'scan_review_screen.dart';
 
 /// Screen for combining Front and Back of an ID / Driver's License onto
 /// a single A4 page strictly at true 1:1 physical size ($85.60 \times 53.98$ mm).
@@ -178,7 +179,16 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
           destDir: draftsDir.path,
           batch: false,
         );
-        if (results.isNotEmpty) pickedPath = results.first.path;
+        if (results.isNotEmpty && mounted) {
+          final res = results.first;
+          pickedPath = await openScanReviewScreen(
+            context,
+            rawImagePath: res.path,
+            initialCorners: res.corners,
+            imageWidth: res.width,
+            imageHeight: res.height,
+          );
+        }
       } on ScannerPermissionDeniedException catch (e) {
         if (mounted) {
           await showScannerPermissionDialog(context, e);
@@ -193,8 +203,12 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
       }
     } else if (source == 'gallery') {
       final res = await FilePicker.platform.pickFiles(type: FileType.image);
-      if (res != null && res.files.isNotEmpty) {
-        pickedPath = res.files.first.path;
+      if (res != null && res.files.isNotEmpty && res.files.first.path != null) {
+        if (!mounted) return;
+        pickedPath = await openScanReviewScreen(
+          context,
+          rawImagePath: res.files.first.path!,
+        );
       }
     } else if (source == 'library') {
       if (!mounted) return;
@@ -735,6 +749,39 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
             if (hasImage)
               Row(
                 children: [
+                  InkWell(
+                    onTap: () async {
+                      final currentPath = isFront ? _frontPath : _backPath;
+                      if (currentPath == null) return;
+                      final updated = await openScanReviewScreen(
+                        context,
+                        rawImagePath: currentPath,
+                      );
+                      if (updated != null && mounted) {
+                        setState(() {
+                          if (isFront) {
+                            _frontPath = updated;
+                          } else {
+                            _backPath = updated;
+                          }
+                        });
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.auto_fix_high_rounded,
+                        size: 17,
+                        color: Color(0xFF007AFF),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   InkWell(
                     onTap: () => _rotateSlot(isFront),
                     borderRadius: BorderRadius.circular(8),
