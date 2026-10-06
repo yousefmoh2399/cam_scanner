@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'dart:ui';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
@@ -309,75 +312,499 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final palette = context.appThemePalette;
-    final theme = Theme.of(context);
-    final pages = _doc.pages;
-    final title = stripFileExtension(_doc.fileName);
+  Future<void> _renameDocumentDialog() async {
+    final currentName = stripFileExtension(_doc.fileName);
+    final controller = TextEditingController(text: currentName);
+    final formKey = GlobalKey<FormState>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: const Row(
+          children: [
+            Icon(Icons.drive_file_rename_outline_rounded, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'إعادة تسمية المستند',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'اسم المستند',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) return 'يرجى إدخال اسم المستند';
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(ctx, controller.text.trim());
+              }
+            },
+            child: const Text('حفظ التعديل'),
+          ),
+        ],
+      ),
+    );
+
+    if (newName != null && newName.isNotEmpty && newName != currentName) {
+      try {
+        final updated = await ref
+            .read(pendingUploadsControllerProvider.notifier)
+            .renameDocument(_doc.id, newName);
+        if (mounted) {
+          setState(() {
+            _doc = updated;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تمت إعادة تسمية المستند بنجاح'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر إعادة التسمية: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _printDocument() async {
+    if (File(_doc.filePath).existsSync()) {
+      final bytes = await File(_doc.filePath).readAsBytes();
+      await Printing.layoutPdf(
+        name: stripFileExtension(_doc.fileName),
+        onLayout: (_) async => bytes,
+      );
+    }
+  }
+
+  void _showPrivacyInfoDialog() {
+    final palette = context.appThemePalette;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Icon(Icons.shield_rounded, color: palette.success, size: 26),
+            const SizedBox(width: 10),
+            const Text(
+              'تقرير أمان المستند',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            const Text(
+              'المستند محفوظ بالكامل على جهازك داخل الذاكرة الآمنة، بدون مشاركة أي بيانات أو رفع لسيرفرات سحابية خارجية.',
+              style: TextStyle(fontSize: 13, height: 1.5),
             ),
-            Text(
-              '${formatPageCount(_doc.pageCount)} • ${formatFileSize(_doc.fileSize)}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontSize: 11.5,
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: palette.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.check_circle_rounded, size: 16, color: palette.success),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'خالٍ تماماً من إحداثيات وموقع التصوير (GPS)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.check_circle_rounded, size: 16, color: palette.success),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'خالٍ من بيانات الكاميرا الوصفية (EXIF)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.check_circle_rounded, size: 16, color: palette.success),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'معالجة المسح والـ OCR محلياً على الهاتف',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
         ),
         actions: [
-          if (pages.length > 1)
-            IconButton(
-              tooltip: 'إعادة ترتيب الصفحات بالسحب',
-              icon: const Icon(Icons.reorder_rounded),
-              onPressed: _showPageReorderSheet,
-            ),
-          IconButton(
-            tooltip: 'استخراج ذكي OCR وقراءة صوتية',
-            icon: Icon(Icons.psychology_rounded, color: palette.accent),
-            onPressed: _showSmartExtraction,
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إغلاق'),
           ),
-          IconButton(
-            tooltip: 'تحويل الجداول إلى Excel (.xlsx)',
-            icon: const Icon(
-              Icons.table_chart_rounded,
-              color: Color(0xFF059669),
-            ),
-            onPressed: _exportToExcelDirectly,
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddPageSheet() async {
+    if (_isRebuildingPdf) return;
+    final palette = context.appThemePalette;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E24) : Colors.white,
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: const [
+              BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 8)),
+            ],
           ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 12),
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Text(
+                  'إلحاق صفحة جديدة بالمستند',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: palette.accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.camera_alt_rounded, color: palette.accent),
+                  ),
+                  title: const Text('مسح بالكاميرا الذكية', style: TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: const Text('التقاط صفحة جديدة مباشرة وإلحاقها بهذا الملف', style: TextStyle(fontSize: 12)),
+                  onTap: () => Navigator.pop(ctx, 'camera'),
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF2D55).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.photo_library_rounded, color: Color(0xFFFF2D55)),
+                  ),
+                  title: const Text('استيراد من ألبوم الصور', style: TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: const Text('اختيار صور من المعرض وإضافتها لهذا الملف', style: TextStyle(fontSize: 12)),
+                  onTap: () => Navigator.pop(ctx, 'gallery'),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (choice == null || !mounted) return;
+
+    if (choice == 'camera') {
+      final scanned = await NativeScannerBridge.startScan(batch: true);
+      if (scanned.isNotEmpty && mounted) {
+        final newPages = List<ScanPage>.from(_doc.pages);
+        for (final r in scanned) {
+          newPages.add(ScanPage(
+            id: const Uuid().v4(),
+            imagePath: r.path,
+            createdAt: DateTime.now(),
+          ));
+        }
+        await _rebuildSavedPdf(newPages);
+        setState(() => _currentPageIndex = newPages.length - 1);
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(_currentPageIndex);
+        }
+      }
+    } else if (choice == 'gallery') {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+      );
+      if (result != null && result.paths.isNotEmpty && mounted) {
+        final newPages = List<ScanPage>.from(_doc.pages);
+        for (final p in result.paths) {
+          if (p != null && File(p).existsSync()) {
+            newPages.add(ScanPage(
+              id: const Uuid().v4(),
+              imagePath: p,
+              createdAt: DateTime.now(),
+            ));
+          }
+        }
+        await _rebuildSavedPdf(newPages);
+        setState(() => _currentPageIndex = newPages.length - 1);
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(_currentPageIndex);
+        }
+      }
+    }
+  }
+
+  Widget _buildAppleViewerActionItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isPrimary = false,
+    Color? customColor,
+  }) {
+    final palette = context.appThemePalette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = customColor ??
+        (isPrimary ? palette.accent : (isDark ? Colors.white70 : Colors.black87));
+
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: isPrimary
+                    ? palette.accent.withValues(alpha: 0.16)
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05)),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, size: 20, color: color),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isPrimary ? FontWeight.w800 : FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.appThemePalette;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final pages = _doc.pages;
+    final title = stripFileExtension(_doc.fileName);
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'رجوع',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: InkWell(
+          onTap: _renameDocumentDialog,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15.5,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 13,
+                      color: palette.accent,
+                    ),
+                  ],
+                ),
+                Text(
+                  '${formatPageCount(_doc.pageCount)} • ${formatFileSize(_doc.fileSize)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
           IconButton(
-            tooltip: 'تصدير / تحويل الصيغة (PDF, Word, Excel)',
+            tooltip: 'مشاركة المستند',
             icon: const Icon(Icons.ios_share_rounded),
-            onPressed: _chooseExportFormat,
-          ),
-          IconButton(
-            tooltip: 'طباعة المستند',
-            icon: const Icon(Icons.print_rounded),
-            onPressed: () async {
-              if (File(_doc.filePath).existsSync()) {
-                final bytes = await File(_doc.filePath).readAsBytes();
-                await Printing.layoutPdf(
-                  name: title,
-                  onLayout: (_) async => bytes,
-                );
-              }
+            onPressed: () {
+              Share.shareXFiles([XFile(_doc.filePath)], subject: title);
             },
           ),
-          IconButton(
-            tooltip: 'فتح بعارض خارجي',
-            icon: const Icon(Icons.open_in_new_rounded),
-            onPressed: () => OpenFilex.open(_doc.filePath),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_horiz_rounded),
+            tooltip: 'خيارات المستند',
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            onSelected: (val) {
+              switch (val) {
+                case 'rename':
+                  _renameDocumentDialog();
+                  break;
+                case 'reorder':
+                  _showPageReorderSheet();
+                  break;
+                case 'excel':
+                  _exportToExcelDirectly();
+                  break;
+                case 'print':
+                  _printDocument();
+                  break;
+                case 'open_external':
+                  OpenFilex.open(_doc.filePath);
+                  break;
+                case 'privacy':
+                  _showPrivacyInfoDialog();
+                  break;
+              }
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'rename',
+                child: Row(
+                  children: [
+                    Icon(Icons.drive_file_rename_outline_rounded, size: 20),
+                    SizedBox(width: 10),
+                    Text('إعادة تسمية'),
+                  ],
+                ),
+              ),
+              if (pages.length > 1)
+                const PopupMenuItem(
+                  value: 'reorder',
+                  child: Row(
+                    children: [
+                      Icon(Icons.reorder_rounded, size: 20),
+                      SizedBox(width: 10),
+                      Text('إعادة ترتيب الصفحات'),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart_rounded, size: 20, color: Color(0xFF059669)),
+                    SizedBox(width: 10),
+                    Text('تحويل إلى Excel (.xlsx)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'print',
+                child: Row(
+                  children: [
+                    Icon(Icons.print_rounded, size: 20),
+                    SizedBox(width: 10),
+                    Text('طباعة المستند'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'open_external',
+                child: Row(
+                  children: [
+                    Icon(Icons.open_in_new_rounded, size: 20),
+                    SizedBox(width: 10),
+                    Text('فتح بعارض خارجي'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'privacy',
+                child: Row(
+                  children: [
+                    Icon(Icons.shield_rounded, size: 20, color: palette.success),
+                    const SizedBox(width: 10),
+                    const Text('فحص الأمان ونظافة EXIF'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -385,35 +812,70 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
         children: [
           Column(
             children: [
-              // Privacy Clean Indicator Badge
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: palette.success.withValues(alpha: 0.08),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: palette.success.withValues(alpha: 0.2),
+              // ── Floating Clean Status Capsule ──
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 4),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1E1E24)
+                          : theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: isDark ? 0.3 : 0.6,
+                        ),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.25 : 0.04,
+                          ),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'صفحة ${_currentPageIndex + 1} من ${pages.length}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                            color: palette.accent,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 3.5,
+                          height: 3.5,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.shield_rounded, size: 13, color: palette.success),
+                        const SizedBox(width: 4),
+                        Text(
+                          'خالٍ من بيانات EXIF و GPS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: palette.success,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.shield_rounded, color: palette.success, size: 15),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'ملفك نظيف وخصوصيتك محفوظة • خالي تماماً من بيانات الموقع وEXIF',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: palette.success,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
+
+              // ── Document Page Display Area ──
               Expanded(
                 child: pages.isEmpty
                     ? Center(
@@ -455,7 +917,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                             minScale: 1.0,
                             maxScale: 4.0,
                             child: Padding(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                               child: Center(
                                 child: Container(
                                   decoration: BoxDecoration(
@@ -463,12 +925,10 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withValues(
-                                          alpha: theme.brightness == Brightness.dark
-                                              ? 0.45
-                                              : 0.15,
+                                          alpha: isDark ? 0.45 : 0.12,
                                         ),
                                         blurRadius: 18,
-                                        offset: const Offset(0, 8),
+                                        offset: const Offset(0, 6),
                                       ),
                                     ],
                                   ),
@@ -506,13 +966,14 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                 pagePos = _pageController.page ?? index.toDouble();
                               }
                               final diff = pagePos - index;
-                              // Subtle Apple Depth & 3D perspective
                               final scale = (1.0 - (diff.abs() * 0.10)).clamp(0.90, 1.0);
                               final rotationY = (-diff * 0.20).clamp(-0.35, 0.35);
                               final opacity = (1.0 - (diff.abs() * 0.30)).clamp(0.55, 1.0);
 
                               return Transform(
-                                alignment: diff > 0 ? Alignment.centerRight : Alignment.centerLeft,
+                                alignment: diff > 0
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
                                 transform: Matrix4.identity()
                                   ..setEntry(3, 2, 0.001)
                                   ..rotateY(rotationY)
@@ -528,148 +989,139 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                         },
                       ),
               ),
-              if (pages.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    border: Border(
-                      top: BorderSide(color: theme.colorScheme.outlineVariant),
-                    ),
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'صفحة ${_currentPageIndex + 1} من ${pages.length}',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: palette.accent,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
 
-                        // Interactive Mini Thumbnail Filmstrip
-                        if (pages.length > 1) ...[
-                          SizedBox(
-                            height: 48,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: pages.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 8),
-                              itemBuilder: (ctx, idx) {
-                                final isCur = idx == _currentPageIndex;
-                                return GestureDetector(
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    _pageController.animateToPage(
-                                      idx,
-                                      duration: const Duration(milliseconds: 280),
-                                      curve: Curves.easeOutCubic,
-                                    );
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    width: 34,
-                                    height: 46,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: isCur ? palette.accent : Colors.black12,
-                                        width: isCur ? 2.5 : 1,
-                                      ),
-                                      boxShadow: isCur
-                                          ? [
-                                              BoxShadow(
-                                                color: palette.accent.withValues(alpha: 0.35),
-                                                blurRadius: 6,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ]
-                                          : null,
-                                    ),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: Image.file(
-                                      File(pages[idx].imagePath),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                );
-                              },
+              // ── Apple Frosted Action Toolbar ──
+              if (pages.isNotEmpty)
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                      decoration: BoxDecoration(
+                        color: (isDark
+                                ? const Color(0xFF1C1C1E)
+                                : Colors.white)
+                            .withValues(alpha: 0.92),
+                        border: Border(
+                          top: BorderSide(
+                            color: theme.colorScheme.outlineVariant.withValues(
+                              alpha: isDark ? 0.35 : 0.6,
                             ),
                           ),
-                          const SizedBox(height: 10),
-                        ],
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              FilledButton.tonalIcon(
-                                onPressed: _editCurrentPage,
-                                icon: const Icon(Icons.crop_rotate_rounded, size: 18),
-                                label: const Text('قص وفلاتر'),
-                              ),
-                              const SizedBox(width: 8),
-                              if (pages.length > 1) ...[
-                                FilledButton.tonalIcon(
-                                  onPressed: _showPageReorderSheet,
-                                  icon: const Icon(Icons.reorder_rounded, size: 18),
-                                  label: const Text('ترتيب الصفحات'),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                              FilledButton.tonalIcon(
-                                onPressed: _showSmartExtraction,
-                                icon: Icon(Icons.psychology_rounded, size: 18, color: palette.accent),
-                                label: const Text('استخراج ذكي'),
-                              ),
-                              const SizedBox(width: 8),
-                              FilledButton.tonalIcon(
-                                onPressed: _signCurrentPage,
-                                icon: const Icon(Icons.draw_rounded, size: 18),
-                                label: const Text('توقيع'),
-                              ),
-                              const SizedBox(width: 8),
-                              FilledButton.tonalIcon(
-                                onPressed: _rotateCurrentPage,
-                                icon: const Icon(Icons.rotate_left_rounded, size: 18),
-                                label: const Text('تدوير'),
-                              ),
-                              const SizedBox(width: 8),
-                              FilledButton.tonalIcon(
-                                onPressed: _exportToExcelDirectly,
-                                icon: const Icon(
-                                  Icons.table_chart_rounded,
-                                  size: 18,
-                                  color: Color(0xFF059669),
-                                ),
-                                label: const Text('تحويل لـ Excel'),
-                              ),
-                              const SizedBox(width: 8),
-                              FilledButton.icon(
-                                onPressed: _chooseExportFormat,
-                                icon: const Icon(Icons.file_download_rounded, size: 18),
-                                label: const Text('تصدير (PDF/Word/Excel)'),
-                              ),
-                              const SizedBox(width: 8),
-                              OutlinedButton.icon(
-                                onPressed: () {
-                                  Share.shareXFiles(
-                                    [XFile(_doc.filePath)],
-                                    subject: title,
-                                  );
-                                },
-                                icon: const Icon(Icons.share_rounded, size: 18),
-                                label: const Text('مشاركة'),
-                              ),
-                            ],
-                          ),
                         ),
-                      ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.35 : 0.08,
+                            ),
+                            blurRadius: 18,
+                            offset: const Offset(0, -4),
+                          ),
+                        ],
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Interactive Mini Thumbnail Filmstrip
+                            if (pages.length > 1) ...[
+                              SizedBox(
+                                height: 48,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  itemCount: pages.length,
+                                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                  itemBuilder: (ctx, idx) {
+                                    final isCur = idx == _currentPageIndex;
+                                    return GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        _pageController.animateToPage(
+                                          idx,
+                                          duration: const Duration(milliseconds: 280),
+                                          curve: Curves.easeOutCubic,
+                                        );
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        width: 34,
+                                        height: 46,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: isCur ? palette.accent : Colors.black12,
+                                            width: isCur ? 2.5 : 1,
+                                          ),
+                                          boxShadow: isCur
+                                              ? [
+                                                  BoxShadow(
+                                                    color: palette.accent.withValues(alpha: 0.35),
+                                                    blurRadius: 6,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ]
+                                              : null,
+                                        ),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: Image.file(
+                                          File(pages[idx].imagePath),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+
+                            // Apple Action Dock
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildAppleViewerActionItem(
+                                  icon: Icons.crop_rotate_rounded,
+                                  label: 'قص وفلاتر',
+                                  onTap: _editCurrentPage,
+                                ),
+                                _buildAppleViewerActionItem(
+                                  icon: Icons.draw_rounded,
+                                  label: 'توقيع',
+                                  customColor: const Color(0xFF34C759),
+                                  onTap: _signCurrentPage,
+                                ),
+                                _buildAppleViewerActionItem(
+                                  icon: Icons.rotate_right_rounded,
+                                  label: 'تدوير',
+                                  customColor: const Color(0xFFFF9500),
+                                  onTap: _rotateCurrentPage,
+                                ),
+                                _buildAppleViewerActionItem(
+                                  icon: Icons.psychology_rounded,
+                                  label: 'OCR ذكي',
+                                  customColor: palette.accent,
+                                  onTap: _showSmartExtraction,
+                                ),
+                                _buildAppleViewerActionItem(
+                                  icon: Icons.add_photo_alternate_rounded,
+                                  label: 'إضافة صفحة',
+                                  customColor: const Color(0xFF5856D6),
+                                  onTap: _showAddPageSheet,
+                                ),
+                                _buildAppleViewerActionItem(
+                                  icon: Icons.file_download_rounded,
+                                  label: 'تصدير',
+                                  isPrimary: true,
+                                  onTap: _chooseExportFormat,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
