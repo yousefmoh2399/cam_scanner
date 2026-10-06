@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/scanner/presentation/library_screen.dart';
+import 'features/scanner/presentation/splash_screen.dart';
 import 'shared/providers/providers.dart';
 
 void main() {
@@ -40,7 +40,7 @@ class CamScannerApp extends ConsumerWidget {
       theme: AppTheme.lightTheme(chatPrefs),
       darkTheme: AppTheme.darkTheme(chatPrefs),
       themeMode: themeMode,
-      home: const LibraryScreen(),
+      home: const SplashScreen(),
     );
   }
 }
