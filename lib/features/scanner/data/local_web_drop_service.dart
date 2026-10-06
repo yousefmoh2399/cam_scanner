@@ -446,13 +446,33 @@ class LocalWebDropService {
       if (contentType != null && contentType.primaryType == 'multipart') {
         final boundary = contentType.parameters['boundary'];
         if (boundary != null) {
+          final clientFileNameHeader = request.headers.value('x-file-name');
+          final clientFileSizeHeader = request.headers.value('x-file-size');
+
+          String incomingDisplayName = 'ملف قيد الاستقبال من الكمبيوتر...';
+          if (clientFileNameHeader != null && clientFileNameHeader.isNotEmpty) {
+            try {
+              incomingDisplayName = Uri.decodeComponent(clientFileNameHeader);
+            } catch (_) {
+              incomingDisplayName = clientFileNameHeader;
+            }
+          }
+
+          int expectedBytes = contentLength > 0 ? contentLength : 0;
+          if (clientFileSizeHeader != null) {
+            final parsed = int.tryParse(clientFileSizeHeader);
+            if (parsed != null && parsed > 0) {
+              expectedBytes = parsed;
+            }
+          }
+
           int receivedBytes = 0;
           _updateProgress(DropTransferProgress(
             id: transferId,
-            fileName: 'ملف قيد الاستقبال من الكمبيوتر...',
+            fileName: incomingDisplayName,
             direction: DropTransferDirection.receivingFromPc,
             transferredBytes: 0,
-            totalBytes: contentLength > 0 ? contentLength : 0,
+            totalBytes: expectedBytes,
             isCompleted: false,
           ));
 
@@ -461,12 +481,15 @@ class LocalWebDropService {
               handleData: (chunk, sink) {
                 receivedBytes += chunk.length;
                 sink.add(chunk);
+                final effectiveTransferred = (expectedBytes > 0 && receivedBytes > expectedBytes)
+                    ? expectedBytes
+                    : receivedBytes;
                 _updateProgress(DropTransferProgress(
                   id: transferId,
-                  fileName: 'ملف من الكمبيوتر',
+                  fileName: incomingDisplayName,
                   direction: DropTransferDirection.receivingFromPc,
-                  transferredBytes: receivedBytes,
-                  totalBytes: contentLength > 0 ? contentLength : receivedBytes,
+                  transferredBytes: effectiveTransferred,
+                  totalBytes: expectedBytes > 0 ? expectedBytes : receivedBytes,
                   isCompleted: false,
                 ));
               },
@@ -497,12 +520,16 @@ class LocalWebDropService {
             }
           }
 
+          final completionName = lastFileName.isNotEmpty
+              ? (uploadedCount > 1 ? '$lastFileName (و ${uploadedCount - 1} ملفات أخرى)' : lastFileName)
+              : incomingDisplayName;
+
           _updateProgress(DropTransferProgress(
             id: transferId,
-            fileName: lastFileName.isNotEmpty ? lastFileName : 'تم استقبال الملفات بنجاح',
+            fileName: completionName,
             direction: DropTransferDirection.receivingFromPc,
-            transferredBytes: receivedBytes,
-            totalBytes: receivedBytes,
+            transferredBytes: expectedBytes > 0 ? expectedBytes : receivedBytes,
+            totalBytes: expectedBytes > 0 ? expectedBytes : receivedBytes,
             isCompleted: true,
           ));
           _scheduleClearProgress(transferId);
@@ -822,9 +849,11 @@ class LocalWebDropService {
 
       const formData = new FormData();
       let totalBytes = 0;
+      let fileNames = [];
       for (let i = 0; i < files.length; i++) {
         formData.append('files', files[i]);
         totalBytes += files[i].size;
+        fileNames.push(files[i].name);
       }
 
       progressBox.style.display = 'block';
@@ -839,6 +868,10 @@ class LocalWebDropService {
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/upload', true);
+      const encodedName = encodeURIComponent(fileNames.length === 1 ? fileNames[0] : fileNames[0] + ' (و ' + (fileNames.length - 1) + ' ملفات أخرى)');
+      xhr.setRequestHeader('X-File-Name', encodedName);
+      xhr.setRequestHeader('X-File-Size', totalBytes.toString());
+      xhr.setRequestHeader('X-File-Count', files.length.toString());
 
       xhr.upload.onprogress = function(e) {
         if (e.lengthComputable) {

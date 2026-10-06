@@ -469,7 +469,7 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
@@ -477,30 +477,40 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Top Header: File Icon + Info + Quick Actions
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // File Type Icon Box
+                // File Type Squircle Icon Box
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    color: iconColor.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: iconColor.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
                   ),
-                  child: Icon(icon, color: iconColor, size: 24),
+                  child: Center(
+                    child: Icon(icon, color: iconColor, size: 26),
+                  ),
                 ),
                 const SizedBox(width: 12),
+
+                // File Name & Direction Metadata
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,15 +521,15 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 13.5,
+                          fontSize: 14,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 5),
                       Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                                horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
                               color: item.isReceived
                                   ? const Color(0xFF34C759)
@@ -535,7 +545,7 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                                   item.isReceived
                                       ? Icons.arrow_downward_rounded
                                       : Icons.arrow_upward_rounded,
-                                  size: 10,
+                                  size: 11,
                                   color: item.isReceived
                                       ? const Color(0xFF34C759)
                                       : const Color(0xFF007AFF),
@@ -544,9 +554,9 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                                 Text(
                                   item.isReceived
                                       ? 'مستلم من الكمبيوتر'
-                                      : 'مُرسل من الهاتف',
+                                      : 'مُرسل من هاتفك',
                                   style: TextStyle(
-                                    fontSize: 9.5,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     color: item.isReceived
                                         ? const Color(0xFF34C759)
@@ -556,11 +566,12 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Text(
                             item.formattedSize,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white60 : Colors.black54,
                             ),
                           ),
@@ -569,66 +580,125 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                     ],
                   ),
                 ),
+
+                // Top Trailing Actions (Re-broadcast & Delete)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'إعادة بث للكمبيوتر عبر Wi-Fi',
+                      icon: const Icon(Icons.offline_bolt_rounded,
+                          size: 20, color: Color(0xFF007AFF)),
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(6),
+                      onPressed: () => _shareViaWebDrop(item),
+                    ),
+                    const SizedBox(width: 2),
+                    IconButton(
+                      tooltip: 'حذف الملف',
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          size: 20, color: Colors.redAccent),
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(6),
+                      onPressed: () => _deleteFile(item),
+                    ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 10),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
 
-            // Action Buttons Row
+            const SizedBox(height: 12),
+            Divider(
+              height: 1,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+            ),
+            const SizedBox(height: 10),
+
+            // Symmetrical 3-Button Action Row (Equal Flex: 1, Height: 40px, Radius: 12px)
             Row(
               children: [
                 Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      OpenFilex.open(item.filePath);
-                    },
-                    icon: const Icon(Icons.visibility_rounded, size: 15),
-                    label: const Text('معاينة'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    height: 40,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        OpenFilex.open(item.filePath);
+                      },
+                      icon: const Icon(Icons.visibility_rounded, size: 16),
+                      label: const Text(
+                        'معاينة',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _saveToDownloads(item),
-                    icon: const Icon(Icons.download_rounded, size: 15),
-                    label: const Text('حفظ بالهاتف'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    height: 40,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _saveToDownloads(item),
+                      icon: const Icon(Icons.download_rounded, size: 16),
+                      label: const Text(
+                        'حفظ بالهاتف',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        side: BorderSide(
+                          color: isDark ? Colors.white24 : Colors.black26,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 4),
-                IconButton(
-                  tooltip: 'مشاركة الملف',
-                  icon: const Icon(Icons.ios_share_rounded, size: 18),
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Share.shareXFiles([XFile(item.filePath)],
-                        subject: item.name);
-                  },
-                ),
-                IconButton(
-                  tooltip: 'إعادة بث للكمبيوتر عبر السيرفر',
-                  icon: const Icon(Icons.offline_bolt_rounded,
-                      size: 20, color: Color(0xFF007AFF)),
-                  onPressed: () => _shareViaWebDrop(item),
-                ),
-                IconButton(
-                  tooltip: 'حذف',
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      size: 18, color: Colors.red),
-                  onPressed: () => _deleteFile(item),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 40,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        Share.shareXFiles([XFile(item.filePath)],
+                            subject: item.name);
+                      },
+                      icon: const Icon(Icons.ios_share_rounded, size: 16),
+                      label: const Text(
+                        'مشاركة',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        side: BorderSide(
+                          color: isDark ? Colors.white24 : Colors.black26,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
