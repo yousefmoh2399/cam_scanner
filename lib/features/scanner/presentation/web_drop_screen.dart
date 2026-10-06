@@ -43,6 +43,8 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
 
   List<TransferredFile> _receivedFiles = [];
   StreamSubscription<List<SharedDropFile>>? _stagedSubscription;
+  DropTransferProgress? _activeTransfer;
+  StreamSubscription<DropTransferProgress?>? _transferSubscription;
 
   @override
   void initState() {
@@ -58,6 +60,20 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
 
     _stagedSubscription = _webDropService.stagedFilesStream.listen((_) {
       if (mounted) setState(() {});
+    });
+
+    _activeTransfer = _webDropService.activeTransfer;
+    _transferSubscription =
+        _webDropService.transferProgressStream.listen((transfer) {
+      if (mounted) {
+        setState(() {
+          _activeTransfer = transfer;
+        });
+        if (transfer != null && transfer.isCompleted) {
+          HapticFeedback.mediumImpact();
+          _loadRecentTransferred();
+        }
+      }
     });
 
     _loadRecentTransferred();
@@ -80,6 +96,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
   void dispose() {
     _pulseController.dispose();
     _stagedSubscription?.cancel();
+    _transferSubscription?.cancel();
     _webDropService.stopServer();
     super.dispose();
   }
@@ -172,7 +189,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
           children: [
             const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
             const SizedBox(width: 8),
-            Text('تم نسخ الرابط بنجاح: $url'),
+            Expanded(child: Text('تم نسخ الرابط بنجاح: $url')),
           ],
         ),
         backgroundColor: const Color(0xFF007AFF),
@@ -230,7 +247,9 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
                 children: [
                   const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
-                  Text('تمت إضافة $added ملف للمشاركة • متاح للتحميل فوراً على الكمبيوتر!'),
+                  Expanded(
+                    child: Text('تمت إضافة $added ملف للمشاركة • متاح للتحميل فوراً على الكمبيوتر!'),
+                  ),
                 ],
               ),
               backgroundColor: const Color(0xFF34C759),
@@ -508,60 +527,65 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
                 children: [
                   Row(
                     children: [
-                      // Concentric Animated Radar Wave
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          if (isRunning) ...[
-                            AnimatedBuilder(
-                              animation: _pulseAnimation,
-                              builder: (context, child) {
-                                return Container(
-                                  width: 54 + (_pulseAnimation.value * 12),
-                                  height: 54 + (_pulseAnimation.value * 12),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: const Color(0xFF34C759).withValues(
-                                      alpha: 0.12 * (1.0 - _pulseAnimation.value * 0.5),
+                      // Concentric Animated Radar Wave (Fixed bounds prevents jitter/shaking)
+                      SizedBox(
+                        width: 62,
+                        height: 62,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            if (isRunning) ...[
+                              AnimatedBuilder(
+                                animation: _pulseAnimation,
+                                builder: (context, child) {
+                                  final waveSize = 48 + (_pulseAnimation.value * 14);
+                                  return Container(
+                                    width: waveSize,
+                                    height: waveSize,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: const Color(0xFF34C759).withValues(
+                                        alpha: 0.18 * (1.0 - _pulseAnimation.value),
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
+                            ],
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: isRunning
+                                      ? [const Color(0xFF34C759), const Color(0xFF28A745)]
+                                      : [const Color(0xFF8E8E93), const Color(0xFF636366)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: isRunning
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF34C759).withValues(alpha: 0.4),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  isRunning
+                                      ? Icons.wifi_tethering_rounded
+                                      : Icons.wifi_tethering_off_rounded,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
                             ),
                           ],
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: isRunning
-                                    ? [const Color(0xFF34C759), const Color(0xFF28A745)]
-                                    : [const Color(0xFF8E8E93), const Color(0xFF636366)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: isRunning
-                                  ? [
-                                      BoxShadow(
-                                        color: const Color(0xFF34C759).withValues(alpha: 0.4),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Icon(
-                                isRunning
-                                    ? Icons.wifi_tethering_rounded
-                                    : Icons.wifi_tethering_off_rounded,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -703,6 +727,12 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
                 ],
               ),
             ),
+
+            // ── Live Transfer Progress Indicator Card ──
+            if (_activeTransfer != null) ...[
+              const SizedBox(height: 16),
+              _buildLiveTransferCard(isDark, _activeTransfer!),
+            ],
 
             const SizedBox(height: 18),
 
@@ -1273,6 +1303,148 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveTransferCard(bool isDark, DropTransferProgress transfer) {
+    final isSending = transfer.direction == DropTransferDirection.sendingToPc;
+    final isDone = transfer.isCompleted;
+    final themeColor = isDone
+        ? const Color(0xFF34C759)
+        : (isSending ? const Color(0xFF007AFF) : const Color(0xFF34C759));
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: themeColor.withValues(alpha: isDone ? 0.6 : 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: themeColor.withValues(alpha: isDark ? 0.25 : 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: themeColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isDone
+                      ? Icons.check_circle_rounded
+                      : (isSending
+                          ? Icons.arrow_upward_rounded
+                          : Icons.arrow_downward_rounded),
+                  color: themeColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isDone
+                          ? 'اكتمل النقل بنجاح'
+                          : (isSending
+                              ? 'جارٍ إرسال الملف للكمبيوتر...'
+                              : 'جارٍ استقبال ملف من الكمبيوتر...'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      transfer.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: themeColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: themeColor.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  '${transfer.percent}%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                    color: themeColor,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: isDone ? 1.0 : transfer.fraction,
+              minHeight: 8,
+              backgroundColor: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  isDone
+                      ? '⚡ محفوظ ومتاح الآن في مركز الملفات'
+                      : '⚡ نقل لاسلكي محلي عالي السرعة',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                transfer.progressDetail,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: themeColor,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
           ),
         ],
       ),

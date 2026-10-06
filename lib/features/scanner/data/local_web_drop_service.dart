@@ -87,6 +87,48 @@ class WebDropClientEvent {
   final DateTime timestamp;
 }
 
+enum DropTransferDirection {
+  sendingToPc('إرسال إلى الكمبيوتر', 'Sending to PC'),
+  receivingFromPc('استقبال من الكمبيوتر', 'Receiving from PC');
+
+  const DropTransferDirection(this.arabicLabel, this.englishLabel);
+  final String arabicLabel;
+  final String englishLabel;
+}
+
+class DropTransferProgress {
+  const DropTransferProgress({
+    required this.id,
+    required this.fileName,
+    required this.direction,
+    required this.transferredBytes,
+    required this.totalBytes,
+    required this.isCompleted,
+    this.errorMessage,
+  });
+
+  final String id;
+  final String fileName;
+  final DropTransferDirection direction;
+  final int transferredBytes;
+  final int totalBytes;
+  final bool isCompleted;
+  final String? errorMessage;
+
+  double get fraction {
+    if (totalBytes <= 0) return 0.0;
+    return (transferredBytes / totalBytes).clamp(0.0, 1.0);
+  }
+
+  int get percent => (fraction * 100).round();
+
+  String get formattedTransferred => SharedDropFile.formatBytes(transferredBytes);
+  String get formattedTotal =>
+      totalBytes > 0 ? SharedDropFile.formatBytes(totalBytes) : '...';
+  String get progressDetail =>
+      '$formattedTransferred من $formattedTotal ($percent%)';
+}
+
 class LocalWebDropService {
   LocalWebDropService._();
   static final LocalWebDropService instance = LocalWebDropService._();
@@ -104,6 +146,10 @@ class LocalWebDropService {
   final StreamController<List<SharedDropFile>> _stagedFilesController =
       StreamController<List<SharedDropFile>>.broadcast();
 
+  DropTransferProgress? _activeTransfer;
+  final StreamController<DropTransferProgress?> _transferProgressController =
+      StreamController<DropTransferProgress?>.broadcast();
+
   bool get isRunning => _isRunning;
   int get port => _port;
   String? get localIp => _localIp;
@@ -113,6 +159,23 @@ class LocalWebDropService {
 
   List<SharedDropFile> get stagedFiles => List.unmodifiable(_stagedFiles);
   Stream<List<SharedDropFile>> get stagedFilesStream => _stagedFilesController.stream;
+
+  DropTransferProgress? get activeTransfer => _activeTransfer;
+  Stream<DropTransferProgress?> get transferProgressStream =>
+      _transferProgressController.stream;
+
+  void _updateProgress(DropTransferProgress? progress) {
+    _activeTransfer = progress;
+    _transferProgressController.add(progress);
+  }
+
+  void _scheduleClearProgress(String transferId) {
+    Timer(const Duration(seconds: 4), () {
+      if (_activeTransfer?.id == transferId) {
+        _updateProgress(null);
+      }
+    });
+  }
 
   void addStagedFile(SharedDropFile file) {
     _stagedFiles.removeWhere((f) => f.filePath == file.filePath);
@@ -282,7 +345,13 @@ class LocalWebDropService {
             response.headers.contentLength = length;
 
             _logEvent('download', 'تم تحميل المستند: "${doc.fileName}" على الكمبيوتر');
-            await file.openRead().pipe(response);
+            await _streamFileWithProgress(
+              file: file,
+              fileName: doc.fileName,
+              response: response,
+              length: length,
+              direction: DropTransferDirection.sendingToPc,
+            );
           } else {
             response.statusCode = HttpStatus.notFound;
             response.write('Document not found');
@@ -334,7 +403,13 @@ class LocalWebDropService {
             response.headers.contentLength = length;
 
             _logEvent('download', 'تم تحميل الملف المشارك من الهاتف: "${item.name}"');
-            await file.openRead().pipe(response);
+            await _streamFileWithProgress(
+              file: file,
+              fileName: item.name,
+              response: response,
+              length: length,
+              direction: DropTransferDirection.sendingToPc,
+            );
           } else {
             response.statusCode = HttpStatus.notFound;
             response.write('File not found');
@@ -365,20 +440,54 @@ class LocalWebDropService {
     final response = request.response;
     try {
       final contentType = request.headers.contentType;
+      final contentLength = request.headers.contentLength;
+      final transferId = 'recv_${DateTime.now().millisecondsSinceEpoch}';
+
       if (contentType != null && contentType.primaryType == 'multipart') {
         final boundary = contentType.parameters['boundary'];
         if (boundary != null) {
+          int receivedBytes = 0;
+          _updateProgress(DropTransferProgress(
+            id: transferId,
+            fileName: 'ملف قيد الاستقبال من الكمبيوتر...',
+            direction: DropTransferDirection.receivingFromPc,
+            transferredBytes: 0,
+            totalBytes: contentLength > 0 ? contentLength : 0,
+            isCompleted: false,
+          ));
+
+          final progressStream = request.transform<List<int>>(
+            StreamTransformer<Uint8List, List<int>>.fromHandlers(
+              handleData: (chunk, sink) {
+                receivedBytes += chunk.length;
+                sink.add(chunk);
+                _updateProgress(DropTransferProgress(
+                  id: transferId,
+                  fileName: 'ملف من الكمبيوتر',
+                  direction: DropTransferDirection.receivingFromPc,
+                  transferredBytes: receivedBytes,
+                  totalBytes: contentLength > 0 ? contentLength : receivedBytes,
+                  isCompleted: false,
+                ));
+              },
+            ),
+          );
+
           final transformer = MimeMultipartTransformer(boundary);
-          final parts = await transformer.bind(request).toList();
+          final parts = await transformer.bind(progressStream).toList();
 
           int uploadedCount = 0;
+          String lastFileName = '';
           for (final part in parts) {
             final contentDisposition = part.headers['content-disposition'];
             if (contentDisposition != null) {
-              final filenameMatch = RegExp(r'filename="([^"]+)"').firstMatch(contentDisposition);
+              final filenameMatch =
+                  RegExp(r'filename="([^"]+)"').firstMatch(contentDisposition);
               if (filenameMatch != null) {
                 final filename = filenameMatch.group(1)!;
-                final bytes = await part.fold<List<int>>([], (prev, element) => prev..addAll(element));
+                lastFileName = filename;
+                final bytes = await part.fold<List<int>>(
+                    [], (prev, element) => prev..addAll(element));
                 if (bytes.isNotEmpty) {
                   await onFileUploaded(filename, bytes);
                   uploadedCount++;
@@ -387,6 +496,17 @@ class LocalWebDropService {
               }
             }
           }
+
+          _updateProgress(DropTransferProgress(
+            id: transferId,
+            fileName: lastFileName.isNotEmpty ? lastFileName : 'تم استقبال الملفات بنجاح',
+            direction: DropTransferDirection.receivingFromPc,
+            transferredBytes: receivedBytes,
+            totalBytes: receivedBytes,
+            isCompleted: true,
+          ));
+          _scheduleClearProgress(transferId);
+
           response.statusCode = HttpStatus.ok;
           response.headers.contentType = ContentType.json;
           response.write(jsonEncode({'success': true, 'count': uploadedCount}));
@@ -403,6 +523,70 @@ class LocalWebDropService {
       response.write('Upload error: $e');
       await response.close();
     }
+  }
+
+  Future<void> _streamFileWithProgress({
+    required File file,
+    required String fileName,
+    required HttpResponse response,
+    required int length,
+    required DropTransferDirection direction,
+  }) async {
+    final transferId = 'send_${DateTime.now().millisecondsSinceEpoch}';
+    int transferred = 0;
+
+    _updateProgress(DropTransferProgress(
+      id: transferId,
+      fileName: fileName,
+      direction: direction,
+      transferredBytes: 0,
+      totalBytes: length,
+      isCompleted: false,
+    ));
+
+    final progressStream = file.openRead().transform(
+      StreamTransformer<List<int>, List<int>>.fromHandlers(
+        handleData: (chunk, sink) {
+          transferred += chunk.length;
+          sink.add(chunk);
+          _updateProgress(DropTransferProgress(
+            id: transferId,
+            fileName: fileName,
+            direction: direction,
+            transferredBytes: transferred,
+            totalBytes: length,
+            isCompleted: transferred >= length,
+          ));
+        },
+        handleDone: (sink) {
+          sink.close();
+          _updateProgress(DropTransferProgress(
+            id: transferId,
+            fileName: fileName,
+            direction: direction,
+            transferredBytes: length,
+            totalBytes: length,
+            isCompleted: true,
+          ));
+          _scheduleClearProgress(transferId);
+        },
+        handleError: (err, st, sink) {
+          sink.addError(err, st);
+          _updateProgress(DropTransferProgress(
+            id: transferId,
+            fileName: fileName,
+            direction: direction,
+            transferredBytes: transferred,
+            totalBytes: length,
+            isCompleted: false,
+            errorMessage: err.toString(),
+          ));
+          _scheduleClearProgress(transferId);
+        },
+      ),
+    );
+
+    await progressStream.pipe(response);
   }
 
   String _generateDashboardHtml(List<PendingUpload> documents) {
@@ -514,6 +698,27 @@ class LocalWebDropService {
       <div id="stagedGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;"></div>
     </div>
 
+    <!-- Live Upload Progress Box with Percentage and Bytes -->
+    <div id="uploadProgressBox" style="display:none; background: var(--card-bg); border: 2px solid var(--accent); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; box-shadow: var(--shadow);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">🚀</span>
+          <div>
+            <h3 id="uploadProgressTitle" style="font-size: 15px; font-weight: 800;">جارٍ إرسال الملفات إلى هاتفك...</h3>
+            <p id="uploadProgressSubtitle" style="font-size: 11.5px; color: var(--text-sec); margin-top: 2px;">يتم النقل مباشرة عبر الشبكة المحلية بأقصى سرعة</p>
+          </div>
+        </div>
+        <div id="uploadProgressPercent" style="font-size: 18px; font-weight: 900; color: var(--accent); font-family: monospace;">0%</div>
+      </div>
+      <div style="width: 100%; height: 12px; background: rgba(0,0,0,0.06); border-radius: 99px; overflow: hidden; margin-bottom: 10px; position: relative;">
+        <div id="uploadProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #007AFF, #34C759); border-radius: 99px; transition: width 0.1s ease;"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-sec);">
+        <span id="uploadProgressStatus">⚡ جارٍ نقل البيانات...</span>
+        <span id="uploadProgressBytes" style="font-weight: 700; font-family: monospace;">0 MB / 0 MB</span>
+      </div>
+    </div>
+
     <!-- Drag & Drop to Upload back to Phone -->
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" style="display:none" multiple onchange="handleFiles(this.files)">
@@ -605,25 +810,73 @@ class LocalWebDropService {
     setInterval(checkStagedFiles, 2500);
     checkStagedFiles();
 
-    async function handleFiles(files) {
+    function handleFiles(files) {
       if (!files || files.length === 0) return;
+      const progressBox = document.getElementById('uploadProgressBox');
+      const progressBar = document.getElementById('uploadProgressBar');
+      const progressPercent = document.getElementById('uploadProgressPercent');
+      const progressTitle = document.getElementById('uploadProgressTitle');
+      const progressSubtitle = document.getElementById('uploadProgressSubtitle');
+      const progressBytes = document.getElementById('uploadProgressBytes');
+      const progressStatus = document.getElementById('uploadProgressStatus');
+
       const formData = new FormData();
+      let totalBytes = 0;
       for (let i = 0; i < files.length; i++) {
         formData.append('files', files[i]);
+        totalBytes += files[i].size;
       }
-      try {
-        const dropZone = document.getElementById('dropZone');
-        dropZone.querySelector('h3').innerText = 'جارٍ إرسال الملفات إلى هاتفك...';
-        const res = await fetch('/upload', { method: 'POST', body: formData });
-        if (res.ok) {
-          alert('✅ تم إرسال الملفات إلى تطبيق هاتفك بنجاح!');
-          window.location.reload();
-        } else {
-          alert('حدث خطأ أثناء الإرسال');
+
+      progressBox.style.display = 'block';
+      progressBar.style.width = '0%';
+      progressBar.style.background = 'linear-gradient(90deg, #007AFF, #34C759)';
+      progressPercent.innerText = '0%';
+      progressPercent.style.color = '#007AFF';
+      progressTitle.innerText = 'جارٍ إرسال (' + files.length + ') ملف إلى هاتفك...';
+      const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
+      progressBytes.innerText = '0.0 MB / ' + totalMB + ' MB';
+      progressStatus.innerText = '⚡ نقل مباشر عبر Wi-Fi...';
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload', true);
+
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = pct + '%';
+          progressPercent.innerText = pct + '%';
+          const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+          progressBytes.innerText = loadedMB + ' MB / ' + totalMB + ' MB';
         }
-      } catch (e) {
-        alert('تعذر الإرسال: ' + e.message);
-      }
+      };
+
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          progressBar.style.width = '100%';
+          progressPercent.innerText = '100%';
+          progressPercent.style.color = '#34C759';
+          progressTitle.innerText = '✅ تم إرسال الملفات بنجاح إلى هاتفك!';
+          progressSubtitle.innerText = 'تم حفظها في مركز الملفات المنقولة في التطبيق';
+          progressBytes.innerText = totalMB + ' MB / ' + totalMB + ' MB';
+          progressStatus.innerText = '🎉 تم النقل بنجاح';
+          setTimeout(() => {
+            progressBox.style.display = 'none';
+            checkStagedFiles();
+          }, 3500);
+        } else {
+          progressTitle.innerText = '❌ حدث خطأ أثناء الإرسال (' + xhr.status + ')';
+          progressBar.style.background = '#FF3B30';
+          progressStatus.innerText = 'يرجى المحاولة مرة أخرى';
+        }
+      };
+
+      xhr.onerror = function() {
+        progressTitle.innerText = '❌ انقطع الاتصال بالهاتف';
+        progressBar.style.background = '#FF3B30';
+        progressStatus.innerText = 'تأكد من بقاء شاشة التطبيق مفتوحة';
+      };
+
+      xhr.send(formData);
     }
 
     // Drag & Drop handlers
