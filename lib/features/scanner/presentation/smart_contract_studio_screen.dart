@@ -190,6 +190,20 @@ class _SmartContractStudioScreenState
       final pdfFile = File(filePath);
       await pdfFile.writeAsBytes(pdfBytes, flush: true);
 
+      String? thumbPath;
+      try {
+        final rasterStream = Printing.raster(pdfBytes, pages: const [0], dpi: 100);
+        await for (final rasterPage in rasterStream) {
+          final pngBytes = await rasterPage.toPng();
+          final thumbFile = File(p.join(dir.path, 'thumb_contract_$timeStamp.png'));
+          await thumbFile.writeAsBytes(pngBytes, flush: true);
+          thumbPath = thumbFile.path;
+          break;
+        }
+      } catch (e) {
+        debugPrint('Could not render contract thumbnail: $e');
+      }
+
       if (saveToLibrary) {
         final doc = PendingUpload(
           id: 'contract_$timeStamp',
@@ -198,13 +212,15 @@ class _SmartContractStudioScreenState
           fileSize: pdfBytes.length,
           createdAt: DateTime.now(),
           pageCount: 1,
-          thumbnailPath: null,
-          pages: [
-            ScanPage(
-              id: 'p_contract_0',
-              imagePath: filePath,
-            ),
-          ],
+          thumbnailPath: thumbPath,
+          pages: thumbPath != null
+              ? [
+                  ScanPage(
+                    id: 'p_contract_0',
+                    imagePath: thumbPath,
+                  ),
+                ]
+              : const [],
         );
 
         await ref.read(pendingUploadsControllerProvider.notifier).addDocument(doc);

@@ -2596,8 +2596,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     required AppThemePalette palette,
   }) {
     final thumbPath = doc.previewImagePath;
-    final hasImage =
-        thumbPath != null && thumbPath.isNotEmpty && File(thumbPath).existsSync();
+    final hasImage = thumbPath != null &&
+        thumbPath.isNotEmpty &&
+        PendingUpload.isImageFilePath(thumbPath) &&
+        File(thumbPath).existsSync();
+
+    Widget buildPdfFallback() => Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.picture_as_pdf_rounded,
+          size: 36,
+          color: palette.accent,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'PDF',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: palette.accent,
+          ),
+        ),
+      ],
+    );
 
     return Hero(
       tag: 'doc_thumb_${doc.id}',
@@ -2617,26 +2639,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 File(thumbPath),
                 fit: BoxFit.cover,
                 cacheWidth: 320,
+                errorBuilder: (_, __, ___) => buildPdfFallback(),
               )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.picture_as_pdf_rounded,
-                    size: 36,
-                    color: palette.accent,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'PDF',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: palette.accent,
-                    ),
-                  ),
-                ],
-              ),
+            : buildPdfFallback(),
       ),
     );
   }

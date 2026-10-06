@@ -760,6 +760,15 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
                                       width: double.infinity,
                                       fit: BoxFit.cover,
                                       cacheWidth: 160,
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Icon(
+                                          filter.icon,
+                                          size: 20,
+                                          color: isSelected
+                                              ? const Color(0xFF00E676)
+                                              : Colors.white70,
+                                        ),
+                                      ),
                                     )
                                   : Center(
                                       child: Icon(

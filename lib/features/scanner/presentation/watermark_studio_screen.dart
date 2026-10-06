@@ -426,6 +426,9 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
                             child: Image.memory(
                               _previewBytes!,
                               fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Center(
+                                child: Icon(Icons.broken_image_rounded, size: 48),
+                              ),
                             ),
                           ),
                         )
@@ -433,6 +436,9 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
                         Image.file(
                           File(_selectedImagePath!),
                           fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Center(
+                            child: Icon(Icons.broken_image_rounded, size: 48),
+                          ),
                         )
                       else
                         Column(

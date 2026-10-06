@@ -87,12 +87,26 @@ class PendingUpload {
   int get effectivePageCount =>
       pageCount > 0 ? pageCount : (pages.isNotEmpty ? pages.length : 1);
 
+  static bool isImageFilePath(String? path) {
+    if (path == null || path.trim().isEmpty) return false;
+    final lower = path.trim().toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.bmp');
+  }
+
   String? get effectiveThumbnailPath {
-    if (thumbnailPath != null && thumbnailPath!.isNotEmpty) {
+    if (thumbnailPath != null &&
+        thumbnailPath!.isNotEmpty &&
+        isImageFilePath(thumbnailPath)) {
       return thumbnailPath;
     }
-    if (pages.isNotEmpty) {
-      return pages.first.imagePath;
+    for (final page in pages) {
+      if (page.imagePath.isNotEmpty && isImageFilePath(page.imagePath)) {
+        return page.imagePath;
+      }
     }
     return null;
   }

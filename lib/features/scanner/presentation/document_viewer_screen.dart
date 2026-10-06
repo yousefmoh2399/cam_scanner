@@ -345,9 +345,15 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                           child: SizedBox(
                             width: 44,
                             height: 44,
-                            child: File(p.imagePath).existsSync()
-                                ? Image.file(File(p.imagePath), fit: BoxFit.cover)
-                                : const Icon(Icons.image),
+                            child: PendingUpload.isImageFilePath(p.imagePath) &&
+                                    File(p.imagePath).existsSync()
+                                ? Image.file(
+                                    File(p.imagePath),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        const Icon(Icons.picture_as_pdf_rounded),
+                                  )
+                                : const Icon(Icons.picture_as_pdf_rounded),
                           ),
                         ),
                         title: Text('صفحة ${i + 1}',
@@ -794,7 +800,11 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     final palette = context.appThemePalette;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final pages = _doc.pages;
+    final pages = _doc.pages
+        .where((p) =>
+            PendingUpload.isImageFilePath(p.imagePath) &&
+            File(p.imagePath).existsSync())
+        .toList();
     final title = stripFileExtension(_doc.fileName);
 
     return Scaffold(
@@ -1158,6 +1168,28 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                             : index,
                                       ),
                                       fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.picture_as_pdf_rounded,
+                                              size: 64,
+                                              color: palette.accent,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            FilledButton.icon(
+                                              onPressed: () =>
+                                                  OpenFilex.open(_doc.filePath),
+                                              icon: const Icon(
+                                                  Icons.open_in_new_rounded),
+                                              label:
+                                                  const Text('فتح ملف الـ PDF'),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1283,6 +1315,13 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                         child: Image.file(
                                           File(pages[idx].imagePath),
                                           fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              const Center(
+                                            child: Icon(
+                                              Icons.picture_as_pdf_rounded,
+                                              size: 20,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     );

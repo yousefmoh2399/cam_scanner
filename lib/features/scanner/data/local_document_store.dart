@@ -9,6 +9,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
 import '../../../shared/models/scan_session.dart';
+import 'package:printing/printing.dart';
 import '../../../shared/services/local_media_storage_service.dart';
 
 class LocalDocumentStore {
@@ -69,7 +70,9 @@ class LocalDocumentStore {
     for (final upload in uploads) {
       final repaired = await _repairPendingUploadPath(upload);
       if (repaired.filePath != upload.filePath ||
-          repaired.fileSize != upload.fileSize) {
+          repaired.fileSize != upload.fileSize ||
+          repaired.thumbnailPath != upload.thumbnailPath ||
+          repaired.pages.length != upload.pages.length) {
         updated = true;
       }
       if (File(repaired.filePath).existsSync() ||
@@ -262,7 +265,7 @@ class LocalDocumentStore {
       final absOrig = page.originalPath != null
           ? await _toAbsolutePath(page.originalPath!)
           : null;
-      if (File(absImg).existsSync()) {
+      if (PendingUpload.isImageFilePath(absImg) && File(absImg).existsSync()) {
         resolvedPages.add(page.copyWith(imagePath: absImg, originalPath: absOrig));
       }
     }
@@ -270,8 +273,42 @@ class LocalDocumentStore {
     String? resolvedThumb = upload.thumbnailPath != null
         ? await _toAbsolutePath(upload.thumbnailPath!)
         : (resolvedPages.isNotEmpty ? resolvedPages.first.imagePath : null);
-    if (resolvedThumb != null && !File(resolvedThumb).existsSync()) {
+    if (resolvedThumb != null &&
+        (!PendingUpload.isImageFilePath(resolvedThumb) ||
+            !File(resolvedThumb).existsSync())) {
       resolvedThumb = resolvedPages.isNotEmpty ? resolvedPages.first.imagePath : null;
+    }
+
+    // Auto-generate thumbnail for PDF-only documents (e.g. generated contracts)
+    final pendingDirectory = await getPendingDirectory();
+    final candidatePdfPath = await _toAbsolutePath(upload.filePath);
+    final pdfFile = File(candidatePdfPath);
+    final isPdf = upload.filePath.toLowerCase().endsWith('.pdf') ||
+        upload.fileName.toLowerCase().endsWith('.pdf');
+
+    if ((resolvedThumb == null || !File(resolvedThumb).existsSync()) &&
+        isPdf &&
+        pdfFile.existsSync()) {
+      try {
+        final pdfBytes = await pdfFile.readAsBytes();
+        final rasterStream = Printing.raster(pdfBytes, pages: const [0], dpi: 100);
+        await for (final rasterPage in rasterStream) {
+          final png = await rasterPage.toPng();
+          final thumbFile = File(
+            path.join(pendingDirectory.path, 'thumb_${upload.id}.png'),
+          );
+          await thumbFile.writeAsBytes(png, flush: true);
+          resolvedThumb = thumbFile.path;
+          if (resolvedPages.isEmpty) {
+            resolvedPages.add(
+              ScanPage(id: 'p_0_${upload.id}', imagePath: thumbFile.path),
+            );
+          }
+          break;
+        }
+      } catch (e) {
+        debugPrint('Could not auto-generate thumbnail for PDF document during repair: $e');
+      }
     }
 
     final currentFile = File(upload.filePath);
@@ -282,7 +319,6 @@ class LocalDocumentStore {
       );
     }
 
-    final pendingDirectory = await getPendingDirectory();
     final repairedPath = path.join(
       pendingDirectory.path,
       path.basename(upload.filePath),

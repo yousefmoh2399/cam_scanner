@@ -508,6 +508,9 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                                 child: Image.file(
                                   File(stamp.imagePath),
                                   fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Center(
+                                    child: Icon(Icons.broken_image_rounded, size: 36),
+                                  ),
                                 ),
                               ),
                             ),

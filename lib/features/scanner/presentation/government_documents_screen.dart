@@ -382,11 +382,10 @@ class _GovernmentDocumentsScreenState
                   itemCount: docs.length,
                   itemBuilder: (_, idx) {
                     final d = docs[idx];
-                    final firstPagePath = d.pages.isNotEmpty
-                        ? d.pages.first.imagePath
-                        : (d.thumbnailPath ?? '');
+                    final firstPagePath = d.previewImagePath ?? '';
                     return ListTile(
                       leading: firstPagePath.isNotEmpty &&
+                              PendingUpload.isImageFilePath(firstPagePath) &&
                               File(firstPagePath).existsSync()
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(8),
@@ -395,6 +394,8 @@ class _GovernmentDocumentsScreenState
                                 width: 44,
                                 height: 44,
                                 fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.picture_as_pdf_rounded),
                               ),
                             )
                           : const Icon(Icons.picture_as_pdf_rounded),
@@ -1620,6 +1621,12 @@ class _GovernmentDocumentsScreenState
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 60,
+                          height: 60,
+                          color: Colors.black12,
+                          child: const Icon(Icons.broken_image_rounded),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -1926,6 +1933,9 @@ class _GovernmentDocumentsScreenState
                         fit: BoxFit.contain,
                         width: double.infinity,
                         height: double.infinity,
+                        errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.broken_image_rounded, size: 36),
+                        ),
                       ),
                     ),
                   ),

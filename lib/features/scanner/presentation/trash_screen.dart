@@ -280,10 +280,20 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
                         width: 52,
                         height: 52,
                         child: doc.previewImagePath != null &&
+                                PendingUpload.isImageFilePath(
+                                    doc.previewImagePath) &&
                                 File(doc.previewImagePath!).existsSync()
                             ? Image.file(
                                 File(doc.previewImagePath!),
                                 fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color:
+                                      palette.accent.withValues(alpha: 0.12),
+                                  child: Icon(
+                                    Icons.picture_as_pdf_rounded,
+                                    color: palette.accent,
+                                  ),
+                                ),
                               )
                             : Container(
                                 color: palette.accent.withValues(alpha: 0.12),
