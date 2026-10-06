@@ -51,6 +51,9 @@ class _SmartContractStudioScreenState
   final _cityController = TextEditingController(text: 'القاهرة');
   final _extraClausesController = TextEditingController();
 
+  ContractPaperColor _selectedPaperColor = ContractPaperColor.white;
+  final List<TextEditingController> _clauseControllers = [];
+
   bool _isGenerating = false;
   String? _tafqeetPreview;
 
@@ -58,8 +61,11 @@ class _SmartContractStudioScreenState
   void initState() {
     super.initState();
     _updateRoleDefaults();
+    _initClausesFromTemplate();
     _updateTafqeet();
     _amountController.addListener(_updateTafqeet);
+    _amountController.addListener(_onFinancialsChanged);
+    _durationController.addListener(_onFinancialsChanged);
   }
 
   @override
@@ -78,7 +84,17 @@ class _SmartContractStudioScreenState
     _durationController.dispose();
     _cityController.dispose();
     _extraClausesController.dispose();
+    for (final c in _clauseControllers) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  void _onFinancialsChanged() {
+    // If clauses are still unmodified defaults, refresh them with updated numbers
+    if (_clauseControllers.isEmpty) {
+      _initClausesFromTemplate();
+    }
   }
 
   void _updateTafqeet() {
@@ -86,6 +102,80 @@ class _SmartContractStudioScreenState
     setState(() {
       _tafqeetPreview = SmartContractService.numberToArabicWords(amt);
     });
+  }
+
+  String _getPartyARole() {
+    switch (_selectedType) {
+      case ContractType.residentialLease:
+        return 'الطرف الأول (المؤجر)';
+      case ContractType.promissoryNote:
+        return 'المقر بما فيه (المستلم)';
+      case ContractType.vehicleSale:
+      case ContractType.propertySale:
+        return 'الطرف الأول (البائع)';
+      case ContractType.nda:
+        return 'الطرف المفصح';
+      case ContractType.freelanceService:
+        return 'الطرف الأول (العميل)';
+    }
+  }
+
+  String _getPartyBRole() {
+    switch (_selectedType) {
+      case ContractType.residentialLease:
+        return 'الطرف الثاني (المستأجر)';
+      case ContractType.promissoryNote:
+        return 'الدائن (المسلِّم)';
+      case ContractType.vehicleSale:
+      case ContractType.propertySale:
+        return 'الطرف الثاني (المشتري)';
+      case ContractType.nda:
+        return 'الطرف المتلقي';
+      case ContractType.freelanceService:
+        return 'الطرف الثاني (مقدم الخدمة)';
+    }
+  }
+
+  void _initClausesFromTemplate() {
+    for (final c in _clauseControllers) {
+      c.dispose();
+    }
+    _clauseControllers.clear();
+
+    final amt = double.tryParse(_amountController.text.trim()) ?? 0.0;
+    final dummyData = SmartContractFormData(
+      type: _selectedType,
+      partyA: ContractParty(
+        name: _partyAName.text.trim(),
+        nationalId: _partyAId.text.trim(),
+        phone: _partyAPhone.text.trim(),
+        address: _partyAAddress.text.trim(),
+        roleTitle: _getPartyARole(),
+      ),
+      partyB: ContractParty(
+        name: _partyBName.text.trim(),
+        nationalId: _partyBId.text.trim(),
+        phone: _partyBPhone.text.trim(),
+        address: _partyBAddress.text.trim(),
+        roleTitle: _getPartyBRole(),
+      ),
+      partyC: _selectedType == ContractType.promissoryNote
+          ? ContractParty(
+              name: _partyCName.text.trim(),
+              roleTitle: 'الطرف الثالث (المستفيد)',
+            )
+          : null,
+      city: _cityController.text.trim().isEmpty ? 'القاهرة' : _cityController.text.trim(),
+      amount: amt,
+      currency: 'جنيه مصري',
+      itemDescription: _descriptionController.text.trim(),
+      duration: _durationController.text.trim(),
+    );
+
+    final defaults = SmartContractService.generateDefaultClauses(dummyData);
+    for (final clause in defaults) {
+      _clauseControllers.add(TextEditingController(text: clause));
+    }
   }
 
   void _updateRoleDefaults() {
@@ -109,6 +199,78 @@ class _SmartContractStudioScreenState
         _descriptionController.text = 'تصميم وبرمجة منصة إلكترونية وتطبيقات هواتف';
         break;
     }
+    _initClausesFromTemplate();
+  }
+
+  SmartContractFormData _buildContractFormData() {
+    final amt = double.tryParse(_amountController.text.trim()) ?? 0.0;
+    final partyA = ContractParty(
+      name: _partyAName.text.trim(),
+      nationalId: _partyAId.text.trim(),
+      phone: _partyAPhone.text.trim(),
+      address: _partyAAddress.text.trim(),
+      roleTitle: _getPartyARole(),
+    );
+
+    final partyB = ContractParty(
+      name: _partyBName.text.trim(),
+      nationalId: _partyBId.text.trim(),
+      phone: _partyBPhone.text.trim(),
+      address: _partyBAddress.text.trim(),
+      roleTitle: _getPartyBRole(),
+    );
+
+    final partyC = _selectedType == ContractType.promissoryNote &&
+            _partyCName.text.trim().isNotEmpty
+        ? ContractParty(
+            name: _partyCName.text.trim(),
+            roleTitle: 'الطرف الثالث (المستفيد)',
+          )
+        : null;
+
+    final clauses = _clauseControllers
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+
+    return SmartContractFormData(
+      type: _selectedType,
+      partyA: partyA,
+      partyB: partyB,
+      partyC: partyC,
+      city: _cityController.text.trim().isEmpty ? 'القاهرة' : _cityController.text.trim(),
+      amount: amt,
+      currency: 'جنيه مصري',
+      itemDescription: _descriptionController.text.trim(),
+      duration: _durationController.text.trim(),
+      extraClauses: _extraClausesController.text.trim(),
+      clauses: clauses,
+      paperColor: _selectedPaperColor,
+    );
+  }
+
+  Future<void> _previewContractPdf() async {
+    setState(() => _isGenerating = true);
+    HapticFeedback.lightImpact();
+
+    try {
+      final contractData = _buildContractFormData();
+      final pdfBytes = await _service.generateContractPdf(contractData);
+      if (!mounted) return;
+
+      await Printing.layoutPdf(
+        name: '${_selectedType.titleAr}.pdf',
+        onLayout: (_) async => pdfBytes,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ أثناء معاينة العقد: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
   }
 
   Future<void> _generateAndExportContract({required bool saveToLibrary}) async {
@@ -116,71 +278,7 @@ class _SmartContractStudioScreenState
     HapticFeedback.mediumImpact();
 
     try {
-      final amt = double.tryParse(_amountController.text.trim()) ?? 0.0;
-
-      String roleA = 'الطرف الأول';
-      String roleB = 'الطرف الثاني';
-      switch (_selectedType) {
-        case ContractType.residentialLease:
-          roleA = 'الطرف الأول (المؤجر)';
-          roleB = 'الطرف الثاني (المستأجر)';
-          break;
-        case ContractType.promissoryNote:
-          roleA = 'المقر بما فيه (المستلم)';
-          roleB = 'الدائن (المسلِّم)';
-          break;
-        case ContractType.vehicleSale:
-        case ContractType.propertySale:
-          roleA = 'الطرف الأول (البائع)';
-          roleB = 'الطرف الثاني (المشتري)';
-          break;
-        case ContractType.nda:
-          roleA = 'الطرف المفصح';
-          roleB = 'الطرف المتلقي';
-          break;
-        case ContractType.freelanceService:
-          roleA = 'الطرف الأول (العميل)';
-          roleB = 'الطرف الثاني (مقدم الخدمة)';
-          break;
-      }
-
-      final partyA = ContractParty(
-        name: _partyAName.text.trim(),
-        nationalId: _partyAId.text.trim(),
-        phone: _partyAPhone.text.trim(),
-        address: _partyAAddress.text.trim(),
-        roleTitle: roleA,
-      );
-
-      final partyB = ContractParty(
-        name: _partyBName.text.trim(),
-        nationalId: _partyBId.text.trim(),
-        phone: _partyBPhone.text.trim(),
-        address: _partyBAddress.text.trim(),
-        roleTitle: roleB,
-      );
-
-      final partyC = _selectedType == ContractType.promissoryNote &&
-              _partyCName.text.trim().isNotEmpty
-          ? ContractParty(
-              name: _partyCName.text.trim(),
-              roleTitle: 'الطرف الثالث (المستفيد)',
-            )
-          : null;
-
-      final contractData = SmartContractFormData(
-        type: _selectedType,
-        partyA: partyA,
-        partyB: partyB,
-        partyC: partyC,
-        city: _cityController.text.trim().isEmpty ? 'القاهرة' : _cityController.text.trim(),
-        amount: amt,
-        currency: 'جنيه مصري',
-        itemDescription: _descriptionController.text.trim(),
-        duration: _durationController.text.trim(),
-        extraClauses: _extraClausesController.text.trim(),
-      );
-
+      final contractData = _buildContractFormData();
       final pdfBytes = await _service.generateContractPdf(contractData);
 
       final dir = await getApplicationDocumentsDirectory();
@@ -554,28 +652,57 @@ class _SmartContractStudioScreenState
               ],
             ),
 
+            const SizedBox(height: 16),
+
+            // ── Paper Background Color Selector ──
+            _buildPaperColorSelector(),
+
+            const SizedBox(height: 16),
+
+            // ── Editable Clauses Editor ──
+            _buildClausesEditor(),
+
             const SizedBox(height: 24),
 
-            // ── Generate & Export Button ──
-            FilledButton.icon(
-              onPressed: _isGenerating
-                  ? null
-                  : () => _generateAndExportContract(saveToLibrary: true),
-              icon: _isGenerating
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.picture_as_pdf_rounded),
-              label: Text(
-                _isGenerating ? 'جاري توليد العقد والتوثيق...' : 'توليد وتصدير العقد (PDF قانوني)',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-              ),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
+            // ── Action Buttons (Preview & Generate) ──
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isGenerating ? null : _previewContractPdf,
+                    icon: const Icon(Icons.visibility_rounded, size: 18),
+                    label: const Text('معاينة العقد'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: _isGenerating
+                        ? null
+                        : () => _generateAndExportContract(saveToLibrary: true),
+                    icon: _isGenerating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.picture_as_pdf_rounded),
+                    label: Text(
+                      _isGenerating ? 'جاري توليد العقد...' : 'توليد وتصدير (PDF)',
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -645,6 +772,273 @@ class _SmartContractStudioScreenState
         prefixIcon: Icon(icon, size: 18),
         isDense: true,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildPaperColorSelector() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E24) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF007AFF).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.palette_outlined, size: 18, color: Color(0xFF007AFF)),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'لون خلفية ورقة العقد (Paper Background)',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                    ),
+                    Text(
+                      'اختر لون الورقة المناسب لطبيعة العقد والطباعة',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: ContractPaperColor.values.map((color) {
+              final isSelected = color == _selectedPaperColor;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedPaperColor = color);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: Color(color.paperHex),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF007AFF)
+                            : Colors.black.withValues(alpha: 0.18),
+                        width: isSelected ? 2.5 : 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isSelected
+                              ? const Color(0xFF007AFF).withValues(alpha: 0.25)
+                              : Colors.black.withValues(alpha: 0.05),
+                          blurRadius: isSelected ? 6 : 2,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isSelected)
+                          const Icon(Icons.check_circle_rounded,
+                              size: 18, color: Color(0xFF007AFF))
+                        else
+                          Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.black.withValues(alpha: 0.2),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                        Text(
+                          color.label,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                            color: Color(color.textHex),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClausesEditor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E24) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF34C759).withValues(alpha: 0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF34C759).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.gavel_rounded,
+                    size: 18, color: Color(0xFF34C759)),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'بنود وشروط العقد (قابلة للتعديل بالكامل)',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                    ),
+                    Text(
+                      'يمكنك تعديل أي بند أو حذفه أو إضافة بنودك الخاصة',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.restart_alt_rounded, size: 20),
+                tooltip: 'استعادة بنود القالب الافتراضية',
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _initClausesFromTemplate());
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ..._clauseControllers.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final controller = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.25)
+                    : const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34C759).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${idx + 1}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF34C759),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: controller,
+                      maxLines: null,
+                      style: const TextStyle(fontSize: 12.5, height: 1.45),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 4),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded,
+                        size: 18, color: Colors.redAccent),
+                    tooltip: 'حذف هذا البند',
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        controller.dispose();
+                        _clauseControllers.removeAt(idx);
+                      });
+                    },
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _clauseControllers.add(TextEditingController(
+                    text: 'البند ${(_clauseControllers.length + 1)}: اتفق الطرفان على ...'));
+              });
+            },
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('إضافة بند جديد للعقد'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

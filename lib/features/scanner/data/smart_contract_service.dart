@@ -32,6 +32,32 @@ class ContractParty {
   String roleTitle;
 }
 
+enum ContractPaperColor {
+  white('أبيض رسمي ناصع', 0xFFFFFFFF, 0xFF111827, 0xFF374151, 0xFFF3F4F6),
+  ivory('عاجي ملكي دافئ', 0xFFFCF9EE, 0xFF1C1917, 0xFF78716C, 0xFFF5EFE0),
+  parchment('ورق قانوني بيج', 0xFFF7F2E4, 0xFF1F1D1A, 0xFF655F55, 0xFFECE3CE),
+  softGrey('رمادي مكتبي ناعم', 0xFFF8F9FA, 0xFF1F2937, 0xFF4B5563, 0xFFE5E7EB);
+
+  const ContractPaperColor(
+    this.label,
+    this.paperHex,
+    this.textHex,
+    this.borderHex,
+    this.cardHex,
+  );
+
+  final String label;
+  final int paperHex;
+  final int textHex;
+  final int borderHex;
+  final int cardHex;
+
+  PdfColor get pdfPaperColor => PdfColor.fromInt(paperHex);
+  PdfColor get pdfTextColor => PdfColor.fromInt(textHex);
+  PdfColor get pdfBorderColor => PdfColor.fromInt(borderHex);
+  PdfColor get pdfCardColor => PdfColor.fromInt(cardHex);
+}
+
 class SmartContractFormData {
   SmartContractFormData({
     required this.type,
@@ -46,6 +72,8 @@ class SmartContractFormData {
     DateTime? contractDate,
     DateTime? startDate,
     this.extraClauses = '',
+    this.clauses = const [],
+    this.paperColor = ContractPaperColor.white,
   })  : contractDate = contractDate ?? DateTime.now(),
         startDate = startDate ?? DateTime.now();
 
@@ -61,6 +89,8 @@ class SmartContractFormData {
   final DateTime contractDate;
   final DateTime startDate;
   final String extraClauses;
+  final List<String> clauses;
+  final ContractPaperColor paperColor;
 }
 
 class SmartContractService {
@@ -128,24 +158,30 @@ class SmartContractService {
     final fontBytes = await _loadCairoFont();
     final cairo = fontBytes != null ? pw.Font.ttf(fontBytes.buffer.asByteData()) : null;
 
-    final baseStyle = pw.TextStyle(font: cairo, fontSize: 10.5, color: PdfColors.grey900);
-    final boldStyle = pw.TextStyle(font: cairo, fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.black);
-    final headerStyle = pw.TextStyle(font: cairo, fontSize: 17, fontWeight: pw.FontWeight.bold, color: PdfColors.black);
+    final paperBg = data.paperColor.pdfPaperColor;
+    final textColor = data.paperColor.pdfTextColor;
+    final borderColor = data.paperColor.pdfBorderColor;
+    final cardBg = data.paperColor.pdfCardColor;
 
-    final clauses = _generateClausesForContract(data);
+    final baseStyle = pw.TextStyle(font: cairo, fontSize: 10, color: textColor);
+    final boldStyle = pw.TextStyle(font: cairo, fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: textColor);
+    final headerStyle = pw.TextStyle(font: cairo, fontSize: 16.5, fontWeight: pw.FontWeight.bold, color: textColor);
+
+    final clauses = data.clauses.isNotEmpty ? data.clauses : generateDefaultClauses(data);
     final dateStr = '${data.contractDate.year}/${data.contractDate.month.toString().padLeft(2, '0')}/${data.contractDate.day.toString().padLeft(2, '0')}';
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
+        margin: const pw.EdgeInsets.all(22),
         theme: pw.ThemeData.withFont(base: cairo, bold: cairo),
         build: (pw.Context ctx) {
           return pw.Directionality(
             textDirection: pw.TextDirection.rtl,
             child: pw.Container(
               decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.grey800, width: 1.5),
+                color: paperBg, // Guaranteed solid opaque paper background
+                border: pw.Border.all(color: borderColor, width: 1.5),
               ),
               padding: const pw.EdgeInsets.all(16),
               child: pw.Column(
@@ -157,9 +193,9 @@ class SmartContractService {
                       children: [
                         pw.Text(data.type.titleAr, style: headerStyle),
                         pw.SizedBox(height: 4),
-                        pw.Container(width: 140, height: 1.5, color: PdfColors.grey800),
+                        pw.Container(width: 140, height: 1.5, color: borderColor),
                         pw.SizedBox(height: 2),
-                        pw.Container(width: 80, height: 0.5, color: PdfColors.grey800),
+                        pw.Container(width: 80, height: 0.5, color: borderColor),
                       ],
                     ),
                   ),
@@ -178,6 +214,7 @@ class SmartContractService {
                     party: data.partyA,
                     baseStyle: baseStyle,
                     boldStyle: boldStyle,
+                    bgColor: cardBg,
                   ),
                   pw.SizedBox(height: 6),
 
@@ -187,6 +224,7 @@ class SmartContractService {
                     party: data.partyB,
                     baseStyle: baseStyle,
                     boldStyle: boldStyle,
+                    bgColor: cardBg,
                   ),
 
                   // Party C Box (If Trust Receipt)
@@ -197,6 +235,7 @@ class SmartContractService {
                       party: data.partyC!,
                       baseStyle: baseStyle,
                       boldStyle: boldStyle,
+                      bgColor: cardBg,
                     ),
                   ],
 
@@ -226,14 +265,14 @@ class SmartContractService {
                   // Signatures Footer
                   pw.Container(
                     padding: const pw.EdgeInsets.symmetric(vertical: 8),
-                    decoration: const pw.BoxDecoration(
-                      border: pw.Border(top: pw.BorderSide(color: PdfColors.grey400, width: 0.8)),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border(top: pw.BorderSide(color: borderColor, width: 0.8)),
                     ),
                     child: pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                       children: [
                         _buildSignatureBox(title: data.partyA.roleTitle, name: data.partyA.name, style: boldStyle),
-                        _buildSealBox(style: boldStyle),
+                        _buildSealBox(style: boldStyle, borderColor: borderColor),
                         _buildSignatureBox(title: data.partyB.roleTitle, name: data.partyB.name, style: boldStyle),
                       ],
                     ),
@@ -254,11 +293,12 @@ class SmartContractService {
     required ContractParty party,
     required pw.TextStyle baseStyle,
     required pw.TextStyle boldStyle,
+    required PdfColor bgColor,
   }) {
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: pw.BoxDecoration(
-        color: PdfColors.grey100,
+        color: bgColor,
         borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
       ),
       child: pw.Column(
@@ -291,21 +331,24 @@ class SmartContractService {
     );
   }
 
-  static pw.Widget _buildSealBox({required pw.TextStyle style}) {
+  static pw.Widget _buildSealBox({
+    required pw.TextStyle style,
+    required PdfColor borderColor,
+  }) {
     return pw.Container(
       width: 70,
       height: 70,
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey400, style: pw.BorderStyle.dashed),
+        border: pw.Border.all(color: borderColor, style: pw.BorderStyle.dashed),
         shape: pw.BoxShape.circle,
       ),
       child: pw.Center(
-        child: pw.Text('موضع الختم الرسمي', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+        child: pw.Text('موضع الختم الرسمي', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 8, color: borderColor)),
       ),
     );
   }
 
-  List<String> _generateClausesForContract(SmartContractFormData d) {
+  static List<String> generateDefaultClauses(SmartContractFormData d) {
     final moneyWord = numberToArabicWords(d.amount, d.currency);
 
     switch (d.type) {
