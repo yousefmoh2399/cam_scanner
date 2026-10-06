@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,9 +20,8 @@ import '../data/ocr_service.dart';
 import '../data/office_exporter_service.dart';
 import 'document_viewer_screen.dart';
 import 'scanner_session_screen.dart';
-import 'tools_hub_screen.dart';
-import 'trash_screen.dart';
 import 'vault_screen.dart';
+import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 
@@ -1562,39 +1560,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             ),
           ],
         ),
-      floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: FloatingActionButton.extended(
-          heroTag: 'library_scan_fab',
-          onPressed: () {
-            HapticFeedback.mediumImpact();
-            _startNewScanSession();
-          },
-          backgroundColor: palette.accent,
-          foregroundColor: Colors.white,
-          elevation: 6,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-            side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.25),
-              width: 1,
-            ),
-          ),
-          icon: const Icon(Icons.camera_alt_rounded, size: 21),
-          label: const Text(
-            'مسح ضوئي',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              letterSpacing: -0.2,
-            ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: _buildAppleBottomNavigationBar(
-        context: context,
-        isDark: isDark,
-        palette: palette,
+      bottomNavigationBar: AppleBottomNavBar(
+        currentIndex: 0,
+        onScanTap: _startNewScanSession,
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -1616,7 +1584,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     textAlignVertical: TextAlignVertical.center,
                     style: const TextStyle(fontSize: 13.5),
                     decoration: InputDecoration(
-                      hintText: 'البحث في المستندات والنصوص...',
+                      hintText: 'بحث في المستندات...',
                       hintStyle: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF8E8E93),
@@ -1701,9 +1669,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'تطابقات داخل نصوص الصفحات (OCR FTS):',
+                        'نتائج البحث داخل النصوص:',
                         style: TextStyle(
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           fontSize: 12,
                           color: palette.accent,
                         ),
@@ -1728,13 +1696,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             // ── Quick Document Filter Chips Strip ──
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 42,
+                height: 38,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                   children: [
                     _buildFilterPill(
-                      label: 'الكل (${allDocs.length})',
+                      label: 'الكل',
                       isSelected: !_showFavoritesOnly && _selectedCategoryFilter == null,
                       onTap: () {
                         setState(() {
@@ -1747,7 +1715,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ),
                     const SizedBox(width: 8),
                     _buildFilterPill(
-                      label: 'المفضلة ★ (${allDocs.where((d) => d.isFavorite).length})',
+                      label: 'المفضلة',
                       icon: Icons.star_rounded,
                       iconColor: Colors.amber,
                       isSelected: _showFavoritesOnly,
@@ -1764,12 +1732,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ),
                     const SizedBox(width: 8),
                     ...['هوية وبطاقات', 'فواتير وإيصالات', 'عقود ووثائق', 'شهادات رسمية'].map((cat) {
-                      final count = allDocs.where((d) => d.category == cat).length;
                       final isSelected = _selectedCategoryFilter == cat;
                       return Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: _buildFilterPill(
-                          label: count > 0 ? '$cat ($count)' : cat,
+                          label: cat,
                           isSelected: isSelected,
                           onTap: () {
                             setState(() {
@@ -1888,157 +1855,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
   }
 
-  Widget _buildAppleBottomNavigationBar({
-    required BuildContext context,
-    required bool isDark,
-    required AppThemePalette palette,
-  }) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final activeColor = palette.accent;
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-        child: Container(
-          padding: EdgeInsets.only(
-            bottom: bottomPadding > 0 ? bottomPadding : 10,
-            top: 7,
-            left: 20,
-            right: 20,
-          ),
-          decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xD8161618)
-                : const Color(0xE8FFFFFF),
-            border: Border(
-              top: BorderSide(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : Colors.black.withValues(alpha: 0.08),
-                width: 0.5,
-              ),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.04),
-                blurRadius: 18,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildAppleNavItem(
-                index: 0,
-                label: 'المستندات',
-                icon: Icons.folder_copy_outlined,
-                activeIcon: Icons.folder_copy_rounded,
-                isSelected: true,
-                activeColor: activeColor,
-                isDark: isDark,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  if (_activeFolderId != null) {
-                    setState(() => _activeFolderId = null);
-                  }
-                },
-              ),
-              _buildAppleNavItem(
-                index: 1,
-                label: 'الأدوات',
-                icon: Icons.apps_outlined,
-                activeIcon: Icons.apps_rounded,
-                isSelected: false,
-                activeColor: activeColor,
-                isDark: isDark,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ToolsHubScreen(),
-                    ),
-                  );
-                },
-              ),
-              _buildAppleNavItem(
-                index: 2,
-                label: 'المحذوفات',
-                icon: Icons.delete_outline_rounded,
-                activeIcon: Icons.delete_rounded,
-                isSelected: false,
-                activeColor: activeColor,
-                isDark: isDark,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const TrashScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppleNavItem({
-    required int index,
-    required String label,
-    required IconData icon,
-    required IconData activeIcon,
-    required bool isSelected,
-    required Color activeColor,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    const inactiveColor = Color(0xFF8E8E93);
-
-    return InkWell(
-      onTap: onTap,
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3.5),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? activeColor.withValues(alpha: isDark ? 0.22 : 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                isSelected ? activeIcon : icon,
-                size: 23,
-                color: isSelected ? activeColor : inactiveColor,
-              ),
-            ),
-            const SizedBox(height: 2),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? activeColor : inactiveColor,
-                letterSpacing: -0.2,
-              ),
-              child: Text(label),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildFilterPill({
     required String label,
@@ -3185,49 +3002,48 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             const SizedBox(height: 20),
             Text(
               _searchQuery.isNotEmpty
-                  ? 'لا توجد نتائج مطابقة للبحث'
+                  ? 'لا توجد نتائج'
                   : (_activeFolderId != null
-                        ? 'هذا المجلد فارغ حالياً'
+                        ? 'المجلد فارغ'
                         : (hasTotalDocs && _folders.isNotEmpty
-                            ? 'كل مستنداتك منظمة داخل المجلدات'
-                            : 'مكتبة المستندات جاهزة لأول مسحة ضوئية')),
+                            ? 'المستندات منظمة داخل المجلدات'
+                            : 'لا توجد مستندات بعد')),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                fontSize: 16.5,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               _searchQuery.isNotEmpty
-                  ? 'جرّب البحث بكلمات أخرى أو مسح نص البحث.'
+                  ? 'جرّب البحث بكلمات أخرى.'
                   : (_activeFolderId != null
-                        ? 'يمكنك سحب مستندات إلى هذا المجلد أو بدء مسح جديد بداخله.'
+                        ? 'اضغط على زر الكاميرا لمسح مستند في هذا المجلد.'
                         : (hasTotalDocs && _folders.isNotEmpty
-                            ? 'افتح أي مجلد أعلاه لتصفح مستنداته، أو ابدأ مسحاً ضوئياً جديداً.'
-                            : 'امسح الوثائق والفواتير والعقود بالكاميرا الذكية مع الكشف التلقائي للحواف والفلاتر الاحترافية، وصدّرها فوراً إلى PDF أو Word أو Excel بدون إنترنت.')),
+                            ? 'افتح أي مجلد أعلاه لتصفح مستنداته.'
+                            : 'اضغط على زر الكاميرا للبدء بالمسح الضوئي.')),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 13,
-                height: 1.55,
+                fontSize: 12.5,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 18),
             FilledButton.icon(
               onPressed: _startNewScanSession,
               style: FilledButton.styleFrom(
                 backgroundColor: palette.accent,
                 foregroundColor: Colors.white,
-                minimumSize: const Size(220, 50),
+                minimumSize: const Size(190, 46),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              icon: const Icon(Icons.camera_alt_rounded),
+              icon: const Icon(Icons.camera_alt_rounded, size: 19),
               label: const Text(
-                'ابدأ المسح الضوئي الآن',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                'مسح ضوئي جديد',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
               ),
             ),
           ],

@@ -8,6 +8,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/vault_security_service.dart';
+import 'widgets/apple_bottom_nav_bar.dart';
 
 /// Phase 3.3: Secret Vault (AES-256-GCM On-Disk Encryption) & App Lock Settings Screen.
 class VaultScreen extends ConsumerStatefulWidget {
@@ -252,7 +253,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           ),
         ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 90),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -350,6 +351,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             ],
           ),
         ),
+        bottomNavigationBar: const AppleBottomNavBar(currentIndex: 3),
       );
     }
 
@@ -373,7 +375,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         label: const Text('نقل مستند للخزنة'),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
         children: [
           // Security Controls Card
           Card(
@@ -386,7 +388,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'إعدادات قفل التطبيق وحماية الشاشة',
+                    'قفل التطبيق وحماية الشاشة',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -394,11 +396,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
-                      'قفل التطبيق بالكامل عند التشغيل (App Lock)',
+                      'قفل التطبيق (App Lock)',
                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
                     ),
                     subtitle: const Text(
-                      'طلب البصمة أو الرمز السري عند فتح التطبيق أو العودة من الخلفية',
+                      'طلب الرمز السري عند الفتح أو العودة من الخلفية',
                       style: TextStyle(fontSize: 11.5),
                     ),
                     value: _settings.appLockEnabled,
@@ -411,7 +413,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
-                      'تفعيل البصمة / التعرف على الوجه (Biometrics)',
+                      'المصادقة بالبصمة / الوجه (Biometrics)',
                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
                     ),
                     value: _settings.biometricsEnabled,
@@ -424,11 +426,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
-                      'حظر لقطات الشاشة وإخفاء المعاينة (FLAG_SECURE)',
+                      'حظر لقطات الشاشة (FLAG_SECURE)',
                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
                     ),
                     subtitle: const Text(
-                      'منع تصوير الشاشة وإخفاء محتوى التطبيق في قائمة التطبيقات المفتوحة',
+                      'منع تصوير الشاشة وإخفاء المعاينة بالخلفية',
                       style: TextStyle(fontSize: 11.5),
                     ),
                     value: _settings.secureScreenEnabled,
@@ -442,7 +444,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   DropdownButtonFormField<AutoLockTimeout>(
                     initialValue: _settings.autoLockTimeout,
                     decoration: const InputDecoration(
-                      labelText: 'مهلة القفل التلقائي عند الخروج للخلفية',
+                      labelText: 'مهلة القفل التلقائي',
                       prefixIcon: Icon(Icons.timer_outlined),
                     ),
                     items: AutoLockTimeout.values
@@ -530,6 +532,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             ),
         ],
       ),
+      bottomNavigationBar: const AppleBottomNavBar(currentIndex: 3),
     );
   }
 }

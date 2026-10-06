@@ -13,6 +13,7 @@ import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/government_preset_service.dart';
 import '../data/native_scanner_bridge.dart';
+import 'widgets/apple_bottom_nav_bar.dart';
 
 /// Available document modes in the official studio.
 enum OfficialDocMode {
@@ -860,6 +861,7 @@ class _GovernmentDocumentsScreenState
             ),
         ],
       ),
+      bottomNavigationBar: const AppleBottomNavBar(currentIndex: 2),
     );
   }
 
@@ -961,7 +963,7 @@ class _GovernmentDocumentsScreenState
 
     return ListView(
       key: const ValueKey('id_card_studio'),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
       children: [
         // Subtitle badge
         _buildStudioHeader(
@@ -1172,7 +1174,7 @@ class _GovernmentDocumentsScreenState
 
     return ListView(
       key: const ValueKey('passport_studio'),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
       children: [
         _buildStudioHeader(
           title: 'جواز السفر الدولي (صفحة البيانات)',
@@ -1274,7 +1276,7 @@ class _GovernmentDocumentsScreenState
 
     return ListView(
       key: const ValueKey('certificate_studio'),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
       children: [
         _buildStudioHeader(
           title: 'الشهادات والمستندات والعقود الرسمية',
@@ -1369,7 +1371,7 @@ class _GovernmentDocumentsScreenState
 
     return ListView(
       key: const ValueKey('photo_studio'),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
       children: [
         _buildStudioHeader(
           title: 'استوديو صور التأشيرة وجواز السفر',
@@ -1575,7 +1577,7 @@ class _GovernmentDocumentsScreenState
 
     return ListView(
       key: const ValueKey('compression_studio'),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
       children: [
         _buildStudioHeader(
           title: 'ضغط المستندات للبوابات والسفارات',

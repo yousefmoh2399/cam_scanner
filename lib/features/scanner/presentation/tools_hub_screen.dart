@@ -25,6 +25,7 @@ import 'trash_screen.dart';
 import 'vault_screen.dart';
 import 'watermark_studio_screen.dart';
 import 'auto_redaction_screen.dart';
+import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 
@@ -114,45 +115,41 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Government & Official Category ──
     ToolItem(
       id: 'gov_id_card',
-      title: 'بطاقة الهوية والقيادة (دمج وجهين A4)',
-      subtitle:
-          'دمج وجهي البطاقة في ورقة A4 واحدة بالأبعاد القياسية العالمية ISO/IEC 7810 ID-1 للتقديم في البنوك والسفارات والجهات الرسمية.',
+      title: 'بطاقة الهوية والقيادة',
+      subtitle: 'دمج وجهي البطاقة في ورقة A4 بمقاييس دولية',
       category: ToolCategory.government,
       icon: Icons.badge_rounded,
-      badge: 'معياري دولي',
+      badge: 'ISO ID-1',
       accentColor: Color(0xFF007AFF),
       keywords: ['بطاقة', 'هوية', 'رخصة', 'قيادة', 'إقامة', 'id', 'وش وضهر', 'رسمي'],
     ),
     ToolItem(
       id: 'gov_passport_cert',
-      title: 'جواز السفر والشهادات الرسمية',
-      subtitle:
-          'توسيط وتنسيق عالي الدقة لوثائق السفر بمعايير ICAO الدولية، والشهادات الأكاديمية والعقود الرسمية على A4.',
+      title: 'جواز السفر والشهادات',
+      subtitle: 'تنسيق عالي الدقة لوثائق السفر والعقود الرسمية',
       category: ToolCategory.government,
       icon: Icons.menu_book_rounded,
-      badge: 'ICAO معتمد',
+      badge: 'ICAO',
       accentColor: Color(0xFF5856D6),
       keywords: ['جواز', 'سفر', 'شهادة', 'تخرج', 'عقد', 'رسمي', 'passport'],
     ),
     ToolItem(
       id: 'gov_photo_grid',
-      title: 'استوديو صور التأشيرة وجواز السفر',
-      subtitle:
-          'تجهيز شبكة صور شخصية متعددة على ورقة A4 واحدة جاهزة للطباعة والقص فوراً بمقاسات شنغن، أمريكا 2×2، 4×6، و 3×4.',
+      title: 'استوديو الصور الشخصية',
+      subtitle: 'شبكة صور A4 جاهزة للطباعة والتأشيرات',
       category: ToolCategory.government,
       icon: Icons.photo_camera_front_rounded,
-      badge: 'سفر وتأشيرات',
+      badge: 'تأشيرات',
       accentColor: Color(0xFF34C759),
       keywords: ['صور', 'شخصية', 'تأشيرة', 'شنغن', 'امريكا', 'سفر', 'جواز', 'طباعة', 'visa'],
     ),
     ToolItem(
       id: 'gov_portal_compress',
-      title: 'ضغط المستندات للبوابات والسفارات',
-      subtitle:
-          'تقليص حجم المستندات بدقة هندسية لأقل من (100KB أو 200KB أو 500KB أو 1MB) لضمان القبول الفوري في بوابات التقديم.',
+      title: 'ضغط بوابات التقديم',
+      subtitle: 'تقليص الحجم للقبول في السفارات والمواقع',
       category: ToolCategory.government,
       icon: Icons.speed_rounded,
-      badge: 'ضمان القبول',
+      badge: 'ضغط دقيق',
       accentColor: Color(0xFFFF2D55),
       keywords: ['ضغط', 'بوابات', 'تقديم', 'سفارات', 'توظيف', 'حجم', 'مستند'],
     ),
@@ -160,34 +157,31 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Intelligence & Extraction Category ──
     ToolItem(
       id: 'ai_excel_converter',
-      title: 'تحويل الجداول إلى Excel احترافي (.xlsx)',
-      subtitle:
-          'إعادة بناء الجداول المطبوعة والممسوحة ضوئياً داخل ملف إكسل حقيقي مع شبكة خلايا وتنسيق ودعم العربي RTL.',
+      title: 'تحويل الجداول إلى Excel',
+      subtitle: 'استخراج الجداول بدقة لملفات .xlsx حقيقية',
       category: ToolCategory.intelligence,
       icon: Icons.table_chart_rounded,
-      badge: 'جديد ومميز',
+      badge: 'ذكاء اصطناعي',
       accentColor: Color(0xFF10B981),
       keywords: ['إكسل', 'excel', 'جدول', 'xlsx', 'أرقام', 'حسابات'],
     ),
     ToolItem(
       id: 'ai_smart_extraction',
-      title: 'الاستخراج الذكي والتحليل (Smart OCR)',
-      subtitle:
-          'تفكيك بيانات الرقم القومي (تاريخ الميلاد، المحافظة، النوع)، استخراج الهواتف، تصدير جهات الاتصال vCard، والقراءة الصوتية.',
+      title: 'الاستخراج الذكي والتحليل',
+      subtitle: 'تفكيك البيانات وجهات الاتصال وقراءة النصوص',
       category: ToolCategory.intelligence,
       icon: Icons.psychology_rounded,
-      badge: 'تحليل فوري',
+      badge: 'Smart OCR',
       accentColor: Color(0xFF8B5CF6),
       keywords: ['رقم قومي', 'هاتف', 'اتصال', 'vcard', 'تفريغ', 'صوت', 'tts'],
     ),
     ToolItem(
       id: 'ai_book_split',
-      title: 'مسح وفصل صفحات الكتب (Book Mode)',
-      subtitle:
-          'تصوير صفحتين متقابلتين في لقطة واحدة وفصل الصفحة اليمنى واليسرى تلقائياً مع تسوية الانحناءات.',
+      title: 'مسح وفصل صفحات الكتب',
+      subtitle: 'فصل وتعديل الصفحتين المتقابلتين تلقائياً',
       category: ToolCategory.intelligence,
       icon: Icons.menu_book_rounded,
-      badge: 'للطلبة والباحثين',
+      badge: 'Book Mode',
       accentColor: Color(0xFFF59E0B),
       keywords: ['كتاب', 'صفحتين', 'فصل', 'منحنيات', 'مجلد', 'دراسة'],
     ),
@@ -195,31 +189,28 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── PDF Tools Category ──
     ToolItem(
       id: 'pdf_merge',
-      title: 'دمج ملفات PDF متعددة',
-      subtitle:
-          'دمج عدة ملفات ومستندات في ملف PDF واحد متكامل مع إمكانية ترتيب الصفحات وضغط الملف الناتج.',
+      title: 'دمج مستندات PDF',
+      subtitle: 'تجميع عدة ملفات في مستند واحد منظم',
       category: ToolCategory.pdf,
       icon: Icons.merge_type_rounded,
-      badge: 'بدون إنترنت',
+      badge: 'دمج فوري',
       accentColor: Color(0xFF2563EB),
       keywords: ['دمج', 'تجميع', 'pdf', 'ملفات', 'ترتيب'],
     ),
     ToolItem(
       id: 'pdf_split',
-      title: 'تقسيم واستخراج صفحات PDF',
-      subtitle:
-          'فصل صفحات محددة من مستند PDF وتصديرها كملف مستقل أو حفظ كل صفحة على حدة.',
+      title: 'تقسيم واستخراج الصفحات',
+      subtitle: 'فصل وتصدير صفحات محددة من مستند PDF',
       category: ToolCategory.pdf,
       icon: Icons.call_split_rounded,
-      badge: 'استخراج سريع',
+      badge: 'تقسيم',
       accentColor: Color(0xFF0D9488),
       keywords: ['تقسيم', 'فصل', 'استخراج', 'صفحات', 'pdf'],
     ),
     ToolItem(
       id: 'pdf_target_compress',
-      title: 'ضغط PDF إلى حجم محدد',
-      subtitle:
-          'تقليص حجم ملف PDF ليصل لأقل من حجم مستهدف بالكيلوبايت تحدده بنفسك مع الحفاظ على المقروءية.',
+      title: 'ضغط PDF لحجم محدد',
+      subtitle: 'تقليص حجم المستند مع الحفاظ على الوضوح',
       category: ToolCategory.pdf,
       icon: Icons.compress_rounded,
       badge: 'حجم مخصص',
@@ -228,9 +219,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'pdf_import',
-      title: 'استيراد ملفات PDF وصور خارجية',
-      subtitle:
-          'جلب مستندات PDF أو صور من ذاكرة الجهاز أو التحميلات ودمجها داخل مكتبتك الممسوحة.',
+      title: 'استيراد مستندات وصور',
+      subtitle: 'جلب ملفات PDF وصور خارجية إلى مكتبتك',
       category: ToolCategory.pdf,
       icon: Icons.file_download_rounded,
       badge: 'استيراد',
@@ -241,64 +231,58 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Security, Privacy & Maintenance Category ──
     ToolItem(
       id: 'sec_vault',
-      title: 'الخزنة السرية المشفرة (AES-256-GCM)',
-      subtitle:
-          'تشفير وحماية المستندات الهامة على القرص بكلمة سر وبصمة الإصبع وحجبها تماماً عن المعرض والمكتبة العامة.',
+      title: 'الخزنة السرية المشفرة',
+      subtitle: 'حماية وتشفير المستندات بالبصمة ورمز المرور',
       category: ToolCategory.security,
       icon: Icons.enhanced_encryption_rounded,
-      badge: 'تشفير عسكري',
+      badge: 'AES-256',
       accentColor: Color(0xFF059669),
       keywords: ['خزنة', 'قفل', 'بصمة', 'تشفير', 'سري', 'pin', 'حماية'],
     ),
     ToolItem(
       id: 'sec_exif_scrub',
-      title: 'تنظيف بيانات الخصوصية والموقع (EXIF/GPS)',
-      subtitle:
-          'حذف بيانات الموقع الجغرافي ومعلومات الكاميرا تلقائياً من الصور والمستندات قبل مشاركتها، لتظل خصوصيتك محفوظة.',
+      title: 'تنظيف بيانات الخصوصية',
+      subtitle: 'إزالة الموقع الجغرافي وبيانات الكاميرا نهائياً',
       category: ToolCategory.security,
       icon: Icons.location_off_rounded,
-      badge: 'خصوصية تامة',
+      badge: 'خصوصية',
       accentColor: Color(0xFFE11D48),
       keywords: ['موقع', 'gps', 'exif', 'خصوصية', 'تنظيف', 'حذف'],
     ),
     ToolItem(
       id: 'sec_signatures',
       title: 'التوقيعات الرقمية والأختام',
-      subtitle:
-          'رسم وتخزين توقيعاتك الشخصية أو استيراد الأختام الرسمية لتوقيع العقود والمستندات بلمسة واحدة.',
+      subtitle: 'توقيع العقود والمستندات بلمسة واحدة',
       category: ToolCategory.security,
       icon: Icons.draw_rounded,
-      badge: 'توقيع معتمد',
+      badge: 'توقيع',
       accentColor: Color(0xFF6366F1),
       keywords: ['توقيع', 'ختم', 'عقد', 'توقيعات', 'بصمة'],
     ),
     ToolItem(
       id: 'sec_trash',
-      title: 'سلة المحذوفات الذكية (Trash)',
-      subtitle:
-          'حماية ملفاتك من الحذف بالخطأ؛ يتم حفظ المستندات المحذوفة لمدة 30 يوماً مع إمكانية استرجاعها فوراً.',
+      title: 'سلة المحذوفات',
+      subtitle: 'استرجاع المستندات المحذوفة خلال 30 يوماً',
       category: ToolCategory.security,
       icon: Icons.delete_sweep_rounded,
-      badge: 'استرجاع 30 يوم',
+      badge: 'حماية 30 يوم',
       accentColor: Color(0xFFDC2626),
       keywords: ['سلة', 'حذف', 'محذوفات', 'استرجاع', 'مهملات'],
     ),
     ToolItem(
       id: 'sec_watermark',
-      title: 'العلامة المائية والأختام الأمنية',
-      subtitle:
-          'إضافة كتابة مائلة متكررة أو ختم نصي أمني (صورة طبق الأصل، مقدمة لبنك مصر فقط...) لمنع التزوير وسرقة الهوية.',
+      title: 'العلامة المائية والأختام',
+      subtitle: 'إضافة نصوص وأختام أمنية لمنع التزوير',
       category: ToolCategory.security,
       icon: Icons.verified_user_rounded,
-      badge: 'مجاني 100%',
+      badge: 'أمان',
       accentColor: Color(0xFFDC2626),
       keywords: ['علامة', 'مائية', 'ختم', 'أمان', 'بنك', 'بطاقة', 'تزوير', 'watermark'],
     ),
     ToolItem(
       id: 'sec_smart_redaction',
-      title: 'الحجب الأمني وتسويد البيانات (Smart Redaction)',
-      subtitle:
-          'تسويد وحرق الرقم القومي والهواتف والرواتب نهائياً داخل الصورة قبل مشاركتها لمنع استرجاعها.',
+      title: 'الحجب الأمني وتسويد البيانات',
+      subtitle: 'حجب الأرقام والبيانات الحساسة بشكل نهائي',
       category: ToolCategory.security,
       icon: Icons.visibility_off_rounded,
       badge: 'حماية الهوية',
@@ -307,12 +291,11 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'sec_backup_zip',
-      title: 'النسخ الاحتياطي والاستعادة (.ZIP)',
-      subtitle:
-          'تصدير مكتبتك كاملة بالمجلدات وفهرس البحث في ملف مضغوط محلياً أو استعادتها بدون إنترنت مع خيار التشفير.',
+      title: 'النسخ الاحتياطي (.ZIP)',
+      subtitle: 'تصدير واستعادة مكتبتك بالكامل بدون إنترنت',
       category: ToolCategory.security,
       icon: Icons.folder_zip_rounded,
-      badge: 'أرشيف كامل',
+      badge: 'نسخ محلي',
       accentColor: Color(0xFF9333EA),
       keywords: ['نسخ', 'احتياطي', 'استعادة', 'zip', 'أرشيف', 'تصدير'],
     ),
@@ -1881,7 +1864,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     ),
                 ],
 
-              const SliverToBoxAdapter(child: SizedBox(height: 48)),
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
           ),
 
@@ -1909,6 +1892,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             ),
         ],
       ),
+      bottomNavigationBar: const AppleBottomNavBar(currentIndex: 1),
     );
   }
 
