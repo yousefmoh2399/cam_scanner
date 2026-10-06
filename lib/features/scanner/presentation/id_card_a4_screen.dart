@@ -713,9 +713,13 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             if (hasImage)
               Row(
@@ -1115,18 +1119,27 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'معاينة شكل ورقة A4 التفاعلية',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+              const Expanded(
+                child: Text(
+                  'معاينة شكل ورقة A4 التفاعلية',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              if (_canExport)
+              if (_canExport) ...[
+                const SizedBox(width: 6),
                 TextButton.icon(
                   onPressed: _previewPdf,
                   icon: const Icon(Icons.fullscreen_rounded, size: 16),
                   label: const Text('معاينة كاملة'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 10),
