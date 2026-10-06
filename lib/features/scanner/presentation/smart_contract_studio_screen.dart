@@ -746,7 +746,14 @@ class _SmartContractStudioScreenState
                 child: Icon(icon, size: 18, color: color),
               ),
               const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -879,8 +886,10 @@ class _SmartContractStudioScreenState
                         Text(
                           color.label,
                           textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 10,
                             fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
                             color: Color(color.textHex),
                           ),

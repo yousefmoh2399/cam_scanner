@@ -643,58 +643,61 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'تسوية انحناء الكتب: اختر صفحة لمعالجتها',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-              ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: Color(0xFF007AFF)),
-              title: const Text('تصوير صفحة كتاب بالكاميرا'),
-              subtitle: const Text('التقاط فوري لصفحة منحنية وضبط حوافها'),
-              onTap: () => Navigator.pop(ctx, 'camera'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFF59E0B)),
-              title: const Text('اختيار صورة من معرض الصور'),
-              onTap: () => Navigator.pop(ctx, 'pick_external'),
-            ),
-            if (docs.isNotEmpty) ...[
-              const Divider(),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    'أو اختر من مستنداتك الممسوحة مسبقاً:',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey),
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'تسوية انحناء الكتب: اختر صفحة لمعالجتها',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded, color: Color(0xFF007AFF)),
+                title: const Text('تصوير صفحة كتاب بالكاميرا'),
+                subtitle: const Text('التقاط فوري لصفحة منحنية وضبط حوافها'),
+                onTap: () => Navigator.pop(ctx, 'camera'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFF59E0B)),
+                title: const Text('اختيار صورة من معرض الصور'),
+                onTap: () => Navigator.pop(ctx, 'pick_external'),
+              ),
+              if (docs.isNotEmpty) ...[
+                const Divider(),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'أو اختر من مستنداتك الممسوحة مسبقاً:',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey),
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (c, idx) {
-                    final d = docs[idx];
-                    return ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.auto_stories_rounded),
-                      title: Text(d.fileName, maxLines: 1),
-                      subtitle: Text('${d.pageCount} صفحة'),
-                      onTap: () => Navigator.pop(ctx, d.id),
-                    );
-                  },
+                SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (c, idx) {
+                      final d = docs[idx];
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.auto_stories_rounded),
+                        title: Text(d.fileName, maxLines: 1),
+                        subtitle: Text('${d.pageCount} صفحة'),
+                        onTap: () => Navigator.pop(ctx, d.id),
+                      );
+                    },
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -776,39 +779,42 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'الممحاة الذكية: اختر المستند لتنظيفه',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'الممحاة الذكية: اختر المستند لتنظيفه',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
               ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFFF2D55)),
-              title: const Text('اختيار صورة من معرض الصور'),
-              onTap: () => Navigator.pop(ctx, 'pick_external'),
-            ),
-            SizedBox(
-              height: 220,
-              child: ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (c, idx) {
-                  final d = docs[idx];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.description_rounded),
-                    title: Text(d.fileName, maxLines: 1),
-                    subtitle: Text('${d.pageCount} صفحة'),
-                    onTap: () => Navigator.pop(ctx, d.id),
-                  );
-                },
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFFF2D55)),
+                title: const Text('اختيار صورة من معرض الصور'),
+                onTap: () => Navigator.pop(ctx, 'pick_external'),
               ),
-            ),
-          ],
+              SizedBox(
+                height: 220,
+                child: ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (c, idx) {
+                    final d = docs[idx];
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.description_rounded),
+                      title: Text(d.fileName, maxLines: 1),
+                      subtitle: Text('${d.pageCount} صفحة'),
+                      onTap: () => Navigator.pop(ctx, d.id),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -859,39 +865,42 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'إزالة ظل الهاتف: اختر مستند لتسوية إضاءته',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'إزالة ظل الهاتف: اختر مستند لتسوية إضاءته',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
               ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFFF9500)),
-              title: const Text('اختيار صورة من معرض الصور'),
-              onTap: () => Navigator.pop(ctx, 'pick_external'),
-            ),
-            SizedBox(
-              height: 220,
-              child: ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (c, idx) {
-                  final d = docs[idx];
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.wb_sunny_rounded, color: Color(0xFFFF9500)),
-                    title: Text(d.fileName, maxLines: 1),
-                    subtitle: Text('${d.pageCount} صفحة'),
-                    onTap: () => Navigator.pop(ctx, d.id),
-                  );
-                },
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFFF9500)),
+                title: const Text('اختيار صورة من معرض الصور'),
+                onTap: () => Navigator.pop(ctx, 'pick_external'),
               ),
-            ),
-          ],
+              SizedBox(
+                height: 220,
+                child: ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (c, idx) {
+                    final d = docs[idx];
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.wb_sunny_rounded, color: Color(0xFFFF9500)),
+                      title: Text(d.fileName, maxLines: 1),
+                      subtitle: Text('${d.pageCount} صفحة'),
+                      onTap: () => Navigator.pop(ctx, d.id),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1288,12 +1297,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetCtx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: Material(
+          color: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               Row(
                 children: [
                   Container(
@@ -1453,7 +1464,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _extractFromDocument(PendingUpload doc) async {
@@ -1501,50 +1513,53 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'مسح وفصل صفحات الكتب المزدوجة (Book Mode)',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'التقط صورة لصفحتين متقابلتين في لقطة واحدة وسيقوم التطبيق بفصلهما وتسوية انحناءات الورق.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.camera_alt_rounded, color: Colors.amber),
+        child: Material(
+          color: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'مسح وفصل صفحات الكتب المزدوجة (Book Mode)',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  textAlign: TextAlign.center,
                 ),
-                title: const Text('تصوير كتاب مفتوح بالكاميرا الآن',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
-                onTap: () => Navigator.pop(ctx, 'camera'),
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.photo_library_rounded, color: Colors.blue),
+                const SizedBox(height: 8),
+                const Text(
+                  'التقط صورة لصفحتين متقابلتين في لقطة واحدة وسيقوم التطبيق بفصلهما وتسوية انحناءات الورق.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  textAlign: TextAlign.center,
                 ),
-                title: const Text('اختيار صورة كتاب من الجهاز',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
-                onTap: () => Navigator.pop(ctx, 'gallery'),
-              ),
-            ],
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, color: Colors.amber),
+                  ),
+                  title: const Text('تصوير كتاب مفتوح بالكاميرا الآن',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  onTap: () => Navigator.pop(ctx, 'camera'),
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.photo_library_rounded, color: Colors.blue),
+                  ),
+                  title: const Text('اختيار صورة كتاب من الجهاز',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  onTap: () => Navigator.pop(ctx, 'gallery'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -119,36 +119,39 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
       builder: (ctx) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'اختر مستنداً لحجب وتسويد البيانات الحساسة',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Text(
+                      'اختر مستنداً لحجب وتسويد البيانات الحساسة',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
                   ),
-                ),
-                const Divider(),
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: docs.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, i) {
-                      final d = docs[i];
-                      return ListTile(
-                        leading: const Icon(Icons.shield_outlined, color: Colors.red),
-                        title: Text(d.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text('${d.pages.length} صفحات'),
-                        onTap: () => Navigator.of(ctx).pop(d),
-                      );
-                    },
+                  const Divider(),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final d = docs[i];
+                        return ListTile(
+                          leading: const Icon(Icons.shield_outlined, color: Colors.red),
+                          title: Text(d.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: Text('${d.pages.length} صفحات'),
+                          onTap: () => Navigator.of(ctx).pop(d),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

@@ -208,46 +208,49 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'اختر مستنداً من مكتبتك',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+        child: Material(
+          color: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'اختر مستنداً من مكتبتك',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                 ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: docs.length,
-                  itemBuilder: (_, idx) {
-                    final d = docs[idx];
-                    final firstPage = d.previewImagePath ?? '';
-                    return ListTile(
-                      leading: firstPage.isNotEmpty && File(firstPage).existsSync()
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: Image.file(
-                                File(firstPage),
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : const Icon(Icons.description_rounded),
-                      title: Text(stripFileExtension(d.fileName)),
-                      subtitle: Text(formatPageCount(d.effectivePageCount)),
-                      onTap: () => Navigator.pop(ctx, firstPage),
-                    );
-                  },
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.45,
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: docs.length,
+                    itemBuilder: (_, idx) {
+                      final d = docs[idx];
+                      final firstPage = d.previewImagePath ?? '';
+                      return ListTile(
+                        leading: firstPage.isNotEmpty && File(firstPage).existsSync()
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Image.file(
+                                  File(firstPage),
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Icon(Icons.description_rounded),
+                        title: Text(stripFileExtension(d.fileName)),
+                        subtitle: Text(formatPageCount(d.effectivePageCount)),
+                        onTap: () => Navigator.pop(ctx, firstPage),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

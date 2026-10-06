@@ -144,49 +144,52 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
       builder: (ctx) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'اختر مستنداً لحمايته بالعلامة المائية',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Text(
+                      'اختر مستنداً لحمايته بالعلامة المائية',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
                   ),
-                ),
-                const Divider(),
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: docs.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, i) {
-                      final d = docs[i];
-                      return ListTile(
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
+                  const Divider(),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final d = docs[i];
+                        return ListTile(
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.description_rounded, color: Colors.blue),
                           ),
-                          child: const Icon(Icons.description_rounded, color: Colors.blue),
-                        ),
-                        title: Text(
-                          d.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text('${d.pages.length} صفحات'),
-                        onTap: () => Navigator.of(ctx).pop(d),
-                      );
-                    },
+                          title: Text(
+                            d.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle: Text('${d.pages.length} صفحات'),
+                          onTap: () => Navigator.of(ctx).pop(d),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
