@@ -29,6 +29,11 @@ import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 import 'widgets/theme_selection_sheet.dart';
+import 'document_diff_screen.dart';
+import 'magic_clean_screen.dart';
+import 'stamp_studio_screen.dart';
+import 'web_drop_screen.dart';
+import 'widgets/pdf_security_sheet.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -186,6 +191,26 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       accentColor: Color(0xFFF59E0B),
       keywords: ['كتاب', 'صفحتين', 'فصل', 'منحنيات', 'مجلد', 'دراسة'],
     ),
+    ToolItem(
+      id: 'ai_magic_clean',
+      title: 'الممحاة الذكية وتنظيف الورق',
+      subtitle: 'إزالة أصابع اليد، ثقوب الدباسة، وبقع القهوة بدون إنترنت',
+      category: ToolCategory.intelligence,
+      icon: Icons.auto_fix_high_rounded,
+      badge: 'ذكاء محلي',
+      accentColor: Color(0xFFFF2D55),
+      keywords: ['ممحاة', 'أصابع', 'ثقوب', 'دباسة', 'بقع', 'تنظيف', 'ورق', 'magic', 'clean'],
+    ),
+    ToolItem(
+      id: 'ai_doc_diff',
+      title: 'مقارنة المستندات واكتشاف الفروقات',
+      subtitle: 'منزلق بصري وكشف الكلمات المضافة والمحذوفة في العقود',
+      category: ToolCategory.intelligence,
+      icon: Icons.splitscreen_rounded,
+      badge: 'Diff & Compare',
+      accentColor: Color(0xFF8B5CF6),
+      keywords: ['مقارنة', 'فروقات', 'عقود', 'تعديل', 'تزوير', 'diff', 'compare'],
+    ),
 
     // ── PDF Tools Category ──
     ToolItem(
@@ -227,6 +252,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       badge: 'استيراد',
       accentColor: Color(0xFF059669),
       keywords: ['استيراد', 'جلب', 'ملف', 'صورة', 'تنزيل'],
+    ),
+    ToolItem(
+      id: 'transfer_web_drop',
+      title: 'نقل للكمبيوتر محلياً (Web Drop)',
+      subtitle: 'إرسال وتنزيل الملفات عبر المتصفح بدون كابلات أو إنترنت',
+      category: ToolCategory.pdf,
+      icon: Icons.wifi_tethering_rounded,
+      badge: 'AirDrop محلي',
+      accentColor: Color(0xFF007AFF),
+      keywords: ['كمبيوتر', 'ماك', 'wifi', 'نقل', 'متصفح', 'airdrop', 'drop', 'شير'],
     ),
 
     // ── Security, Privacy & Maintenance Category ──
@@ -299,6 +334,26 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       badge: 'نسخ محلي',
       accentColor: Color(0xFF9333EA),
       keywords: ['نسخ', 'احتياطي', 'استعادة', 'zip', 'أرشيف', 'تصدير'],
+    ),
+    ToolItem(
+      id: 'sec_digital_stamp',
+      title: 'استوديو الأختام والتواقيع',
+      subtitle: 'أختام رسمية وتفريغ الحبر والشفافية بلمسة واحدة',
+      category: ToolCategory.security,
+      icon: Icons.verified_rounded,
+      badge: 'أختام رسمية',
+      accentColor: Color(0xFFD62B2B),
+      keywords: ['ختم', 'أختام', 'توقيع', 'رسمي', 'معتمد', 'مدفوع', 'شفافية'],
+    ),
+    ToolItem(
+      id: 'sec_pdf_lock',
+      title: 'قفل وتشفير المستندات (AES-256)',
+      subtitle: 'حماية وتشفير ملفات الـ PDF بكلمة مرور وقفل بالبصمة',
+      category: ToolCategory.security,
+      icon: Icons.lock_rounded,
+      badge: 'تشفير عسكري',
+      accentColor: Color(0xFF059669),
+      keywords: ['قفل', 'تشفير', 'كلمة سر', 'باسورد', 'بصمة', 'aes', 'حماية', 'pdf'],
     ),
   ];
 
@@ -457,10 +512,192 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       case 'sec_backup_zip':
         _showBackupRestoreLauncher();
         break;
+
+      case 'ai_magic_clean':
+        _showMagicCleanLauncher();
+        break;
+
+      case 'ai_doc_diff':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const DocumentDiffScreen(),
+          ),
+        );
+        break;
+
+      case 'transfer_web_drop':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const WebDropScreen(),
+          ),
+        );
+        break;
+
+      case 'sec_digital_stamp':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const StampStudioScreen(),
+          ),
+        );
+        break;
+
+      case 'sec_pdf_lock':
+        _showPdfSecurityLauncher();
+        break;
     }
   }
 
   // ── Action Handlers ──
+
+  Future<void> _showMagicCleanLauncher() async {
+    final docs = ref.read(pendingUploadsControllerProvider).value ?? [];
+    if (docs.isEmpty) {
+      final res = await FilePicker.platform.pickFiles(type: FileType.image);
+      if (res != null && res.files.single.path != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MagicCleanScreen(imagePath: res.files.single.path!),
+          ),
+        );
+      }
+      return;
+    }
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'الممحاة الذكية: اختر المستند لتنظيفه',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFFF2D55)),
+              title: const Text('اختيار صورة من معرض الصور'),
+              onTap: () => Navigator.pop(ctx, 'pick_external'),
+            ),
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                itemCount: docs.length,
+                itemBuilder: (c, idx) {
+                  final d = docs[idx];
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.description_rounded),
+                    title: Text(d.fileName, maxLines: 1),
+                    subtitle: Text('${d.pageCount} صفحة'),
+                    onTap: () => Navigator.pop(ctx, d.id),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == null || !mounted) return;
+
+    if (choice == 'pick_external') {
+      final res = await FilePicker.platform.pickFiles(type: FileType.image);
+      if (res != null && res.files.single.path != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MagicCleanScreen(imagePath: res.files.single.path!),
+          ),
+        );
+      }
+    } else {
+      final doc = docs.firstWhere((d) => d.id == choice);
+      if (doc.pages.isNotEmpty && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => MagicCleanScreen(imagePath: doc.pages.first.imagePath),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showPdfSecurityLauncher() async {
+    final docs = ref.read(pendingUploadsControllerProvider).value ?? [];
+    if (docs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا توجد مستندات محفوظة لقفلها في المكتبة')),
+      );
+      return;
+    }
+
+    final selectedId = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'اختر المستند لتشفيره وقفله بكلمة سر',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+            const Divider(),
+            SizedBox(
+              height: 240,
+              child: ListView.builder(
+                itemCount: docs.length,
+                itemBuilder: (c, idx) {
+                  final d = docs[idx];
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.enhanced_encryption_rounded, color: Color(0xFF059669)),
+                    title: Text(d.fileName, maxLines: 1),
+                    subtitle: Text('${d.pageCount} صفحة • ${(d.fileSize / 1024).toStringAsFixed(1)} KB'),
+                    onTap: () => Navigator.pop(ctx, d.id),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selectedId == null || !mounted) return;
+    final doc = docs.firstWhere((d) => d.id == selectedId);
+
+    final securityResult = await showModalBottomSheet<PdfSecurityOptions>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => PdfSecuritySheet(document: doc),
+    );
+
+    if (securityResult != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🔒 تم قفل وتأمين مستند "${doc.fileName}" بنجاح'),
+          backgroundColor: const Color(0xFF059669),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   Future<void> _openSignaturesSheet() async {
     final storage = ref.read(signatureStorageServiceProvider);

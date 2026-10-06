@@ -1,0 +1,536 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
+import '../../../shared/models/pending_upload.dart';
+
+class WebDropClientEvent {
+  const WebDropClientEvent({
+    required this.type,
+    required this.message,
+    required this.timestamp,
+  });
+
+  final String type; // 'connect', 'download', 'upload', 'error'
+  final String message;
+  final DateTime timestamp;
+}
+
+class LocalWebDropService {
+  LocalWebDropService._();
+  static final LocalWebDropService instance = LocalWebDropService._();
+
+  HttpServer? _server;
+  int _port = 8080;
+  String? _localIp;
+  bool _isRunning = false;
+
+  final StreamController<List<WebDropClientEvent>> _eventsController =
+      StreamController<List<WebDropClientEvent>>.broadcast();
+  final List<WebDropClientEvent> _events = [];
+
+  bool get isRunning => _isRunning;
+  int get port => _port;
+  String? get localIp => _localIp;
+  String get serverUrl => 'http://$_localIp:$_port';
+  Stream<List<WebDropClientEvent>> get eventsStream => _eventsController.stream;
+  List<WebDropClientEvent> get events => List.unmodifiable(_events);
+
+  void _logEvent(String type, String message) {
+    final event = WebDropClientEvent(
+      type: type,
+      message: message,
+      timestamp: DateTime.now(),
+    );
+    _events.insert(0, event);
+    if (_events.length > 50) _events.removeLast();
+    _eventsController.add(List.unmodifiable(_events));
+  }
+
+  /// Discovers the local Wi-Fi / Hotspot IPv4 address of the device
+  Future<String?> getLocalIpAddress() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+      );
+
+      // Prefer Wi-Fi / wlan / ap interfaces
+      for (final iface in interfaces) {
+        final name = iface.name.toLowerCase();
+        if (name.contains('wlan') ||
+            name.contains('wi-fi') ||
+            name.contains('wifi') ||
+            name.contains('ap') ||
+            name.contains('en') ||
+            name.contains('eth')) {
+          for (final addr in iface.addresses) {
+            if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
+              return addr.address;
+            }
+          }
+        }
+      }
+
+      // Fallback: any non-loopback IPv4
+      for (final iface in interfaces) {
+        for (final addr in iface.addresses) {
+          if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
+            return addr.address;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[LocalWebDrop] Error finding IP: $e');
+    }
+    return null;
+  }
+
+  /// Starts the embedded HTTP Server
+  Future<bool> startServer({
+    required List<PendingUpload> Function() getDocuments,
+    required Future<void> Function(String fileName, List<int> bytes) onFileUploaded,
+    int initialPort = 8080,
+  }) async {
+    if (_isRunning) return true;
+
+    _localIp = await getLocalIpAddress();
+    _localIp ??= '127.0.0.1';
+
+    _port = initialPort;
+    for (int retry = 0; retry < 5; retry++) {
+      try {
+        _server = await HttpServer.bind(
+          InternetAddress.anyIPv4,
+          _port,
+          shared: true,
+        );
+        _isRunning = true;
+        _listenRequests(getDocuments, onFileUploaded);
+        _logEvent('connect', 'تم تشغيل سيرفر النقل بنجاح على $serverUrl');
+        return true;
+      } catch (e) {
+        _port++;
+      }
+    }
+    return false;
+  }
+
+  /// Stops the server
+  Future<void> stopServer() async {
+    if (!_isRunning) return;
+    try {
+      await _server?.close(force: true);
+      _server = null;
+      _isRunning = false;
+      _logEvent('connect', 'تم إيقاف سيرفر النقل اللاسلكي.');
+    } catch (e) {
+      debugPrint('[LocalWebDrop] Stop error: $e');
+    }
+  }
+
+  void _listenRequests(
+    List<PendingUpload> Function() getDocuments,
+    Future<void> Function(String fileName, List<int> bytes) onFileUploaded,
+  ) {
+    _server?.listen((HttpRequest request) async {
+      try {
+        final path = request.uri.path;
+        final response = request.response;
+
+        // CORS headers
+        response.headers.add('Access-Control-Allow-Origin', '*');
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        response.headers.add('Access-Control-Allow-Headers', '*');
+
+        if (request.method == 'OPTIONS') {
+          response.statusCode = HttpStatus.ok;
+          await response.close();
+          return;
+        }
+
+        if (path == '/' || path == '/index.html') {
+          // Serve modern Apple-styled Web Dashboard
+          response.headers.contentType = ContentType.html;
+          final html = _generateDashboardHtml(getDocuments());
+          response.write(html);
+          await response.close();
+        } else if (path == '/api/documents') {
+          // JSON list
+          response.headers.contentType = ContentType.json;
+          final docs = getDocuments().map((d) => {
+            'id': d.id,
+            'title': d.fileName,
+            'pageCount': d.pageCount,
+            'fileSize': d.fileSize,
+            'createdAt': d.createdAt.toIso8601String(),
+          }).toList();
+          response.write(jsonEncode(docs));
+          await response.close();
+        } else if (path.startsWith('/download/')) {
+          final docId = path.substring('/download/'.length);
+          final doc = getDocuments().cast<PendingUpload?>().firstWhere(
+            (d) => d?.id == docId,
+            orElse: () => null,
+          );
+
+          if (doc != null && File(doc.filePath).existsSync()) {
+            final file = File(doc.filePath);
+            final length = await file.length();
+            final fileName = Uri.encodeComponent(doc.fileName);
+
+            response.headers.contentType = ContentType('application', 'pdf');
+            response.headers.add(
+              'Content-Disposition',
+              'attachment; filename*=UTF-8\'\'$fileName',
+            );
+            response.headers.contentLength = length;
+
+            _logEvent('download', 'تم تحميل المستند: "${doc.fileName}" على الكمبيوتر');
+            await file.openRead().pipe(response);
+          } else {
+            response.statusCode = HttpStatus.notFound;
+            response.write('Document not found');
+            await response.close();
+          }
+        } else if (path.startsWith('/thumb/')) {
+          final docId = path.substring('/thumb/'.length);
+          final doc = getDocuments().cast<PendingUpload?>().firstWhere(
+            (d) => d?.id == docId,
+            orElse: () => null,
+          );
+
+          final thumbPath = doc?.thumbnailPath ?? (doc?.pages.isNotEmpty == true ? doc!.pages.first.imagePath : null);
+          if (thumbPath != null && File(thumbPath).existsSync()) {
+            final file = File(thumbPath);
+            response.headers.contentType = ContentType('image', 'jpeg');
+            response.headers.contentLength = await file.length();
+            await file.openRead().pipe(response);
+          } else {
+            response.statusCode = HttpStatus.notFound;
+            await response.close();
+          }
+        } else if (path == '/upload' && request.method == 'POST') {
+          // Upload file from PC to phone
+          await _handleFileUpload(request, onFileUploaded);
+        } else {
+          response.statusCode = HttpStatus.notFound;
+          response.write('Not Found');
+          await response.close();
+        }
+      } catch (e) {
+        debugPrint('[LocalWebDrop] Request error: $e');
+        try {
+          request.response.statusCode = HttpStatus.internalServerError;
+          await request.response.close();
+        } catch (_) {}
+      }
+    });
+  }
+
+  Future<void> _handleFileUpload(
+    HttpRequest request,
+    Future<void> Function(String fileName, List<int> bytes) onFileUploaded,
+  ) async {
+    final response = request.response;
+    try {
+      final contentType = request.headers.contentType;
+      if (contentType != null && contentType.primaryType == 'multipart') {
+        final boundary = contentType.parameters['boundary'];
+        if (boundary != null) {
+          final transformer = MimeMultipartTransformer(boundary);
+          final parts = await transformer.bind(request).toList();
+
+          int uploadedCount = 0;
+          for (final part in parts) {
+            final contentDisposition = part.headers['content-disposition'];
+            if (contentDisposition != null) {
+              final filenameMatch = RegExp(r'filename="([^"]+)"').firstMatch(contentDisposition);
+              if (filenameMatch != null) {
+                final filename = filenameMatch.group(1)!;
+                final bytes = await part.fold<List<int>>([], (prev, element) => prev..addAll(element));
+                if (bytes.isNotEmpty) {
+                  await onFileUploaded(filename, bytes);
+                  uploadedCount++;
+                  _logEvent('upload', 'تم استقبال ملف من الكمبيوتر: "$filename"');
+                }
+              }
+            }
+          }
+          response.statusCode = HttpStatus.ok;
+          response.headers.contentType = ContentType.json;
+          response.write(jsonEncode({'success': true, 'count': uploadedCount}));
+          await response.close();
+          return;
+        }
+      }
+      response.statusCode = HttpStatus.badRequest;
+      response.write('Invalid multipart request');
+      await response.close();
+    } catch (e) {
+      _logEvent('error', 'خطأ أثناء رفع الملف من الكمبيوتر: $e');
+      response.statusCode = HttpStatus.internalServerError;
+      response.write('Upload error: $e');
+      await response.close();
+    }
+  }
+
+  String _generateDashboardHtml(List<PendingUpload> documents) {
+    final docsJson = jsonEncode(documents.map((d) => {
+      'id': d.id,
+      'title': d.fileName,
+      'pageCount': d.pageCount,
+      'fileSize': '${(d.fileSize / 1024).toStringAsFixed(1)} KB',
+      'date': '${d.createdAt.year}/${d.createdAt.month.toString().padLeft(2, '0')}/${d.createdAt.day.toString().padLeft(2, '0')}',
+      'hasThumb': d.thumbnailPath != null || d.pages.isNotEmpty,
+    }).toList());
+
+    return '''<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CamScanner Web Drop • نقل المستندات عبر الواي فاي</title>
+  <style>
+    :root {
+      --bg: #F5F5F7;
+      --card-bg: #FFFFFF;
+      --accent: #007AFF;
+      --accent-hover: #0056D2;
+      --text: #1D1D1F;
+      --text-sec: #86868B;
+      --border: rgba(0,0,0,0.08);
+      --radius: 18px;
+      --shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000000;
+        --card-bg: #1C1C1E;
+        --text: #F5F5F7;
+        --text-sec: #A1A1A6;
+        --border: rgba(255,255,255,0.12);
+        --shadow: 0 4px 20px rgba(0,0,0,0.4);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Cairo, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 24px; min-height: 100vh; }
+    .header { max-width: 1080px; margin: 0 auto 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .logo-box { display: flex; align-items: center; gap: 14px; }
+    .logo-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #007AFF, #5856D6); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 20px; box-shadow: 0 4px 12px rgba(0,122,255,0.3); }
+    .logo-text h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .logo-text p { font-size: 13px; color: var(--text-sec); }
+    .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(52, 199, 89, 0.12); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: 999px; color: #34C759; font-weight: 700; font-size: 13px; }
+    .status-dot { width: 8px; height: 8px; background: #34C759; border-radius: 50%; box-shadow: 0 0 8px #34C759; }
+    
+    .container { max-width: 1080px; margin: 0 auto; }
+    
+    /* Upload Drop Zone */
+    .drop-zone { background: var(--card-bg); border: 2px dashed var(--accent); border-radius: var(--radius); padding: 28px; text-align: center; margin-bottom: 28px; box-shadow: var(--shadow); cursor: pointer; transition: all 0.2s ease; }
+    .drop-zone:hover { background: rgba(0,122,255,0.03); transform: translateY(-2px); }
+    .drop-zone h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .drop-zone p { font-size: 13px; color: var(--text-sec); }
+    
+    /* Search Bar */
+    .search-box { margin-bottom: 20px; position: relative; }
+    .search-box input { width: 100%; padding: 14px 20px; font-size: 15px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); outline: none; transition: border-color 0.2s; }
+    .search-box input:focus { border-color: var(--accent); }
+    
+    /* Grid */
+    .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    .doc-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; justify-content: space-between; }
+    .doc-card:hover { transform: translateY(-3px); box-shadow: 0 8px 26px rgba(0,0,0,0.09); }
+    .doc-preview { width: 100%; height: 160px; background: rgba(0,0,0,0.04); border-radius: 12px; margin-bottom: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid var(--border); }
+    .doc-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .doc-preview .pdf-badge { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; backdrop-filter: blur(4px); }
+    .doc-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-meta { font-size: 12px; color: var(--text-sec); margin-bottom: 14px; }
+    .doc-actions { display: flex; gap: 8px; }
+    .btn { flex: 1; padding: 10px; border-radius: 12px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.2s; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: rgba(0,0,0,0.05); color: var(--text); border: 1px solid var(--border); }
+    @media (prefers-color-scheme: dark) {
+      .btn-secondary { background: rgba(255,255,255,0.08); }
+    }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-sec); grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-box">
+      <div class="logo-icon">📄</div>
+      <div class="logo-text">
+        <h1>CamScanner Web Drop</h1>
+        <p>نقل مباشر للمستندات بين الهاتف والكمبيوتر عبر الواي فاي</p>
+      </div>
+    </div>
+    <div class="status-badge">
+      <span class="status-dot"></span>
+      متصل محلياً ومؤمّن 100%
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Drag & Drop to Upload back to Phone -->
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" style="display:none" multiple onchange="handleFiles(this.files)">
+      <h3>📤 إرسال ملفات من الكمبيوتر إلى الهاتف</h3>
+      <p>اسحب أي ملف PDF أو صور وأفلتها هنا، أو اضغط للتصفح</p>
+    </div>
+
+    <!-- Search -->
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="🔍 بحث في المستندات..." oninput="filterDocs(this.value)">
+    </div>
+
+    <!-- Documents Grid -->
+    <div class="doc-grid" id="docGrid"></div>
+  </div>
+
+  <script>
+    const docs = $docsJson;
+
+    function renderDocs(items) {
+      const grid = document.getElementById('docGrid');
+      if (items.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><h3>لا توجد مستندات مطابقة</h3></div>';
+        return;
+      }
+      grid.innerHTML = items.map(d => `
+        <div class="doc-card">
+          <div>
+            <div class="doc-preview">
+              <span class="pdf-badge">\${d.pageCount} صفحات</span>
+              <img src="/thumb/\${d.id}" onerror="this.style.display='none'" alt="">
+            </div>
+            <div class="doc-title" title="\${d.title}">\${d.title}</div>
+            <div class="doc-meta">\${d.fileSize} • \${d.date}</div>
+          </div>
+          <div class="doc-actions">
+            <a href="/download/\${d.id}" class="btn btn-primary" download>⬇️ تحميل PDF</a>
+            <a href="/download/\${d.id}" class="btn btn-secondary" target="_blank">معاينة</a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterDocs(query) {
+      const q = query.trim().toLowerCase();
+      const filtered = docs.filter(d => d.title.toLowerCase().includes(q));
+      renderDocs(filtered);
+    }
+
+    async function handleFiles(files) {
+      if (!files || files.length === 0) return;
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+      try {
+        const dropZone = document.getElementById('dropZone');
+        dropZone.querySelector('h3').innerText = 'جارٍ إرسال الملفات إلى هاتفك...';
+        const res = await fetch('/upload', { method: 'POST', body: formData });
+        if (res.ok) {
+          alert('✅ تم إرسال الملفات إلى تطبيق هاتفك بنجاح!');
+          window.location.reload();
+        } else {
+          alert('حدث خطأ أثناء الإرسال');
+        }
+      } catch (e) {
+        alert('تعذر الإرسال: ' + e.message);
+      }
+    }
+
+    // Drag & Drop handlers
+    const dz = document.getElementById('dropZone');
+    dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.style.background = 'rgba(0,122,255,0.08)'; });
+    dz.addEventListener('dragleave', () => { dz.style.background = 'var(--card-bg)'; });
+    dz.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dz.style.background = 'var(--card-bg)';
+      handleFiles(e.dataTransfer.files);
+    });
+
+    renderDocs(docs);
+  </script>
+</body>
+</html>''';
+  }
+}
+
+/// Lightweight pure Dart MIME multipart transformer for processing file uploads from browser
+class MimeMultipartTransformer extends StreamTransformerBase<List<int>, MimeMultipart> {
+  MimeMultipartTransformer(this.boundary);
+  final String boundary;
+
+  @override
+  Stream<MimeMultipart> bind(Stream<List<int>> stream) async* {
+    final delimiter = utf8.encode('--$boundary');
+
+    List<int> buffer = [];
+
+    await for (final chunk in stream) {
+      buffer.addAll(chunk);
+    }
+
+    int searchIndex = 0;
+    while (true) {
+      final startIndex = _indexOf(buffer, delimiter, searchIndex);
+      if (startIndex == -1) break;
+
+      final partStart = startIndex + delimiter.length;
+      final nextDelim = _indexOf(buffer, delimiter, partStart);
+      if (nextDelim == -1) break;
+
+      final partBytes = buffer.sublist(partStart, nextDelim);
+      final headerEnd = _indexOf(partBytes, utf8.encode('\r\n\r\n'), 0);
+      if (headerEnd != -1) {
+        final headerText = utf8.decode(partBytes.sublist(0, headerEnd));
+        final bodyBytes = partBytes.sublist(headerEnd + 4);
+
+        // Remove trailing \r\n if present
+        List<int> cleanBody = bodyBytes;
+        if (cleanBody.length >= 2 && cleanBody[cleanBody.length - 2] == 13 && cleanBody[cleanBody.length - 1] == 10) {
+          cleanBody = cleanBody.sublist(0, cleanBody.length - 2);
+        }
+
+        final headers = <String, String>{};
+        for (final line in headerText.split('\r\n')) {
+          final col = line.indexOf(':');
+          if (col != -1) {
+            headers[line.substring(0, col).trim().toLowerCase()] = line.substring(col + 1).trim();
+          }
+        }
+        yield MimeMultipart(headers, Stream.value(cleanBody));
+      }
+      searchIndex = nextDelim;
+    }
+  }
+
+  int _indexOf(List<int> source, List<int> pattern, int start) {
+    if (pattern.isEmpty || start >= source.length) return -1;
+    for (int i = start; i <= source.length - pattern.length; i++) {
+      bool match = true;
+      for (int j = 0; j < pattern.length; j++) {
+        if (source[i + j] != pattern[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) return i;
+    }
+    return -1;
+  }
+}
+
+class MimeMultipart {
+  MimeMultipart(this.headers, this._stream);
+  final Map<String, String> headers;
+  final Stream<List<int>> _stream;
+
+  Future<T> fold<T>(T initialValue, T Function(T previous, List<int> element) combine) =>
+      _stream.fold(initialValue, combine);
+}

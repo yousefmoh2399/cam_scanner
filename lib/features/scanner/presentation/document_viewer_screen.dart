@@ -22,6 +22,11 @@ import 'signature_bottom_sheet.dart';
 import 'signature_placement_screen.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
+import 'document_diff_screen.dart';
+import 'magic_clean_screen.dart';
+import 'stamp_studio_screen.dart';
+import 'web_drop_screen.dart';
+import 'widgets/pdf_security_sheet.dart';
 
 /// Screen for viewing a saved document's pages with Hero animation,
 /// allowing non-destructive re-cropping/filtering, adding signatures,
@@ -150,6 +155,83 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✅ تم دمج التوقيع وتحديث المستند بنجاح')),
+      );
+    }
+  }
+
+  Future<void> _magicCleanCurrentPage() async {
+    if (_doc.pages.isEmpty || _isRebuildingPdf) return;
+    final page = _doc.pages[_currentPageIndex];
+
+    final resultBytes = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute(
+        builder: (_) => MagicCleanScreen(imagePath: page.imagePath),
+      ),
+    );
+
+    if (resultBytes != null && mounted) {
+      await File(page.imagePath).writeAsBytes(resultBytes, flush: true);
+      await FileImage(File(page.imagePath)).evict();
+      await _rebuildSavedPdf(List<ScanPage>.from(_doc.pages));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ تم تنظيف الورقة وتحديث المستند بنجاح')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stampCurrentPage() async {
+    if (_doc.pages.isEmpty || _isRebuildingPdf) return;
+    final page = _doc.pages[_currentPageIndex];
+
+    final stampBytes = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute(
+        builder: (_) => StampStudioScreen(targetPageImagePath: page.imagePath),
+      ),
+    );
+
+    if (stampBytes == null || !mounted) return;
+
+    final compositedBytes = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute<Uint8List>(
+        builder: (_) => SignaturePlacementScreen(
+          pageImagePath: page.imagePath,
+          signatureBytes: stampBytes,
+        ),
+        fullscreenDialog: true,
+      ),
+    );
+
+    if (compositedBytes == null || !mounted) return;
+
+    await File(page.imagePath).writeAsBytes(compositedBytes, flush: true);
+    await FileImage(File(page.imagePath)).evict();
+    await _rebuildSavedPdf(List<ScanPage>.from(_doc.pages));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ تم وضع الختم وتحديث المستند بنجاح')),
+      );
+    }
+  }
+
+  Future<void> _lockCurrentDocument() async {
+    final result = await showModalBottomSheet<PdfSecurityOptions>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => PdfSecuritySheet(document: _doc),
+    );
+
+    if (result != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔒 تم قفل وتأمين المستند بنجاح'),
+          backgroundColor: Color(0xFF059669),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -797,6 +879,29 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                 case 'privacy':
                   _showPrivacyInfoDialog();
                   break;
+                case 'magic_clean':
+                  _magicCleanCurrentPage();
+                  break;
+                case 'stamp':
+                  _stampCurrentPage();
+                  break;
+                case 'diff':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DocumentDiffScreen(initialDocA: _doc),
+                    ),
+                  );
+                  break;
+                case 'web_drop':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const WebDropScreen(),
+                    ),
+                  );
+                  break;
+                case 'lock':
+                  _lockCurrentDocument();
+                  break;
               }
             },
             itemBuilder: (ctx) => [
@@ -848,6 +953,57 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                     Icon(Icons.open_in_new_rounded, size: 20),
                     SizedBox(width: 10),
                     Text('فتح بعارض خارجي'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'magic_clean',
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_fix_high_rounded, size: 20, color: Color(0xFFFF2D55)),
+                    SizedBox(width: 10),
+                    Text('الممحاة الذكية وتنظيف الورق'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'stamp',
+                child: Row(
+                  children: [
+                    Icon(Icons.verified_rounded, size: 20, color: Color(0xFFD62B2B)),
+                    SizedBox(width: 10),
+                    Text('ختم رسمي للوثيقة'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'diff',
+                child: Row(
+                  children: [
+                    Icon(Icons.splitscreen_rounded, size: 20, color: Color(0xFF8B5CF6)),
+                    SizedBox(width: 10),
+                    Text('مقارنة مع وثيقة أخرى'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'web_drop',
+                child: Row(
+                  children: [
+                    Icon(Icons.wifi_tethering_rounded, size: 20, color: Color(0xFF007AFF)),
+                    SizedBox(width: 10),
+                    Text('إرسال للكمبيوتر (Web Drop)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'lock',
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_rounded, size: 20, color: Color(0xFF059669)),
+                    SizedBox(width: 10),
+                    Text('قفل وتشفير بكلمة سر'),
                   ],
                 ),
               ),
