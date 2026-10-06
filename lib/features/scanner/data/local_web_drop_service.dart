@@ -3,8 +3,77 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../shared/models/pending_upload.dart';
+
+String lookupDropMimeType(String fileName) {
+  final ext = p.extension(fileName).toLowerCase();
+  switch (ext) {
+    case '.pdf':
+      return 'application/pdf';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.png':
+      return 'image/png';
+    case '.webp':
+      return 'image/webp';
+    case '.xlsx':
+    case '.xls':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case '.docx':
+    case '.doc':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case '.pptx':
+    case '.ppt':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case '.zip':
+      return 'application/zip';
+    case '.txt':
+      return 'text/plain; charset=utf-8';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
+class SharedDropFile {
+  const SharedDropFile({
+    required this.id,
+    required this.name,
+    required this.filePath,
+    required this.fileSize,
+    required this.sharedAt,
+    this.mimeType = 'application/octet-stream',
+    this.isFromAppLibrary = false,
+  });
+
+  final String id;
+  final String name;
+  final String filePath;
+  final int fileSize;
+  final DateTime sharedAt;
+  final String mimeType;
+  final bool isFromAppLibrary;
+
+  String get formattedSize => formatBytes(fileSize);
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'size': fileSize,
+    'formattedSize': formattedSize,
+    'time': '${sharedAt.hour.toString().padLeft(2, '0')}:${sharedAt.minute.toString().padLeft(2, '0')}',
+    'mimeType': mimeType,
+    'isFromAppLibrary': isFromAppLibrary,
+  };
+
+  static String formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+}
 
 class WebDropClientEvent {
   const WebDropClientEvent({
@@ -31,12 +100,36 @@ class LocalWebDropService {
       StreamController<List<WebDropClientEvent>>.broadcast();
   final List<WebDropClientEvent> _events = [];
 
+  final List<SharedDropFile> _stagedFiles = [];
+  final StreamController<List<SharedDropFile>> _stagedFilesController =
+      StreamController<List<SharedDropFile>>.broadcast();
+
   bool get isRunning => _isRunning;
   int get port => _port;
   String? get localIp => _localIp;
   String get serverUrl => 'http://$_localIp:$_port';
   Stream<List<WebDropClientEvent>> get eventsStream => _eventsController.stream;
   List<WebDropClientEvent> get events => List.unmodifiable(_events);
+
+  List<SharedDropFile> get stagedFiles => List.unmodifiable(_stagedFiles);
+  Stream<List<SharedDropFile>> get stagedFilesStream => _stagedFilesController.stream;
+
+  void addStagedFile(SharedDropFile file) {
+    _stagedFiles.removeWhere((f) => f.filePath == file.filePath);
+    _stagedFiles.insert(0, file);
+    _stagedFilesController.add(List.unmodifiable(_stagedFiles));
+    _logEvent('upload', 'تم تجهيز ملف من هاتفك للمشاركة: "${file.name}"');
+  }
+
+  void removeStagedFile(String id) {
+    _stagedFiles.removeWhere((f) => f.id == id);
+    _stagedFilesController.add(List.unmodifiable(_stagedFiles));
+  }
+
+  void clearStagedFiles() {
+    _stagedFiles.clear();
+    _stagedFilesController.add(List.unmodifiable(_stagedFiles));
+  }
 
   void _logEvent(String type, String message) {
     final event = WebDropClientEvent(
@@ -212,6 +305,41 @@ class LocalWebDropService {
             response.statusCode = HttpStatus.notFound;
             await response.close();
           }
+        } else if (path == '/api/staged') {
+          response.headers.contentType = ContentType.json;
+          final list = _stagedFiles.map((f) => f.toJson()).toList();
+          response.write(jsonEncode(list));
+          await response.close();
+        } else if (path.startsWith('/download_staged/')) {
+          final fileId = path.substring('/download_staged/'.length);
+          final item = _stagedFiles.cast<SharedDropFile?>().firstWhere(
+            (f) => f?.id == fileId,
+            orElse: () => null,
+          );
+
+          if (item != null && File(item.filePath).existsSync()) {
+            final file = File(item.filePath);
+            final length = await file.length();
+            final fileName = Uri.encodeComponent(item.name);
+
+            try {
+              response.headers.contentType = ContentType.parse(item.mimeType);
+            } catch (_) {
+              response.headers.contentType = ContentType('application', 'octet-stream');
+            }
+            response.headers.add(
+              'Content-Disposition',
+              'attachment; filename*=UTF-8\'\'$fileName',
+            );
+            response.headers.contentLength = length;
+
+            _logEvent('download', 'تم تحميل الملف المشارك من الهاتف: "${item.name}"');
+            await file.openRead().pipe(response);
+          } else {
+            response.statusCode = HttpStatus.notFound;
+            response.write('File not found');
+            await response.close();
+          }
         } else if (path == '/upload' && request.method == 'POST') {
           // Upload file from PC to phone
           await _handleFileUpload(request, onFileUploaded);
@@ -374,10 +502,22 @@ class LocalWebDropService {
   </div>
 
   <div class="container">
+    <!-- Staged Files Directly Sent From Mobile Phone -->
+    <div id="stagedSection" style="margin-bottom: 24px; display: none;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 20px;">⚡</span>
+          <h2 style="font-size: 16.5px; font-weight: 800;">ملفات أرسلها الهاتف الآن (مشاركة مباشرة)</h2>
+        </div>
+        <span id="stagedCount" style="background: rgba(0,122,255,0.12); color: #007AFF; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 700;">0 ملفات</span>
+      </div>
+      <div id="stagedGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;"></div>
+    </div>
+
     <!-- Drag & Drop to Upload back to Phone -->
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <input type="file" id="fileInput" style="display:none" multiple onchange="handleFiles(this.files)">
-      <h3>📤 إرسال ملفات من الكمبيوتر إلى الهاتف</h3>
+      <h3>📤 إرسال ملفات من الكمبيوتر أو الهاتف الآخر إلى هاتفك</h3>
       <p>اسحب أي ملف PDF أو صور وأفلتها هنا، أو اضغط للتصفح</p>
     </div>
 
@@ -422,6 +562,48 @@ class LocalWebDropService {
       const filtered = docs.filter(d => d.title.toLowerCase().includes(q));
       renderDocs(filtered);
     }
+
+    async function checkStagedFiles() {
+      try {
+        const res = await fetch('/api/staged');
+        if (res.ok) {
+          const items = await res.json();
+          renderStaged(items);
+        }
+      } catch (e) {}
+    }
+
+    function renderStaged(items) {
+      const section = document.getElementById('stagedSection');
+      const grid = document.getElementById('stagedGrid');
+      const countBadge = document.getElementById('stagedCount');
+      if (!items || items.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = 'block';
+      countBadge.innerText = items.length + ' ملف';
+
+      grid.innerHTML = items.map(f => `
+        <div style="background: var(--card-bg); border: 2px solid #007AFF; border-radius: var(--radius); padding: 14px; box-shadow: 0 4px 16px rgba(0,122,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 42px; height: 42px; background: rgba(0,122,255,0.12); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+              \${f.name.endsWith('.pdf') ? '📄' : (f.name.match(/\\.(jpg|jpeg|png|webp)\$/i) ? '🖼️' : (f.name.endsWith('.zip') ? '📦' : '📁'))}
+            </div>
+            <div style="overflow: hidden; flex: 1;">
+              <div style="font-weight: 800; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="\${f.name}">\${f.name}</div>
+              <div style="font-size: 11px; color: var(--text-sec); margin-top: 2px;">\${f.formattedSize} • أُرسل \${f.time}</div>
+            </div>
+          </div>
+          <a href="/download_staged/\${f.id}" class="btn btn-primary" download style="background: #34C759; box-shadow: 0 2px 10px rgba(52,199,89,0.3);">
+            ⬇️ تحميل الملف فوراً (\${f.formattedSize})
+          </a>
+        </div>
+      `).join('');
+    }
+
+    setInterval(checkStagedFiles, 2500);
+    checkStagedFiles();
 
     async function handleFiles(files) {
       if (!files || files.length === 0) return;
