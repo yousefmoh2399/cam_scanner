@@ -213,13 +213,13 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.75,
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
+          return Material(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.75,
+              child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -276,6 +276,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                   ),
                 ),
               ],
+            ),
             ),
           );
         },
@@ -494,61 +495,56 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          decoration: BoxDecoration(
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          child: Material(
             color: isDark ? const Color(0xFF1E1E24) : Colors.white,
             borderRadius: BorderRadius.circular(26),
-            boxShadow: const [
-              BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 8)),
-            ],
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 12),
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const Text(
-                  'إلحاق صفحة جديدة بالمستند',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-                const SizedBox(height: 10),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: palette.accent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            elevation: 12,
+            shadowColor: Colors.black38,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 4, bottom: 14),
+                      width: 38,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                    child: Icon(Icons.camera_alt_rounded, color: palette.accent),
-                  ),
-                  title: const Text('مسح بالكاميرا الذكية', style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: const Text('التقاط صفحة جديدة مباشرة وإلحاقها بهذا الملف', style: TextStyle(fontSize: 12)),
-                  onTap: () => Navigator.pop(ctx, 'camera'),
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF2D55).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+                    const Text(
+                      'إلحاق صفحة جديدة بالمستند',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
                     ),
-                    child: const Icon(Icons.photo_library_rounded, color: Color(0xFFFF2D55)),
-                  ),
-                  title: const Text('استيراد من ألبوم الصور', style: TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: const Text('اختيار صور من المعرض وإضافتها لهذا الملف', style: TextStyle(fontSize: 12)),
-                  onTap: () => Navigator.pop(ctx, 'gallery'),
+                    const SizedBox(height: 14),
+                    _buildAddPageOptionTile(
+                      icon: Icons.camera_alt_rounded,
+                      color: palette.accent,
+                      title: 'مسح بالكاميرا الذكية',
+                      subtitle: 'التقاط صفحة جديدة مباشرة وإلحاقها بهذا الملف',
+                      onTap: () => Navigator.pop(ctx, 'camera'),
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildAddPageOptionTile(
+                      icon: Icons.photo_library_rounded,
+                      color: const Color(0xFFFF2D55),
+                      title: 'استيراد من ألبوم الصور',
+                      subtitle: 'اختيار صور من المعرض وإضافتها لهذا الملف',
+                      onTap: () => Navigator.pop(ctx, 'gallery'),
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                 ),
-                const SizedBox(height: 10),
-              ],
+              ),
             ),
           ),
         );
@@ -597,6 +593,68 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
         }
       }
     }
+  }
+
+  Widget _buildAddPageOptionTile({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Material(
+      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: isDark ? Colors.white30 : Colors.black26,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildAppleViewerActionItem({
