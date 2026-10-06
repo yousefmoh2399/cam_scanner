@@ -21,6 +21,9 @@ class CamScannerApp extends ConsumerWidget {
         ? ThemeMode.system
         : (prefs.darkMode ? ThemeMode.dark : ThemeMode.light);
 
+    final chatPrefs =
+        ChatPreferences(themeId: prefs?.accentThemeId ?? 'default');
+
     return MaterialApp(
       title: 'الماسح الضوئي الذكي',
       debugShowCheckedModeBanner: false,
@@ -34,8 +37,8 @@ class CamScannerApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: AppTheme.lightTheme(),
-      darkTheme: AppTheme.darkTheme(),
+      theme: AppTheme.lightTheme(chatPrefs),
+      darkTheme: AppTheme.darkTheme(chatPrefs),
       themeMode: themeMode,
       home: const LibraryScreen(),
     );

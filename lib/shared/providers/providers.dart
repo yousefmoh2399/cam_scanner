@@ -276,6 +276,7 @@ class LocalUserPreferences {
     this.sortOrder = DocumentSortOrder.newest,
     this.autoSaveAfterScan = false,
     this.scanSaveDirectoryPath,
+    this.accentThemeId = 'default',
   });
 
   final ThemeMode themeMode;
@@ -283,6 +284,7 @@ class LocalUserPreferences {
   final DocumentSortOrder sortOrder;
   final bool autoSaveAfterScan;
   final String? scanSaveDirectoryPath;
+  final String accentThemeId;
 
   bool get darkMode => themeMode == ThemeMode.dark;
 
@@ -292,6 +294,7 @@ class LocalUserPreferences {
     DocumentSortOrder? sortOrder,
     bool? autoSaveAfterScan,
     String? scanSaveDirectoryPath,
+    String? accentThemeId,
   }) {
     return LocalUserPreferences(
       themeMode: themeMode ?? this.themeMode,
@@ -300,6 +303,7 @@ class LocalUserPreferences {
       autoSaveAfterScan: autoSaveAfterScan ?? this.autoSaveAfterScan,
       scanSaveDirectoryPath:
           scanSaveDirectoryPath ?? this.scanSaveDirectoryPath,
+      accentThemeId: accentThemeId ?? this.accentThemeId,
     );
   }
 
@@ -310,6 +314,7 @@ class LocalUserPreferences {
         'autoSaveAfterScan': autoSaveAfterScan,
         if (scanSaveDirectoryPath != null)
           'scanSaveDirectoryPath': scanSaveDirectoryPath,
+        'accentThemeId': accentThemeId,
       };
 
   factory LocalUserPreferences.fromJson(Map<String, dynamic> json) {
@@ -327,6 +332,7 @@ class LocalUserPreferences {
       ),
       autoSaveAfterScan: json['autoSaveAfterScan'] as bool? ?? false,
       scanSaveDirectoryPath: json['scanSaveDirectoryPath'] as String?,
+      accentThemeId: json['accentThemeId'] as String? ?? 'default',
     );
   }
 }
@@ -381,5 +387,10 @@ class UserPreferencesController extends AsyncNotifier<LocalUserPreferences> {
   Future<void> setSortOrder(DocumentSortOrder sortOrder) async {
     final current = state.valueOrNull ?? const LocalUserPreferences();
     await _save(current.copyWith(sortOrder: sortOrder));
+  }
+
+  Future<void> setAccentTheme(String themeId) async {
+    final current = state.valueOrNull ?? const LocalUserPreferences();
+    await _save(current.copyWith(accentThemeId: themeId));
   }
 }

@@ -20,10 +20,12 @@ import '../data/ocr_service.dart';
 import '../data/office_exporter_service.dart';
 import 'document_viewer_screen.dart';
 import 'scanner_session_screen.dart';
+import 'trash_screen.dart';
 import 'vault_screen.dart';
 import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
+import 'widgets/theme_selection_sheet.dart';
 
 enum LibrarySortOption {
   newest('الأحدث أولاً', Icons.schedule_rounded),
@@ -1382,8 +1384,41 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ],
               ),
               actions: [
+                // Trash / سلة المحذوفات button
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TrashScreen(),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF242426)
+                            : const Color(0xFFE5E5EA),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 19,
+                        color: isDark
+                            ? const Color(0xFFE5E5EA)
+                            : const Color(0xFF1C1C1E),
+                      ),
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: InkWell(
                     onTap: () {
                       HapticFeedback.selectionClick();
@@ -1412,7 +1447,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 10, right: 4),
+                  padding: const EdgeInsets.only(left: 10, right: 3),
                   child: Container(
                     width: 36,
                     height: 36,
@@ -1457,6 +1492,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       setState(() => _sortOption = LibrarySortOption.name);
                     } else if (val == 'sort_size') {
                       setState(() => _sortOption = LibrarySortOption.size);
+                    } else if (val == 'trash_screen') {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TrashScreen(),
+                        ),
+                      );
+                    } else if (val == 'theme_palette') {
+                      showThemeSelectionSheet(context, ref);
                     }
                   },
                   itemBuilder: (ctx) => [
@@ -1532,6 +1575,26 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       ),
                     ),
                     const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'theme_palette',
+                      child: Row(
+                        children: [
+                          Icon(Icons.palette_outlined, size: 18),
+                          SizedBox(width: 10),
+                          Text('ألوان التمييز (Themes)'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'trash_screen',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded, size: 18),
+                          SizedBox(width: 10),
+                          Text('سلة المحذوفات'),
+                        ],
+                      ),
+                    ),
                     const PopupMenuItem(
                       value: 'select_mode',
                       child: Row(

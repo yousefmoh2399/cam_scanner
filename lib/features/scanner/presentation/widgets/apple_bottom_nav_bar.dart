@@ -1,10 +1,14 @@
+import 'dart:io';
 import 'dart:ui';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../shared/models/pending_upload.dart';
+import '../../../../shared/models/scan_page.dart';
 import '../../../../shared/providers/providers.dart';
 import '../government_documents_screen.dart';
 import '../scanner_session_screen.dart';
@@ -205,6 +209,7 @@ class AppleBottomNavBar extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: GestureDetector(
         onTap: () => _handleScanAction(context, ref),
+        onLongPress: () => _showQuickActionsSheet(context, ref),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -253,6 +258,266 @@ class AppleBottomNavBar extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showQuickActionsSheet(BuildContext context, WidgetRef ref) async {
+    HapticFeedback.heavyImpact();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xE61C1C1E) : const Color(0xF2FFFFFF),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF545458) : const Color(0xFFC7C7CC),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.flash_on_rounded,
+                          color: Color(0xFF007AFF),
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'إجراءات المسح السريعة',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                          ),
+                          Text(
+                            'اختر نمط المسح أو استيراد ملفات',
+                            style: TextStyle(fontSize: 11.5, color: Color(0xFF8E8E93)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildQuickActionTile(
+                    sheetCtx: sheetCtx,
+                    icon: Icons.document_scanner_rounded,
+                    color: const Color(0xFF007AFF),
+                    title: 'مسح مستند ذكي (كاميرا)',
+                    subtitle: 'كشف تلقائي للحواف وفلاتر تباين فائقة',
+                    onTap: () {
+                      Navigator.pop(sheetCtx);
+                      _handleScanAction(context, ref);
+                    },
+                  ),
+                  _buildQuickActionTile(
+                    sheetCtx: sheetCtx,
+                    icon: Icons.badge_rounded,
+                    color: const Color(0xFF5856D6),
+                    title: 'مسح بطاقة هوية (وش وضهر A4)',
+                    subtitle: 'دمج فوري بمقاس ID-1 القياسي للبنوك والسفارات',
+                    onTap: () {
+                      Navigator.pop(sheetCtx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const GovernmentDocumentsScreen(
+                            initialMode: OfficialDocMode.idCard,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildQuickActionTile(
+                    sheetCtx: sheetCtx,
+                    icon: Icons.table_chart_rounded,
+                    color: const Color(0xFF10B981),
+                    title: 'مسح واستخراج جدول Excel (.xlsx)',
+                    subtitle: 'تفريغ الجداول المطبوعة إلى ملف إكسل حقيقي',
+                    onTap: () {
+                      Navigator.pop(sheetCtx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ToolsHubScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildQuickActionTile(
+                    sheetCtx: sheetCtx,
+                    icon: Icons.qr_code_scanner_rounded,
+                    color: const Color(0xFFFF9500),
+                    title: 'مسح باركود ورموز QR',
+                    subtitle: 'قراءة وتحليل الرموز والروابط فوريًا',
+                    onTap: () {
+                      Navigator.pop(sheetCtx);
+                      _handleScanAction(context, ref);
+                    },
+                  ),
+                  _buildQuickActionTile(
+                    sheetCtx: sheetCtx,
+                    icon: Icons.photo_library_rounded,
+                    color: const Color(0xFFFF2D55),
+                    title: 'استيراد من ألبوم الصور',
+                    subtitle: 'جلب مستندات أو صور من جهازك وتحويلها',
+                    onTap: () async {
+                      Navigator.pop(sheetCtx);
+                      await _importFromGallery(context, ref);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionTile({
+    required BuildContext sheetCtx,
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(sheetCtx).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+          width: 0.5,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            onTap();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: isDark ? 0.22 : 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 21),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 13,
+                  color: isDark ? Colors.white30 : Colors.black26,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _importFromGallery(BuildContext context, WidgetRef ref) async {
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+      );
+      if (picked == null || picked.files.isEmpty) return;
+
+      final validPaths = picked.files
+          .map((f) => f.path)
+          .where((p) => p != null && p.isNotEmpty && File(p).existsSync())
+          .cast<String>()
+          .toList();
+      if (validPaths.isEmpty) return;
+
+      final sessionNotifier = ref.read(scanSessionControllerProvider.notifier);
+      await sessionNotifier.startNewEmptySession();
+
+      for (final p in validPaths) {
+        await sessionNotifier.addPage(
+          ScanPage(
+            id: const Uuid().v4(),
+            imagePath: p,
+            originalPath: p,
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+
+      if (!context.mounted) return;
+      await Navigator.of(context).push<PendingUpload>(
+        MaterialPageRoute(
+          builder: (_) => const ScannerSessionScreen(),
+        ),
+      );
+      if (!context.mounted) return;
+      ref.read(pendingUploadsControllerProvider.notifier).refresh();
+    } catch (_) {}
   }
 
   Widget _buildNavItem({

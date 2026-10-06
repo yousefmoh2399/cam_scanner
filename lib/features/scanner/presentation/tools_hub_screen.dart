@@ -28,6 +28,7 @@ import 'auto_redaction_screen.dart';
 import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
+import 'widgets/theme_selection_sheet.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -1478,6 +1479,31 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   _isGridView
                       ? Icons.view_agenda_rounded
                       : Icons.grid_view_rounded,
+                  size: 18,
+                  color: isDark
+                      ? const Color(0xFFE5E5EA)
+                      : const Color(0xFF1C1C1E),
+                ),
+              ),
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: InkWell(
+              onTap: () => showThemeSelectionSheet(context, ref),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF242426)
+                      : const Color(0xFFE5E5EA),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.palette_outlined,
                   size: 18,
                   color: isDark
                       ? const Color(0xFFE5E5EA)

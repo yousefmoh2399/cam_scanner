@@ -187,8 +187,9 @@ class AppTheme {
   ) {
     final isDark = brightness == Brightness.dark;
 
-    // Apple iOS 17/18 System Colors
-    final accent = isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF);
+    // Apple iOS System Colors with dynamic Accent Theme
+    final baseAccent = _seedColorFor(preferences);
+    final accent = isDark ? _brightenForDark(baseAccent) : baseAccent;
     final scaffoldBackground = isDark
         ? const Color(0xFF000000)
         : const Color(0xFFF2F2F7);
@@ -469,15 +470,34 @@ class AppTheme {
 
   static Color _seedColorFor(ChatPreferences preferences) {
     return switch (preferences.themeId) {
-      'mint' => const Color(0xFF34C759),
-      'violet' => const Color(0xFFAF52DE),
-      'sunset' => const Color(0xFFFF9500),
-      'mono' => const Color(0xFF8E8E93),
+      'emerald' || 'mint' => const Color(0xFF34C759),
+      'violet' => const Color(0xFF5856D6),
+      'sunset' || 'orange' => const Color(0xFFFF9500),
+      'titanium' || 'mono' => const Color(0xFF8E8E93),
       'custom' => ChatAppearanceCatalog.colorFromHex(
         preferences.customTheme.accentColorHex,
       ),
       _ => _seed,
     };
+  }
+
+  static Color _brightenForDark(Color color) {
+    if (color == const Color(0xFF007AFF)) {
+      return const Color(0xFF0A84FF);
+    }
+    if (color == const Color(0xFF8E8E93)) {
+      return const Color(0xFFA2A2A7);
+    }
+    if (color == const Color(0xFF5856D6)) {
+      return const Color(0xFF5E5CE6);
+    }
+    if (color == const Color(0xFF34C759)) {
+      return const Color(0xFF30D158);
+    }
+    if (color == const Color(0xFFFF9500)) {
+      return const Color(0xFFFF9F0A);
+    }
+    return color;
   }
 }
 

@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:printing/printing.dart';
@@ -443,9 +443,12 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                       )
                     : PageView.builder(
                         controller: _pageController,
+                        physics: const BouncingScrollPhysics(),
                         itemCount: pages.length,
-                        onPageChanged: (idx) =>
-                            setState(() => _currentPageIndex = idx),
+                        onPageChanged: (idx) {
+                          HapticFeedback.selectionClick();
+                          setState(() => _currentPageIndex = idx);
+                        },
                         itemBuilder: (context, index) {
                           final page = pages[index];
                           final imageWidget = InteractiveViewer(
@@ -454,37 +457,80 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(16),
                               child: Center(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Image.file(
-                                    File(page.imagePath),
-                                    key: ValueKey(
-                                      File(page.imagePath).existsSync()
-                                          ? File(page.imagePath)
-                                              .lastModifiedSync()
-                                              .millisecondsSinceEpoch
-                                          : index,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: theme.brightness == Brightness.dark
+                                              ? 0.45
+                                              : 0.15,
+                                        ),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Image.file(
+                                      File(page.imagePath),
+                                      key: ValueKey(
+                                        File(page.imagePath).existsSync()
+                                            ? File(page.imagePath)
+                                                .lastModifiedSync()
+                                                .millisecondsSinceEpoch
+                                            : index,
+                                      ),
+                                      fit: BoxFit.contain,
                                     ),
-                                    fit: BoxFit.contain,
                                   ),
                                 ),
                               ),
                             ),
                           );
 
-                          if (index == 0) {
-                            return Hero(
-                              tag: 'doc_thumb_${_doc.id}',
-                              child: imageWidget,
-                            );
-                          }
-                          return imageWidget;
+                          final baseWidget = index == 0
+                              ? Hero(
+                                  tag: 'doc_thumb_${_doc.id}',
+                                  child: imageWidget,
+                                )
+                              : imageWidget;
+
+                          return AnimatedBuilder(
+                            animation: _pageController,
+                            builder: (context, child) {
+                              double pagePos = index.toDouble();
+                              if (_pageController.position.haveDimensions) {
+                                pagePos = _pageController.page ?? index.toDouble();
+                              }
+                              final diff = pagePos - index;
+                              // Subtle Apple Depth & 3D perspective
+                              final scale = (1.0 - (diff.abs() * 0.10)).clamp(0.90, 1.0);
+                              final rotationY = (-diff * 0.20).clamp(-0.35, 0.35);
+                              final opacity = (1.0 - (diff.abs() * 0.30)).clamp(0.55, 1.0);
+
+                              return Transform(
+                                alignment: diff > 0 ? Alignment.centerRight : Alignment.centerLeft,
+                                transform: Matrix4.identity()
+                                  ..setEntry(3, 2, 0.001)
+                                  ..rotateY(rotationY)
+                                  ..scaleByDouble(scale, scale, 1.0, 1.0),
+                                child: Opacity(
+                                  opacity: opacity,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: baseWidget,
+                          );
                         },
                       ),
               ),
               if (pages.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     border: Border(
@@ -503,7 +549,60 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                             color: palette.accent,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
+
+                        // Interactive Mini Thumbnail Filmstrip
+                        if (pages.length > 1) ...[
+                          SizedBox(
+                            height: 48,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: pages.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (ctx, idx) {
+                                final isCur = idx == _currentPageIndex;
+                                return GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    _pageController.animateToPage(
+                                      idx,
+                                      duration: const Duration(milliseconds: 280),
+                                      curve: Curves.easeOutCubic,
+                                    );
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 34,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isCur ? palette.accent : Colors.black12,
+                                        width: isCur ? 2.5 : 1,
+                                      ),
+                                      boxShadow: isCur
+                                          ? [
+                                              BoxShadow(
+                                                color: palette.accent.withValues(alpha: 0.35),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Image.file(
+                                      File(pages[idx].imagePath),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(

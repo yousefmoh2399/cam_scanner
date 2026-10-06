@@ -66,6 +66,13 @@ class MainActivity : FlutterFragmentActivity() {
                             result.error("LAUNCH_FAILED", "Failed to launch ScannerActivity: ${e.message}", null)
                         }
                     }
+                    "getInitialQuickAction" -> {
+                        val action = intent?.getStringExtra("quick_action")
+                        if (action != null) {
+                            intent?.removeExtra("quick_action")
+                        }
+                        result.success(action)
+                    }
                     "warp" -> {
                         val path = call.argument<String>("path")
                         val rawCorners = call.argument<List<Double>>("corners")
