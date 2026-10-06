@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+import '../../../shared/services/permission_request_coordinator.dart';
 
 /// Represents the captured scan result returned from the native camera.
 class NativeScannerResult {
@@ -56,6 +60,58 @@ class ScannerPermissionDeniedException implements Exception {
   }
 }
 
+/// Global reusable dialog to prompt user if scanner permission is denied.
+Future<void> showScannerPermissionDialog(
+  BuildContext context,
+  ScannerPermissionDeniedException error,
+) {
+  final isPermanent = error.permanentlyDenied;
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      icon: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.photo_camera_front_rounded,
+          color: Colors.red,
+          size: 40,
+        ),
+      ),
+      title: const Text(
+        'الصلاحية مطلوبة للمسح',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      content: Text(
+        isPermanent
+            ? 'يحتاج التطبيق إذن الوصول إلى الكاميرا (${error.permission}).\n\nتم رفض الإذن سابقاً من إعدادات النظام، يرجى فتح الإعدادات وتفعيله يدوياً.'
+            : 'يحتاج التطبيق إلى إذن الوصول إلى الكاميرا (${error.permission}) لتتمكن من مسح الصفحات والمستندات واستيرادها بنجاح.',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 14, height: 1.5),
+      ),
+      actionsAlignment: MainAxisAlignment.center,
+      actions: [
+        OutlinedButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('إلغاء'),
+        ),
+        if (isPermanent)
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await openAppSettings();
+            },
+            child: const Text('فتح الإعدادات'),
+          ),
+      ],
+    ),
+  );
+}
+
 /// Cross-Platform Native Scanner Channel Contract: "ismart/doc_scanner"
 /// -------------------------------------------------------------------
 /// This class defines the unified API for document scanning across platforms
@@ -90,6 +146,19 @@ class NativeScannerBridge {
     String? destDir,
     bool batch = false,
   }) async {
+    // 1. Ensure Camera permission is requested and granted
+    final cameraStatus = await PermissionRequestCoordinator.run(
+      Permission.camera.request,
+    );
+    if (!cameraStatus.isGranted) {
+      debugPrint('[NativeScannerBridge] Camera permission not granted ($cameraStatus)');
+      throw ScannerPermissionDeniedException(
+        permission: 'الكاميرا',
+        permanentlyDenied:
+            cameraStatus.isPermanentlyDenied || cameraStatus.isRestricted,
+      );
+    }
+
     final sw = Stopwatch()..start();
     try {
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(

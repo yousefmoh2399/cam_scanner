@@ -84,9 +84,23 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
 
     String? capturedPath;
     if (choice == 'camera') {
-      final docResults = await NativeScannerBridge.startScan();
-      if (docResults.isNotEmpty) {
-        capturedPath = docResults.first.path;
+      try {
+        final docResults = await NativeScannerBridge.startScan();
+        if (docResults.isNotEmpty) {
+          capturedPath = docResults.first.path;
+        }
+      } on ScannerPermissionDeniedException catch (e) {
+        if (mounted) {
+          await showScannerPermissionDialog(context, e);
+        }
+        return;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر فتح الكاميرا: $e')),
+          );
+        }
+        return;
       }
     } else {
       final res = await FilePicker.platform.pickFiles(type: FileType.image);

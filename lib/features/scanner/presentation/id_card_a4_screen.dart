@@ -179,6 +179,11 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
           batch: false,
         );
         if (results.isNotEmpty) pickedPath = results.first.path;
+      } on ScannerPermissionDeniedException catch (e) {
+        if (mounted) {
+          await showScannerPermissionDialog(context, e);
+        }
+        return;
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

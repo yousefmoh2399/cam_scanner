@@ -1,7 +1,3 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    <!-- The INTERNET permission is required ONLY in debug builds for Flutter VM Service / Hot Reload.
-         It is completely removed in release builds via tools:node="remove" in main/AndroidManifest.xml.
-    -->
-    <uses-permission android:name="android.permission.INTERNET" tools:node="replace" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>

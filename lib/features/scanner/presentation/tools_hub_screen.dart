@@ -778,6 +778,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             );
           }
         }
+      } on ScannerPermissionDeniedException catch (e) {
+        if (mounted) {
+          await showScannerPermissionDialog(context, e);
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1175,6 +1179,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     if (scanResults.isNotEmpty) {
                       await _processImageToExcel(scanResults.first.path, 'جدول_ممسوح');
                     }
+                  } on ScannerPermissionDeniedException catch (e) {
+                    if (mounted) {
+                      await showScannerPermissionDialog(context, e);
+                    }
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1424,6 +1432,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     if (scanResults.isNotEmpty) {
                       await _extractFromImagePath(scanResults.first.path, 'وثيقة_ممسوحة');
                     }
+                  } on ScannerPermissionDeniedException catch (e) {
+                    if (mounted) {
+                      await showScannerPermissionDialog(context, e);
+                    }
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1635,6 +1647,11 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         if (scanResults.isNotEmpty) {
           path = scanResults.first.path;
         }
+      } on ScannerPermissionDeniedException catch (e) {
+        if (mounted) {
+          await showScannerPermissionDialog(context, e);
+        }
+        return;
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

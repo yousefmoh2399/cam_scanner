@@ -256,6 +256,7 @@ class LocalWebDropService {
     _localIp ??= '127.0.0.1';
 
     _port = initialPort;
+    Object? lastError;
     for (int retry = 0; retry < 5; retry++) {
       try {
         _server = await HttpServer.bind(
@@ -268,8 +269,14 @@ class LocalWebDropService {
         _logEvent('connect', 'تم تشغيل سيرفر النقل بنجاح على $serverUrl');
         return true;
       } catch (e) {
+        lastError = e;
+        debugPrint('[LocalWebDrop] Bind error on port $_port: $e');
         _port++;
       }
+    }
+    debugPrint('[LocalWebDrop] All 5 bind attempts failed. Last error: $lastError');
+    if (lastError != null) {
+      throw lastError;
     }
     return false;
   }

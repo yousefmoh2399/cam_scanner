@@ -1,2 +1,7 @@
 "CFBundleDisplayName" = "Laqta Scanner";
 "CFBundleName" = "Laqta Scanner";
+"NSCameraUsageDescription" = "This app requires camera access to scan documents, ID cards, and passports with high precision.";
+"NSPhotoLibraryUsageDescription" = "This app requires photo library access to import and process existing document images.";
+"NSPhotoLibraryAddUsageDescription" = "This app requires permission to save scanned documents and exported pages to your photo library.";
+"NSLocalNetworkUsageDescription" = "This app requires local network access to host the offline WebDrop server and transfer files with your PC.";
+"NSFaceIDUsageDescription" = "This app requires Face ID authentication to lock and unlock your secure encrypted vault.";

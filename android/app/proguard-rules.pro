@@ -37,3 +37,9 @@
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }
+
+# ─── Biometrics & Security (Vault screen in Release mode) ────────────────────
+-keep class androidx.biometric.** { *; }
+-dontwarn androidx.biometric.**
+-keep class io.flutter.plugins.localauth.** { *; }
+

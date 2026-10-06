@@ -118,18 +118,32 @@ class ScannerActivity : ComponentActivity() {
         }
     }
 
+    private val requestCameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            initScannerAndCamera()
+        } else {
+            Log.w(TAG, "Camera permission denied by user, finishing with RESULT_CANCELED")
+            setResult(Activity.RESULT_CANCELED)
+            finish()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            Log.w(TAG, "Camera permission missing, finishing with RESULT_CANCELED")
-            setResult(Activity.RESULT_CANCELED)
-            finish()
+            requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             return
         }
 
+        initScannerAndCamera()
+    }
+
+    private fun initScannerAndCamera() {
         if (!OpenCVLoader.initLocal()) {
             Log.e(TAG, "OpenCVLoader.initLocal() failed")
         }

@@ -66,5 +66,20 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>يحتاج التطبيق إلى إذن استخدام الكاميرا لمسح المستندات والبطاقات الشخصية وجوازات السفر ضوئياً بدقة عالية.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يحتاج التطبيق إلى إذن الوصول للصور لتحديد المستندات واستيرادها ومعالجتها داخل التطبيق.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>يحتاج التطبيق إلى إذن حفظ الصور لتصدير المستندات والصفحات الممسوحة وحفظها في ألبوم الصور.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>يحتاج التطبيق إلى إذن الشبكة المحلية (Wi-Fi) لتشغيل خادم مشاركة المستندات (WebDrop) ونقل الملفات مع جهاز الكمبيوتر مباشرة بدون إنترنت.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+		<string>_bonjour._tcp</string>
+	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>يحتاج التطبيق إلى إذن استخدام Face ID لقفل وفتح الخزنة الآمنة لحماية مستنداتك المشفرة.</string>
 </dict>
 </plist>

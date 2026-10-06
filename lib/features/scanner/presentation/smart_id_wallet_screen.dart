@@ -589,6 +589,10 @@ class _AddCardSheetState extends ConsumerState<_AddCardSheet> {
           }
         });
       }
+    } on ScannerPermissionDeniedException catch (e) {
+      if (mounted) {
+        await showScannerPermissionDialog(context, e);
+      }
     } catch (_) {
       // Fallback: pick from gallery
       _pickFromGallery(isFront);

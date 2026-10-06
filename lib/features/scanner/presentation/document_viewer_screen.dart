@@ -642,21 +642,35 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     if (choice == null || !mounted) return;
 
     if (choice == 'camera') {
-      final scanned = await NativeScannerBridge.startScan(batch: true);
-      if (scanned.isNotEmpty && mounted) {
-        final newPages = List<ScanPage>.from(_doc.pages);
-        for (final r in scanned) {
-          newPages.add(ScanPage(
-            id: const Uuid().v4(),
-            imagePath: r.path,
-            createdAt: DateTime.now(),
-          ));
+      try {
+        final scanned = await NativeScannerBridge.startScan(batch: true);
+        if (scanned.isNotEmpty && mounted) {
+          final newPages = List<ScanPage>.from(_doc.pages);
+          for (final r in scanned) {
+            newPages.add(ScanPage(
+              id: const Uuid().v4(),
+              imagePath: r.path,
+              createdAt: DateTime.now(),
+            ));
+          }
+          await _rebuildSavedPdf(newPages);
+          setState(() => _currentPageIndex = newPages.length - 1);
+          if (_pageController.hasClients) {
+            _pageController.jumpToPage(_currentPageIndex);
+          }
         }
-        await _rebuildSavedPdf(newPages);
-        setState(() => _currentPageIndex = newPages.length - 1);
-        if (_pageController.hasClients) {
-          _pageController.jumpToPage(_currentPageIndex);
+      } on ScannerPermissionDeniedException catch (e) {
+        if (mounted) {
+          await showScannerPermissionDialog(context, e);
         }
+        return;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر فتح الكاميرا: $e')),
+          );
+        }
+        return;
       }
     } else if (choice == 'gallery') {
       final result = await FilePicker.platform.pickFiles(

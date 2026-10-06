@@ -258,6 +258,11 @@ class _GovernmentDocumentsScreenState
         if (scanResults.isNotEmpty) {
           return scanResults.first.path;
         }
+      } on ScannerPermissionDeniedException catch (e) {
+        if (context.mounted) {
+          await showScannerPermissionDialog(context, e);
+        }
+        return null;
       } catch (e) {
         if (!context.mounted) return null;
         ScaffoldMessenger.of(context).showSnackBar(
