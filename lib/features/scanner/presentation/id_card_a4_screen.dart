@@ -47,9 +47,12 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
   IdCardColorFilter _selectedColorFilter = IdCardColorFilter.magicColor;
   IdSecurityWatermarkPreset _selectedWatermark = IdSecurityWatermarkPreset.none;
 
-  bool _includeRuler = true;
-  bool _includeCropMarks = true;
-  bool _includeHeader = true;
+  bool _includeLabels = false;
+  bool _includeCutGuidelines = false;
+  bool _includeRuler = false;
+  bool _includeCropMarks = false;
+  bool _includeHeader = false;
+  bool _includeSignaturesBox = false;
   bool _isProcessing = false;
   String _statusMessage = '';
 
@@ -85,9 +88,12 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
       colorFilter: _selectedColorFilter,
       watermarkPreset: _selectedWatermark,
       customWatermarkText: _customWatermarkController.text,
+      includeCardLabels: _includeLabels,
       includeCalibrationRuler: _includeRuler,
+      includeCutGuidelines: _includeCutGuidelines,
       includeCornerCropMarks: _includeCropMarks,
       includeHeader: _includeHeader,
+      includeOfficialSignaturesBox: _includeSignaturesBox,
       documentTitle: _titleController.text.trim().isNotEmpty
           ? _titleController.text.trim()
           : 'وثيقة إثبات الهوية الرسمية',
@@ -1055,16 +1061,76 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.tune_rounded, color: Color(0xFF007AFF), size: 18),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'عناصر وهوامش الورقة الإضافية',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                    ),
+                    Text(
+                      'مغلقة افتراضياً لتوفير طباعة نقية ونظيفة للصور فقط بدون نصوص',
+                      style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile.adaptive(
+            value: _includeLabels,
+            contentPadding: EdgeInsets.zero,
+            title: const Text(
+              'تسمية الوجهين والمقاسات (الوجه الأمامي / الخلفي)',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text(
+              'كتابة نصوص وأبعاد (85.6 × 54 مم) فوق كل صورة',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+            activeThumbColor: const Color(0xFF007AFF),
+            onChanged: (val) => setState(() => _includeLabels = val),
+          ),
+          const Divider(height: 1),
+          SwitchListTile.adaptive(
+            value: _includeCutGuidelines,
+            contentPadding: EdgeInsets.zero,
+            title: const Text(
+              'خط القص القياسي المنقّط (✂)',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text(
+              'خط فاصل بمنتصف الورقة لتسهيل القص الدقيق',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+            activeThumbColor: const Color(0xFF007AFF),
+            onChanged: (val) => setState(() => _includeCutGuidelines = val),
+          ),
+          const Divider(height: 1),
           SwitchListTile.adaptive(
             value: _includeRuler,
             contentPadding: EdgeInsets.zero,
             title: const Text(
-              'مسطرة التحقق من المقاس 1:1 (5 سم)',
+              'مسطرة التحقق من المقاس 1:1 في الأسفل (5 سم)',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
             subtitle: const Text(
-              'شريط بالأسفل لقياسه بالمسطرة والتأكد من عدم تصغير الطابعة للورقة',
+              'شريط أسفل الورقة للتأكد من عدم تصغير الطابعة للمستند',
               style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
             activeThumbColor: const Color(0xFF007AFF),
@@ -1079,7 +1145,7 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
             subtitle: const Text(
-              'تحديد زوايا البطاقة الأربعة لتسهيل القص الدقيق',
+              'تحديد زوايا البطاقة الأربعة للمساعدة في القص بمقص يدوي',
               style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
             activeThumbColor: const Color(0xFF007AFF),
@@ -1090,7 +1156,7 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
             value: _includeHeader,
             contentPadding: EdgeInsets.zero,
             title: const Text(
-              'ترويسة رسمية وتاريخ الإصدار',
+              'ترويسة رسمية وتاريخ الإصدار في الأعلى',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
             subtitle: const Text(
@@ -1100,6 +1166,23 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
             activeThumbColor: const Color(0xFF007AFF),
             onChanged: (val) => setState(() => _includeHeader = val),
           ),
+          if (_selectedLayout == IdCardA4Layout.sideBySideTop) ...[
+            const Divider(height: 1),
+            SwitchListTile.adaptive(
+              value: _includeSignaturesBox,
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'صندوق الأختام والتوقيعات الرسمية',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text(
+                'مساحة سفلية لتوقيع العميل وختم الجهة الحكومية أو البنك',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              activeThumbColor: const Color(0xFF007AFF),
+              onChanged: (val) => setState(() => _includeSignaturesBox = val),
+            ),
+          ],
         ],
       ),
     );
@@ -1225,19 +1308,45 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
       return Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildMiniCard(hasFront ? _frontPath : null, 'الوجه الأمامي'),
-          Row(
-            children: [
-              const Text('✂', style: TextStyle(fontSize: 5, color: Colors.grey)),
-              Expanded(
-                child: Container(
-                  height: 0.5,
-                  color: Colors.grey.shade400,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                ),
+          if (_includeLabels) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(2),
               ),
-            ],
-          ),
+              child: const Text('الوجه الأمامي • 85.6 × 54 مم', style: TextStyle(fontSize: 4, color: Colors.black87)),
+            ),
+            const SizedBox(height: 1),
+          ],
+          _buildMiniCard(hasFront ? _frontPath : null, 'الوجه الأمامي'),
+          if (_includeCutGuidelines) ...[
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                const Text('✂', style: TextStyle(fontSize: 5, color: Colors.grey)),
+                Expanded(
+                  child: Container(
+                    height: 0.5,
+                    color: Colors.grey.shade400,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+          ],
+          if (_includeLabels) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: const Text('الوجه الخلفي • 85.6 × 54 مم', style: TextStyle(fontSize: 4, color: Colors.black87)),
+            ),
+            const SizedBox(height: 1),
+          ],
           _buildMiniCard(hasBack ? _backPath : null, 'الوجه الخلفي'),
         ],
       );
@@ -1247,26 +1356,75 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildMiniCard(hasFront ? _frontPath : null, 'الوجه الأمامي', width: 85, height: 54),
+              Column(
+                children: [
+                  if (_includeLabels) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: const Text('الوجه الأمامي', style: TextStyle(fontSize: 4, color: Colors.black87)),
+                    ),
+                    const SizedBox(height: 1),
+                  ],
+                  _buildMiniCard(hasFront ? _frontPath : null, 'الوجه الأمامي', width: 85, height: 54),
+                ],
+              ),
               const SizedBox(width: 6),
-              _buildMiniCard(hasBack ? _backPath : null, 'الوجه الخلفي', width: 85, height: 54),
+              Column(
+                children: [
+                  if (_includeLabels) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: const Text('الوجه الخلفي', style: TextStyle(fontSize: 4, color: Colors.black87)),
+                    ),
+                    const SizedBox(height: 1),
+                  ],
+                  _buildMiniCard(hasBack ? _backPath : null, 'الوجه الخلفي', width: 85, height: 54),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300, width: 0.5),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                'مساحة أختام وتوقيعات الجهة الرسمية',
-                style: TextStyle(fontSize: 5, color: Colors.grey),
+          if (_includeCutGuidelines) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Text('✂', style: TextStyle(fontSize: 4, color: Colors.grey)),
+                Expanded(
+                  child: Container(
+                    height: 0.5,
+                    color: Colors.grey.shade300,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (_includeSignaturesBox) ...[
+            const SizedBox(height: 6),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300, width: 0.5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                alignment: Alignment.center,
+                child: const Text(
+                  'مساحة أختام وتوقيعات الجهة الرسمية',
+                  style: TextStyle(fontSize: 5, color: Colors.grey),
+                ),
               ),
             ),
-          ),
+          ] else ...[
+            const Spacer(),
+          ],
         ],
       );
     } else {

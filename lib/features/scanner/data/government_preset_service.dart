@@ -105,6 +105,10 @@ class GovernmentPresetService {
     String backImagePath, {
     bool isActualSize = false,
     String? title,
+    bool includeHeader = false,
+    bool includeCutGuideline = false,
+    bool includeLabels = false,
+    bool includeFooter = false,
   }) async {
     final frontBytes = await File(frontImagePath).readAsBytes();
     final backBytes = await File(backImagePath).readAsBytes();
@@ -132,63 +136,67 @@ class GovernmentPresetService {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
-              // ── Header ──
-              pw.Container(
-                padding: const pw.EdgeInsets.only(bottom: 12),
-                decoration: const pw.BoxDecoration(
-                  border: pw.Border(
-                    bottom: pw.BorderSide(color: PdfColors.grey400, width: 1),
+              // ── Optional Header ──
+              if (includeHeader) ...[
+                pw.Container(
+                  padding: const pw.EdgeInsets.only(bottom: 12),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      bottom: pw.BorderSide(color: PdfColors.grey400, width: 1),
+                    ),
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        title ?? 'وثيقة إثبات الهوية الرسمية',
+                        textDirection: pw.TextDirection.rtl,
+                        style: pw.TextStyle(
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blueGrey900,
+                        ),
+                      ),
+                      pw.Text(
+                        'OFFICIAL IDENTITY CARD (ISO/IEC 7810 ID-1)',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue900,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      title ?? 'وثيقة إثبات الهوية الرسمية',
-                      textDirection: pw.TextDirection.rtl,
-                      style: pw.TextStyle(
-                        fontSize: 13,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blueGrey900,
-                      ),
-                    ),
-                    pw.Text(
-                      'OFFICIAL IDENTITY CARD (ISO/IEC 7810 ID-1)',
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.blue900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 18),
+                pw.SizedBox(height: 18),
+              ],
 
               // ── Front Card Section ──
               pw.Expanded(
                 child: pw.Column(
                   mainAxisAlignment: pw.MainAxisAlignment.center,
                   children: [
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      margin: const pw.EdgeInsets.only(bottom: 8),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.grey100,
-                        borderRadius: pw.BorderRadius.circular(6),
-                      ),
-                      child: pw.Text(
-                        'الوجه الأمامي (Front)',
-                        textDirection: pw.TextDirection.rtl,
-                        style: const pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.grey700,
+                    if (includeLabels) ...[
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        margin: const pw.EdgeInsets.only(bottom: 8),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.grey100,
+                          borderRadius: pw.BorderRadius.circular(6),
+                        ),
+                        child: pw.Text(
+                          'الوجه الأمامي (Front)',
+                          textDirection: pw.TextDirection.rtl,
+                          style: const pw.TextStyle(
+                            fontSize: 10,
+                            color: PdfColors.grey700,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                     pw.Container(
                       width: cardW,
                       height: cardH,
@@ -212,69 +220,73 @@ class GovernmentPresetService {
                 ),
               ),
 
-              // ── Cut guideline ──
-              pw.Container(
-                margin: const pw.EdgeInsets.symmetric(vertical: 8),
-                child: pw.Row(
-                  children: [
-                    pw.Text(
-                      '-- ✂ --',
-                      style: const pw.TextStyle(
-                        fontSize: 9,
-                        color: PdfColors.grey500,
+              // ── Optional Cut guideline ──
+              if (includeCutGuideline) ...[
+                pw.Container(
+                  margin: const pw.EdgeInsets.symmetric(vertical: 8),
+                  child: pw.Row(
+                    children: [
+                      pw.Text(
+                        '-- ✂ --',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey500,
+                        ),
                       ),
-                    ),
-                    pw.Expanded(
-                      child: pw.Container(
-                        height: 0.5,
-                        margin: const pw.EdgeInsets.symmetric(horizontal: 8),
-                        decoration: const pw.BoxDecoration(
-                          border: pw.Border(
-                            bottom: pw.BorderSide(
-                              color: PdfColors.grey400,
-                              width: 0.5,
-                              style: pw.BorderStyle.dashed,
+                      pw.Expanded(
+                        child: pw.Container(
+                          height: 0.5,
+                          margin: const pw.EdgeInsets.symmetric(horizontal: 8),
+                          decoration: const pw.BoxDecoration(
+                            border: pw.Border(
+                              bottom: pw.BorderSide(
+                                color: PdfColors.grey400,
+                                width: 0.5,
+                                style: pw.BorderStyle.dashed,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    pw.Text(
-                      'خط القص القياسي المعتمد',
-                      textDirection: pw.TextDirection.rtl,
-                      style: const pw.TextStyle(
-                        fontSize: 9,
-                        color: PdfColors.grey500,
+                      pw.Text(
+                        'خط القص القياسي المعتمد',
+                        textDirection: pw.TextDirection.rtl,
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
 
               // ── Back Card Section ──
               pw.Expanded(
                 child: pw.Column(
                   mainAxisAlignment: pw.MainAxisAlignment.center,
                   children: [
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      margin: const pw.EdgeInsets.only(bottom: 8),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.grey100,
-                        borderRadius: pw.BorderRadius.circular(6),
-                      ),
-                      child: pw.Text(
-                        'الوجه الخلفي (Back)',
-                        textDirection: pw.TextDirection.rtl,
-                        style: const pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.grey700,
+                    if (includeLabels) ...[
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        margin: const pw.EdgeInsets.only(bottom: 8),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.grey100,
+                          borderRadius: pw.BorderRadius.circular(6),
+                        ),
+                        child: pw.Text(
+                          'الوجه الخلفي (Back)',
+                          textDirection: pw.TextDirection.rtl,
+                          style: const pw.TextStyle(
+                            fontSize: 10,
+                            color: PdfColors.grey700,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                     pw.Container(
                       width: cardW,
                       height: cardH,
@@ -298,38 +310,40 @@ class GovernmentPresetService {
                 ),
               ),
 
-              // ── Footer ──
-              pw.Container(
-                padding: const pw.EdgeInsets.only(top: 8),
-                decoration: const pw.BoxDecoration(
-                  border: pw.Border(
-                    top: pw.BorderSide(color: PdfColors.grey300, width: 0.75),
+              // ── Optional Footer ──
+              if (includeFooter) ...[
+                pw.Container(
+                  padding: const pw.EdgeInsets.only(top: 8),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      top: pw.BorderSide(color: PdfColors.grey300, width: 0.75),
+                    ),
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        isActualSize
+                            ? 'المقاس الفعلي القياسي: 85.6 × 54 مم (ISO/IEC 7810 ID-1)'
+                            : 'المقاس المكبر عالي الوضوح: 1.35x للتقديم الإلكتروني والبنكي',
+                        textDirection: pw.TextDirection.rtl,
+                        style: const pw.TextStyle(
+                          fontSize: 8.5,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                      pw.Text(
+                        'نسخة رسمية معتمدة • مسح ضوئي عالي الدقة',
+                        textDirection: pw.TextDirection.rtl,
+                        style: const pw.TextStyle(
+                          fontSize: 8.5,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      isActualSize
-                          ? 'المقاس الفعلي القياسي: 85.6 × 54 مم (ISO/IEC 7810 ID-1)'
-                          : 'المقاس المكبر عالي الوضوح: 1.35x للتقديم الإلكتروني والبنكي',
-                      textDirection: pw.TextDirection.rtl,
-                      style: const pw.TextStyle(
-                        fontSize: 8.5,
-                        color: PdfColors.grey600,
-                      ),
-                    ),
-                    pw.Text(
-                      'نسخة رسمية معتمدة • مسح ضوئي عالي الدقة',
-                      textDirection: pw.TextDirection.rtl,
-                      style: const pw.TextStyle(
-                        fontSize: 8.5,
-                        color: PdfColors.grey600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ],
           );
         },

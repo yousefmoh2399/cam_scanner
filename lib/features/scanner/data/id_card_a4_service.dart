@@ -67,10 +67,13 @@ class IdCardA4Config {
     this.watermarkPreset = IdSecurityWatermarkPreset.none,
     this.customWatermarkText,
     this.watermarkOpacity = 0.28,
-    this.includeCalibrationRuler = true,
-    this.includeCornerCropMarks = true,
-    this.includeHeader = true,
-    this.includeDateStamp = true,
+    this.includeCardLabels = false,
+    this.includeCalibrationRuler = false,
+    this.includeCutGuidelines = false,
+    this.includeCornerCropMarks = false,
+    this.includeHeader = false,
+    this.includeDateStamp = false,
+    this.includeOfficialSignaturesBox = false,
     this.documentTitle = 'وثيقة إثبات الهوية الرسمية (National ID & License Sheet)',
   });
 
@@ -81,10 +84,13 @@ class IdCardA4Config {
   final IdSecurityWatermarkPreset watermarkPreset;
   final String? customWatermarkText;
   final double watermarkOpacity;
+  final bool includeCardLabels;
   final bool includeCalibrationRuler;
+  final bool includeCutGuidelines;
   final bool includeCornerCropMarks;
   final bool includeHeader;
   final bool includeDateStamp;
+  final bool includeOfficialSignaturesBox;
   final String documentTitle;
 
   String? get effectiveWatermarkText {
@@ -270,22 +276,26 @@ class IdCardA4Service {
           child: pw.Column(
             mainAxisAlignment: pw.MainAxisAlignment.center,
             children: [
-              _buildSlotLabel('الوجه الأمامي (Front Side) • 85.6 × 54 مم'),
-              pw.SizedBox(height: 6),
+              if (config.includeCardLabels) ...[
+                _buildSlotLabel('الوجه الأمامي (Front Side) • 85.6 × 54 مم'),
+                pw.SizedBox(height: 6),
+              ],
               _buildCardBox(frontImg, config),
             ],
           ),
         ),
 
         // Middle cut guideline
-        _buildCutGuideline(),
+        if (config.includeCutGuidelines) _buildCutGuideline(),
 
         pw.Expanded(
           child: pw.Column(
             mainAxisAlignment: pw.MainAxisAlignment.center,
             children: [
-              _buildSlotLabel('الوجه الخلفي (Back Side) • 85.6 × 54 مم'),
-              pw.SizedBox(height: 6),
+              if (config.includeCardLabels) ...[
+                _buildSlotLabel('الوجه الخلفي (Back Side) • 85.6 × 54 مم'),
+                pw.SizedBox(height: 6),
+              ],
               _buildCardBox(backImg, config),
             ],
           ),
@@ -314,99 +324,108 @@ class IdCardA4Service {
           children: [
             pw.Column(
               children: [
-                _buildSlotLabel('الوجه الأمامي (Front)'),
-                pw.SizedBox(height: 6),
+                if (config.includeCardLabels) ...[
+                  _buildSlotLabel('الوجه الأمامي (Front)'),
+                  pw.SizedBox(height: 6),
+                ],
                 _buildCardBox(frontImg, config),
               ],
             ),
             pw.SizedBox(width: 18),
             pw.Column(
               children: [
-                _buildSlotLabel('الوجه الخلفي (Back)'),
-                pw.SizedBox(height: 6),
+                if (config.includeCardLabels) ...[
+                  _buildSlotLabel('الوجه الخلفي (Back)'),
+                  pw.SizedBox(height: 6),
+                ],
                 _buildCardBox(backImg, config),
               ],
             ),
           ],
         ),
 
-        pw.SizedBox(height: 20),
-        _buildCutGuideline(),
-        pw.SizedBox(height: 12),
+        if (config.includeCutGuidelines) ...[
+          pw.SizedBox(height: 20),
+          _buildCutGuideline(),
+          pw.SizedBox(height: 12),
+        ],
 
         // Official Agency & Banking Stamping Area
-        pw.Expanded(
-          child: pw.Container(
-            padding: const pw.EdgeInsets.all(14),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(
-                color: PdfColors.grey300,
-                width: 0.8,
-                style: pw.BorderStyle.dashed,
+        if (config.includeOfficialSignaturesBox) ...[
+          pw.Expanded(
+            child: pw.Container(
+              padding: const pw.EdgeInsets.all(14),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(
+                  color: PdfColors.grey300,
+                  width: 0.8,
+                  style: pw.BorderStyle.dashed,
+                ),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
               ),
-              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      'مساحة مخصصة للأختام، التأشيرات وتوقيعات الموظف المختص',
-                      textDirection: pw.TextDirection.rtl,
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfColors.grey700,
-                      ),
-                    ),
-                    pw.Text(
-                      'OFFICIAL USE & SIGNATURES',
-                      style: const pw.TextStyle(
-                        fontSize: 8,
-                        color: PdfColors.grey500,
-                      ),
-                    ),
-                  ],
-                ),
-                pw.Spacer(),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          'توقيع العميل / صاحب الهوية: ..............................',
-                          textDirection: pw.TextDirection.rtl,
-                          style: const pw.TextStyle(
-                            fontSize: 9,
-                            color: PdfColors.grey700,
-                          ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'مساحة مخصصة للأختام، التأشيرات وتوقيعات الموظف المختص',
+                        textDirection: pw.TextDirection.rtl,
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey700,
                         ),
-                      ],
-                    ),
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.end,
-                      children: [
-                        pw.Text(
-                          'خاتم الجهة / البنك / المصلحة الحكومية',
-                          textDirection: pw.TextDirection.rtl,
-                          style: const pw.TextStyle(
-                            fontSize: 9,
-                            color: PdfColors.grey700,
-                          ),
+                      ),
+                      pw.Text(
+                        'OFFICIAL USE & SIGNATURES',
+                        style: const pw.TextStyle(
+                          fontSize: 8,
+                          color: PdfColors.grey500,
                         ),
-                        pw.SizedBox(height: 36),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                      ),
+                    ],
+                  ),
+                  pw.Spacer(),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'توقيع العميل / صاحب الهوية: ..............................',
+                            textDirection: pw.TextDirection.rtl,
+                            style: const pw.TextStyle(
+                              fontSize: 9,
+                              color: PdfColors.grey700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text(
+                            'خاتم الجهة / البنك / المصلحة الحكومية',
+                            textDirection: pw.TextDirection.rtl,
+                            style: const pw.TextStyle(
+                              fontSize: 9,
+                              color: PdfColors.grey700,
+                            ),
+                          ),
+                          pw.SizedBox(height: 36),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+        ] else
+          pw.Spacer(),
 
         if (config.includeCalibrationRuler) _buildCalibrationRuler(),
       ],
@@ -425,16 +444,18 @@ class IdCardA4Service {
         if (config.includeHeader) _buildHeader(config),
         pw.Spacer(),
 
-        pw.Text(
-          'تنسيق البطاقة المطوية (اطوِ عند الخط المنقّط لتحصل على بطاقة بحجم حقيقي 1:1 ذات وجهين)',
-          textDirection: pw.TextDirection.rtl,
-          style: pw.TextStyle(
-            fontSize: 9.5,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.grey700,
+        if (config.includeCardLabels) ...[
+          pw.Text(
+            'تنسيق البطاقة المطوية (اطوِ عند الخط المنقّط لتحصل على بطاقة بحجم حقيقي 1:1 ذات وجهين)',
+            textDirection: pw.TextDirection.rtl,
+            style: pw.TextStyle(
+              fontSize: 9.5,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey700,
+            ),
           ),
-        ),
-        pw.SizedBox(height: 12),
+          pw.SizedBox(height: 12),
+        ],
 
         // Outer box enclosing both sides along a single fold line
         pw.Container(
