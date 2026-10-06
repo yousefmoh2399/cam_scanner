@@ -35,6 +35,9 @@ import 'stamp_studio_screen.dart';
 import 'web_drop_screen.dart';
 import 'smart_contract_studio_screen.dart';
 import 'widgets/pdf_security_sheet.dart';
+import 'book_curve_flattener_screen.dart';
+import 'smart_id_wallet_screen.dart';
+import 'transferred_files_screen.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -170,6 +173,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       accentColor: Color(0xFF5856D6),
       keywords: ['عقد', 'عقود', 'إيجار', 'بيع', 'أمانة', 'إيصال', 'شقة', 'سيارة', 'قانوني'],
     ),
+    ToolItem(
+      id: 'gov_smart_id_wallet',
+      title: 'محفظة البطاقات وطباعة PVC',
+      subtitle: 'حفظ الهويات برؤية 3D وطباعة كروت بلاستيكية CR-80 بمقياس 1:1',
+      category: ToolCategory.government,
+      icon: Icons.credit_card_rounded,
+      badge: 'CR-80 PVC',
+      accentColor: Color(0xFF007AFF),
+      keywords: ['بطاقة', 'بلاستيك', 'pvc', 'cr80', 'محفظة', 'id', 'رخصة', 'كارنيه', 'طباعة'],
+    ),
 
     // ── Intelligence & Extraction Category ──
     ToolItem(
@@ -232,6 +245,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       accentColor: Color(0xFF8B5CF6),
       keywords: ['مقارنة', 'فروقات', 'عقود', 'تعديل', 'تزوير', 'diff', 'compare'],
     ),
+    ToolItem(
+      id: 'ai_book_curve_flattener',
+      title: 'تسوية انحناء الكتب ثلاثي الأبعاد',
+      subtitle: 'معالجة تقوس صفحات المجلدات والكتب وإزالة ظل الكعب',
+      category: ToolCategory.intelligence,
+      icon: Icons.auto_stories_rounded,
+      badge: '3D Dewarp',
+      accentColor: Color(0xFFF59E0B),
+      keywords: ['كتاب', 'مجلد', 'انحناء', 'تقوس', 'كعب', 'تسوية', 'مسطح', 'dewarp', 'curve', 'book'],
+    ),
 
     // ── PDF Tools Category ──
     ToolItem(
@@ -283,6 +306,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       badge: 'AirDrop محلي',
       accentColor: Color(0xFF007AFF),
       keywords: ['كمبيوتر', 'ماك', 'wifi', 'نقل', 'متصفح', 'airdrop', 'drop', 'شير'],
+    ),
+    ToolItem(
+      id: 'transfer_files_hub',
+      title: 'مركز الملفات المنقولة',
+      subtitle: 'إدارة الملفات المستلمة والمرسلة مع الكمبيوتر وحفظها وتنزيلها',
+      category: ToolCategory.pdf,
+      icon: Icons.folder_shared_rounded,
+      badge: 'مستندات النقل',
+      accentColor: Color(0xFF0D9488),
+      keywords: ['ملفات', 'منقولة', 'مستلمة', 'مرسلة', 'كمبيوتر', 'web drop', 'تنزيلات', 'transferred'],
     ),
 
     // ── Security, Privacy & Maintenance Category ──
@@ -577,10 +610,110 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       case 'ai_shadow_remover':
         _showShadowRemoverLauncher();
         break;
+
+      case 'gov_smart_id_wallet':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const SmartIdWalletScreen(),
+          ),
+        );
+        break;
+
+      case 'ai_book_curve_flattener':
+        _showBookCurveLauncher();
+        break;
+
+      case 'transfer_files_hub':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const TransferredFilesScreen(),
+          ),
+        );
+        break;
     }
   }
 
   // ── Action Handlers ──
+
+  Future<void> _showBookCurveLauncher() async {
+    final docs = ref.read(pendingUploadsControllerProvider).value ?? [];
+    if (docs.isEmpty) {
+      final res = await FilePicker.platform.pickFiles(type: FileType.image);
+      if (res != null && res.files.single.path != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BookCurveFlattenerScreen(imagePath: res.files.single.path!),
+          ),
+        );
+      }
+      return;
+    }
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'تسوية انحناء الكتب: اختر صفحة لمعالجتها',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.add_photo_alternate_rounded, color: Color(0xFFF59E0B)),
+              title: const Text('اختيار صورة من معرض الصور'),
+              onTap: () => Navigator.pop(ctx, 'pick_external'),
+            ),
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                itemCount: docs.length,
+                itemBuilder: (c, idx) {
+                  final d = docs[idx];
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.auto_stories_rounded),
+                    title: Text(d.fileName, maxLines: 1),
+                    subtitle: Text('${d.pageCount} صفحة'),
+                    onTap: () => Navigator.pop(ctx, d.id),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == null || !mounted) return;
+
+    if (choice == 'pick_external') {
+      final res = await FilePicker.platform.pickFiles(type: FileType.image);
+      if (res != null && res.files.single.path != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BookCurveFlattenerScreen(imagePath: res.files.single.path!),
+          ),
+        );
+      }
+    } else {
+      final doc = docs.firstWhere((d) => d.id == choice);
+      if (doc.pages.isNotEmpty && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BookCurveFlattenerScreen(imagePath: doc.pages.first.imagePath),
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _showMagicCleanLauncher() async {
     final docs = ref.read(pendingUploadsControllerProvider).value ?? [];

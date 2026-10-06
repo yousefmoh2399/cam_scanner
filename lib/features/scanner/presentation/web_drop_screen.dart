@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -7,14 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../shared/models/pending_upload.dart';
-import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/local_web_drop_service.dart';
+import '../data/transferred_files_service.dart';
+import 'transferred_files_screen.dart';
 
 /// Screen for Local AirDrop / Web Drop:
 /// Running an embedded local HTTP server on the phone so any PC, Mac, iPad, or
@@ -37,11 +35,13 @@ class WebDropScreen extends ConsumerStatefulWidget {
 class _WebDropScreenState extends ConsumerState<WebDropScreen>
     with SingleTickerProviderStateMixin {
   final LocalWebDropService _webDropService = LocalWebDropService.instance;
+  final TransferredFilesService _transferredFilesService =
+      TransferredFilesService.instance;
   bool _isStarting = false;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  final List<PendingUpload> _receivedFiles = [];
+  List<TransferredFile> _receivedFiles = [];
   StreamSubscription<List<SharedDropFile>>? _stagedSubscription;
 
   @override
@@ -60,9 +60,20 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
       if (mounted) setState(() {});
     });
 
+    _loadRecentTransferred();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startServer();
     });
+  }
+
+  Future<void> _loadRecentTransferred() async {
+    final all = await _transferredFilesService.loadFiles();
+    if (mounted) {
+      setState(() {
+        _receivedFiles = all.where((f) => f.isReceived).take(5).toList();
+      });
+    }
   }
 
   @override
@@ -117,44 +128,17 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
   Future<void> _handleUploadedFileFromPc(
       String fileName, List<int> bytes) async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final targetDir =
-          Directory(p.join(dir.path, 'scans', 'web_drop_uploads'));
-      if (!await targetDir.exists()) {
-        await targetDir.create(recursive: true);
-      }
-
       final cleanName =
           fileName.replaceAll(RegExp(r'[^\w\.\-\u0600-\u06FF]'), '_');
-      final filePath = p.join(
-        targetDir.path,
-        '${DateTime.now().millisecondsSinceEpoch}_$cleanName',
-      );
-      final file = File(filePath);
-      await file.writeAsBytes(bytes, flush: true);
 
-      // Save as document in app
-      final doc = PendingUpload(
-        id: 'webdrop_${DateTime.now().millisecondsSinceEpoch}',
+      final item = await _transferredFilesService.recordReceivedFile(
         fileName: cleanName,
-        filePath: filePath,
-        fileSize: bytes.length,
-        createdAt: DateTime.now(),
-        pageCount: 1,
-        thumbnailPath: null,
-        pages: [
-          ScanPage(
-            id: 'p_webdrop_0',
-            imagePath: filePath,
-          ),
-        ],
+        bytes: bytes,
       );
-
-      await ref.read(pendingUploadsControllerProvider.notifier).addDocument(doc);
 
       if (mounted) {
         setState(() {
-          _receivedFiles.insert(0, doc);
+          _receivedFiles.insert(0, item);
         });
         HapticFeedback.heavyImpact();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -164,7 +148,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
                 const Icon(Icons.download_done_rounded, color: Colors.white, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('📥 تم استقبال ملف جديد من الكمبيوتر: $cleanName'),
+                  child: Text('📥 تم استقبال ملف من الكمبيوتر: $cleanName'),
                 ),
               ],
             ),
@@ -469,6 +453,17 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'الملفات المنقولة',
+            icon: const Icon(Icons.folder_shared_rounded, color: Color(0xFF007AFF)),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const TransferredFilesScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'تحديث الرابط وعنوان الشبكة',
             icon: const Icon(Icons.refresh_rounded),
@@ -1044,13 +1039,13 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
                             color: Color(0xFF34C759), size: 20),
                       ),
                       title: Text(
-                        item.fileName,
+                        item.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                       ),
                       subtitle: Text(
-                        '${(item.fileSize / 1024).toStringAsFixed(1)} KB • حُفظت في التطبيق',
+                        '${item.formattedSize} • محفوظة في سجل النقل',
                         style: const TextStyle(fontSize: 11),
                       ),
                       trailing: IconButton(
@@ -1061,7 +1056,21 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen>
                   },
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const TransferredFilesScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.folder_shared_rounded, size: 16),
+                  label: const Text('عرض كافة الملفات المنقولة في صفحة مخصصة 📂'),
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
 
             // ── 5. Live Activity Log ──
