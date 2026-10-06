@@ -440,7 +440,6 @@ class _NotebookLinesRemoverScreenState
   Widget _buildControlsArea(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF141416) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
@@ -450,7 +449,11 @@ class _NotebookLinesRemoverScreenState
           ),
         ],
       ),
-      child: ListView(
+      child: Material(
+        color: isDark ? const Color(0xFF141416) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
         children: [
           // Drag handle
@@ -615,6 +618,7 @@ class _NotebookLinesRemoverScreenState
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

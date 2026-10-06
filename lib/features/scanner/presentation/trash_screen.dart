@@ -262,16 +262,19 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
                     ],
                   ),
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                      width: 0.5,
+                child: Material(
+                  color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                        width: 0.5,
+                      ),
                     ),
-                  ),
-                  child: ListTile(
+                    child: ListTile(
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     leading: ClipRRect(
@@ -368,8 +371,9 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
                     },
                   ),
                 ),
-              );
-            },
+              ),
+            );
+          },
           );
         },
       ),

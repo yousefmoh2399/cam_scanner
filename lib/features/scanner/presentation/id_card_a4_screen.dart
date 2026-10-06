@@ -1051,139 +1051,143 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
   }
 
   Widget _buildTogglesCard(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+    return Material(
+      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.tune_rounded, color: Color(0xFF007AFF), size: 18),
                 ),
-                child: const Icon(Icons.tune_rounded, color: Color(0xFF007AFF), size: 18),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'عناصر وهوامش الورقة الإضافية',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-                    ),
-                    Text(
-                      'مغلقة افتراضياً لتوفير طباعة نقية ونظيفة للصور فقط بدون نصوص',
-                      style: TextStyle(fontSize: 10.5, color: Colors.grey),
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'عناصر وهوامش الورقة الإضافية',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                      ),
+                      Text(
+                        'مغلقة افتراضياً لتوفير طباعة نقية ونظيفة للصور فقط بدون نصوص',
+                        style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SwitchListTile.adaptive(
-            value: _includeLabels,
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'تسمية الوجهين والمقاسات (الوجه الأمامي / الخلفي)',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ],
             ),
-            subtitle: const Text(
-              'كتابة نصوص وأبعاد (85.6 × 54 مم) فوق كل صورة',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            activeThumbColor: const Color(0xFF007AFF),
-            onChanged: (val) => setState(() => _includeLabels = val),
-          ),
-          const Divider(height: 1),
-          SwitchListTile.adaptive(
-            value: _includeCutGuidelines,
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'خط القص القياسي المنقّط (✂)',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-            subtitle: const Text(
-              'خط فاصل بمنتصف الورقة لتسهيل القص الدقيق',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            activeThumbColor: const Color(0xFF007AFF),
-            onChanged: (val) => setState(() => _includeCutGuidelines = val),
-          ),
-          const Divider(height: 1),
-          SwitchListTile.adaptive(
-            value: _includeRuler,
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'مسطرة التحقق من المقاس 1:1 في الأسفل (5 سم)',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-            subtitle: const Text(
-              'شريط أسفل الورقة للتأكد من عدم تصغير الطابعة للمستند',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            activeThumbColor: const Color(0xFF007AFF),
-            onChanged: (val) => setState(() => _includeRuler = val),
-          ),
-          const Divider(height: 1),
-          SwitchListTile.adaptive(
-            value: _includeCropMarks,
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'علامات أركان القص الزاوية (Crop Marks)',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-            subtitle: const Text(
-              'تحديد زوايا البطاقة الأربعة للمساعدة في القص بمقص يدوي',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            activeThumbColor: const Color(0xFF007AFF),
-            onChanged: (val) => setState(() => _includeCropMarks = val),
-          ),
-          const Divider(height: 1),
-          SwitchListTile.adaptive(
-            value: _includeHeader,
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'ترويسة رسمية وتاريخ الإصدار في الأعلى',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-            subtitle: const Text(
-              'تضمين عنوان الوثيقة وتاريخ استخراجها في أعلى الورقة',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-            activeThumbColor: const Color(0xFF007AFF),
-            onChanged: (val) => setState(() => _includeHeader = val),
-          ),
-          if (_selectedLayout == IdCardA4Layout.sideBySideTop) ...[
-            const Divider(height: 1),
+            const SizedBox(height: 8),
             SwitchListTile.adaptive(
-              value: _includeSignaturesBox,
+              value: _includeLabels,
               contentPadding: EdgeInsets.zero,
               title: const Text(
-                'صندوق الأختام والتوقيعات الرسمية',
+                'تسمية الوجهين والمقاسات (الوجه الأمامي / الخلفي)',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               ),
               subtitle: const Text(
-                'مساحة سفلية لتوقيع العميل وختم الجهة الحكومية أو البنك',
+                'كتابة نصوص وأبعاد (85.6 × 54 مم) فوق كل صورة',
                 style: TextStyle(fontSize: 11, color: Colors.grey),
               ),
               activeThumbColor: const Color(0xFF007AFF),
-              onChanged: (val) => setState(() => _includeSignaturesBox = val),
+              onChanged: (val) => setState(() => _includeLabels = val),
             ),
+            const Divider(height: 1),
+            SwitchListTile.adaptive(
+              value: _includeCutGuidelines,
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'خط القص القياسي المنقّط (✂)',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text(
+                'خط فاصل بمنتصف الورقة لتسهيل القص الدقيق',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              activeThumbColor: const Color(0xFF007AFF),
+              onChanged: (val) => setState(() => _includeCutGuidelines = val),
+            ),
+            const Divider(height: 1),
+            SwitchListTile.adaptive(
+              value: _includeRuler,
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'مسطرة التحقق من المقاس 1:1 في الأسفل (5 سم)',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text(
+                'شريط أسفل الورقة للتأكد من عدم تصغير الطابعة للمستند',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              activeThumbColor: const Color(0xFF007AFF),
+              onChanged: (val) => setState(() => _includeRuler = val),
+            ),
+            const Divider(height: 1),
+            SwitchListTile.adaptive(
+              value: _includeCropMarks,
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'علامات أركان القص الزاوية (Crop Marks)',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text(
+                'تحديد زوايا البطاقة الأربعة للمساعدة في القص بمقص يدوي',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              activeThumbColor: const Color(0xFF007AFF),
+              onChanged: (val) => setState(() => _includeCropMarks = val),
+            ),
+            const Divider(height: 1),
+            SwitchListTile.adaptive(
+              value: _includeHeader,
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'ترويسة رسمية وتاريخ الإصدار في الأعلى',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text(
+                'تضمين عنوان الوثيقة وتاريخ استخراجها في أعلى الورقة',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              activeThumbColor: const Color(0xFF007AFF),
+              onChanged: (val) => setState(() => _includeHeader = val),
+            ),
+            if (_selectedLayout == IdCardA4Layout.sideBySideTop) ...[
+              const Divider(height: 1),
+              SwitchListTile.adaptive(
+                value: _includeSignaturesBox,
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'صندوق الأختام والتوقيعات الرسمية',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                subtitle: const Text(
+                  'مساحة سفلية لتوقيع العميل وختم الجهة الحكومية أو البنك',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+                activeThumbColor: const Color(0xFF007AFF),
+                onChanged: (val) => setState(() => _includeSignaturesBox = val),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

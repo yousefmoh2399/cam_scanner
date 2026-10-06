@@ -1105,14 +1105,8 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
 
             // ── 3. Received Files Card ──
             Container(
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
-                  width: 1,
-                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
@@ -1121,162 +1115,148 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                   ),
                 ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF34C759).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.download_done_rounded,
-                          color: Color(0xFF34C759),
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'الملفات المستلمة من الكمبيوتر',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-                      ),
-                      const Spacer(),
-                      if (_receivedFiles.isNotEmpty)
-                        Text(
-                          '${_receivedFiles.length} ملفات',
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                    ],
+              child: Material(
+                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                clipBehavior: Clip.antiAlias,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+                      width: 1,
+                    ),
                   ),
-                  const SizedBox(height: 10),
-
-                  if (_receivedFiles.isNotEmpty) ...[
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _receivedFiles.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (ctx, idx) {
-                        final item = _receivedFiles[idx];
-                        return ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: Container(
-                            width: 34,
-                            height: 34,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
                             decoration: BoxDecoration(
                               color: const Color(0xFF34C759).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.check_rounded,
-                                color: Color(0xFF34C759), size: 18),
-                          ),
-                          title: Text(
-                            item.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
-                          ),
-                          subtitle: Text(
-                            '${item.formattedSize} • محفوظة محلياً',
-                            style: const TextStyle(fontSize: 10.5),
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.open_in_new_rounded, size: 17),
-                            tooltip: 'فتح الملف',
-                            onPressed: () => OpenFilex.open(item.filePath),
-                            constraints: const BoxConstraints(),
-                            padding: const EdgeInsets.all(6),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const TransferredFilesScreen(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.folder_shared_rounded, size: 16),
-                        label: const Text('عرض كافة الملفات المنقولة في صفحة مخصصة 📂',
-                            style: TextStyle(fontSize: 11.5)),
-                      ),
-                    ),
-                  ] else ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.black.withValues(alpha: 0.15) : const Color(0xFFF9FAFB),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.25),
-                          style: BorderStyle.solid,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.hourglass_empty_rounded, size: 18, color: Colors.grey.shade400),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'بانتظار استقبال ملفات من المتصفح... يمكنك سحب وإفلات أي ملف في صفحة الويب.',
-                              style: TextStyle(fontSize: 11, color: Colors.grey),
+                            child: const Icon(
+                              Icons.download_done_rounded,
+                              color: Color(0xFF34C759),
+                              size: 18,
                             ),
                           ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'الملفات المستلمة من الكمبيوتر',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                          ),
+                          const Spacer(),
+                          if (_receivedFiles.isNotEmpty)
+                            Text(
+                              '${_receivedFiles.length} ملفات',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
                         ],
                       ),
-                    ),
-                  ],
-                ],
+                      const SizedBox(height: 10),
+
+                      if (_receivedFiles.isNotEmpty) ...[
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _receivedFiles.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (ctx, idx) {
+                            final item = _receivedFiles[idx];
+                            return ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.check_rounded,
+                                    color: Color(0xFF34C759), size: 18),
+                              ),
+                              title: Text(
+                                item.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                              ),
+                              subtitle: Text(
+                                '${item.formattedSize} • محفوظة محلياً',
+                                style: const TextStyle(fontSize: 10.5),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.open_in_new_rounded, size: 17),
+                                tooltip: 'فتح الملف',
+                                onPressed: () => OpenFilex.open(item.filePath),
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(6),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const TransferredFilesScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.folder_shared_rounded, size: 16),
+                            label: const Text('عرض كافة الملفات المنقولة في صفحة مخصصة 📂',
+                                style: TextStyle(fontSize: 11.5)),
+                          ),
+                        ),
+                      ] else ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.black.withValues(alpha: 0.15) : const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.25),
+                              style: BorderStyle.solid,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.hourglass_empty_rounded, size: 18, color: Colors.grey.shade400),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'بانتظار استقبال ملفات من المتصفح... يمكنك سحب وإفلات أي ملف في صفحة الويب.',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
 
             const SizedBox(height: 14),
 
             // ── 4. Compact Collapsible Instructions & Activity ──
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
-                  width: 1,
-                ),
-              ),
-              child: Theme(
-                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  leading: const Icon(Icons.lightbulb_outline_rounded,
-                      size: 18, color: Color(0xFFFF9500)),
-                  title: const Text(
-                    'كيف يعمل النقل فائق السرعة؟ (3 خطوات)',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                  ),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                  children: [
-                    _buildCompactStepRow('1', 'تأكد أن الهاتف والكمبيوتر على نفس شبكة Wi-Fi أو نقطة اتصال هاتفك.'),
-                    const SizedBox(height: 6),
-                    _buildCompactStepRow('2', 'افتح المتصفح (Chrome أو Edge أو Safari) واكتب عنوان الرابط أعلاه.'),
-                    const SizedBox(height: 6),
-                    _buildCompactStepRow('3', 'تصفح مستنداتك وحملها كـ PDF فوراً أو اسحب أي ملف لإرساله للهاتف.'),
-                  ],
-                ),
-              ),
-            ),
-
-            if (events.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
+            Material(
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              clipBehavior: Clip.antiAlias,
+              child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
@@ -1286,13 +1266,49 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                 child: Theme(
                   data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
-                    leading: const Icon(Icons.sync_alt_rounded,
-                        size: 18, color: Color(0xFF007AFF)),
-                    title: Text(
-                      'سجل النشاط المباشر (${events.length})',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    leading: const Icon(Icons.lightbulb_outline_rounded,
+                        size: 18, color: Color(0xFFFF9500)),
+                    title: const Text(
+                      'كيف يعمل النقل فائق السرعة؟ (3 خطوات)',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                     ),
-                    childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                    childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    children: [
+                      _buildCompactStepRow('1', 'تأكد أن الهاتف والكمبيوتر على نفس شبكة Wi-Fi أو نقطة اتصال هاتفك.'),
+                      const SizedBox(height: 6),
+                      _buildCompactStepRow('2', 'افتح المتصفح (Chrome أو Edge أو Safari) واكتب عنوان الرابط أعلاه.'),
+                      const SizedBox(height: 6),
+                      _buildCompactStepRow('3', 'تصفح مستنداتك وحملها كـ PDF فوراً أو اسحب أي ملف لإرساله للهاتف.'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            if (events.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Material(
+                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                clipBehavior: Clip.antiAlias,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+                      width: 1,
+                    ),
+                  ),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      leading: const Icon(Icons.sync_alt_rounded,
+                          size: 18, color: Color(0xFF007AFF)),
+                      title: Text(
+                        'سجل النشاط المباشر (${events.length})',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
                     children: [
                       ...events.take(6).map((item) {
                         final isUpload = item.type == 'upload';
@@ -1345,11 +1361,12 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                   ),
                 ),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildCompactStepRow(String number, String text) {

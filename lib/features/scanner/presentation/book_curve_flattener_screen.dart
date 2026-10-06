@@ -257,9 +257,7 @@ class _BookCurveFlattenerScreenState
                     Expanded(
                       flex: 4,
                       child: Container(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                           boxShadow: [
                             BoxShadow(
@@ -269,8 +267,13 @@ class _BookCurveFlattenerScreenState
                             ),
                           ],
                         ),
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
+                        child: Material(
+                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                          clipBehavior: Clip.antiAlias,
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                            physics: const BouncingScrollPhysics(),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -391,7 +394,8 @@ class _BookCurveFlattenerScreenState
                         ),
                       ),
                     ),
-                  ],
+                  ),
+                ],
                 ),
 
                 if (_isProcessing)
