@@ -43,6 +43,7 @@ import 'id_card_a4_screen.dart';
 import 'notebook_lines_remover_screen.dart';
 import 'object_counter_screen.dart';
 import 'anti_moire_whiteboard_screen.dart';
+import 'qr_studio_screen.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -289,6 +290,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       badge: 'شاشات وسبورة 🖥️',
       accentColor: Color(0xFF5856D6),
       keywords: ['شاشة', 'كمبيوتر', 'تلفزيون', 'تموج', 'سبورة', 'لمعان', 'فلاش', 'moire', 'glare', 'whiteboard'],
+    ),
+    ToolItem(
+      id: 'ai_qr_studio',
+      title: 'منشئ رموز QR والباركود الذكي',
+      subtitle: 'توليد رموز فورية للواي فاي، كروت الأعمال vCard، الروابط مع تخصيص الألوان والشعار وطباعتها أوفلاين',
+      category: ToolCategory.intelligence,
+      icon: Icons.qr_code_2_rounded,
+      badge: 'QR & Barcode 📱',
+      accentColor: Color(0xFF007AFF),
+      keywords: ['qr', 'باركود', 'كود', 'واي فاي', 'wifi', 'vcard', 'كارت', 'رابط', 'url', 'طباعة', 'واتساب', 'barcode'],
     ),
 
     // ── PDF Tools Category ──
@@ -684,6 +695,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => const AntiMoireWhiteboardScreen(),
+          ),
+        );
+        break;
+
+      case 'ai_qr_studio':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const QrStudioScreen(),
           ),
         );
         break;

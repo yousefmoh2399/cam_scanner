@@ -437,6 +437,31 @@ class NativeScannerBridge {
       await _channel.invokeMethod<bool>('stopSpeaking');
     } catch (_) {}
   }
+
+  static void Function(String action)? _quickActionHandler;
+
+  /// Sets a listener for system app shortcuts / quick actions (e.g. from long-press app icon).
+  static void setQuickActionListener(void Function(String action) handler) {
+    _quickActionHandler = handler;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onQuickAction') {
+        final action = call.arguments as String?;
+        if (action != null) {
+          _quickActionHandler?.call(action);
+        }
+      }
+    });
+  }
+
+  /// Retrieves the initial quick action if the app was cold-launched from a shortcut.
+  static Future<String?> getInitialQuickAction() async {
+    try {
+      final res = await _channel.invokeMethod<String>('getInitialQuickAction');
+      return res;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 

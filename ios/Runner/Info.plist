@@ -81,5 +81,38 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>يحتاج التطبيق إلى إذن استخدام Face ID لقفل وفتح الخزنة الآمنة لحماية مستنداتك المشفرة.</string>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>scan</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>مسح سريع</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>مسح مستند جديد بالكاميرا</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeCapturePhoto</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>gov</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>بطاقة الهوية والوثائق</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>مسح بطاقات الهوية A4 وجواز السفر</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeContact</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>vault</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>الخزنة المشفرة</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>فتح الخزنة والمستندات السرية</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeLove</string>
+		</dict>
+	</array>
 </dict>
 </plist>

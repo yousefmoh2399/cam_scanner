@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -6,12 +7,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../shared/models/document_paper_size.dart';
+import '../../../shared/models/pending_upload.dart';
+import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
+import '../../../shared/services/local_media_storage_service.dart';
 import '../data/local_web_drop_service.dart';
+import '../data/native_scanner_bridge.dart';
 import '../data/transferred_files_service.dart';
+import 'scan_review_screen.dart';
 import 'transferred_files_screen.dart';
 
 /// Screen for Local AirDrop / Web Drop:
@@ -192,6 +201,311 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
     Share.share(
       'افتح هذا الرابط في متصفح الكمبيوتر أو الماك أو أي جهاز آخر لنقل المستندات فوراً:\n$url',
       subject: 'رابط نقل المستندات عبر الشبكة المحلية (Web Drop)',
+    );
+  }
+
+  Future<void> _scanFromMobileCamera() async {
+    try {
+      final draftsDir = await getTemporaryDirectory();
+      final results = await NativeScannerBridge.startScan(
+        destDir: draftsDir.path,
+        batch: false,
+      );
+      if (results.isEmpty || !mounted) return;
+
+      final res = results.first;
+      final processedPath = await openScanReviewScreen(
+        context,
+        rawImagePath: res.path,
+        initialCorners: res.corners,
+        imageWidth: res.width,
+        imageHeight: res.height,
+      );
+
+      if (processedPath == null ||
+          !File(processedPath).existsSync() ||
+          !mounted) {
+        return;
+      }
+
+      setState(() {
+        _isImportingFiles = true;
+        _importStatusText = 'جارٍ تجهيز المستند الممسوح ونشره في السيرفر...';
+      });
+
+      final now = DateTime.now();
+      final title = 'مسح_سريع_${now.millisecondsSinceEpoch % 10000}';
+      const storage = LocalMediaStorageService();
+      final docsDir = await storage.documentsDirectory();
+      final pdfPath = p.join(docsDir.path, '$title.pdf');
+
+      final pdfBytes = await ref.read(pdfBuilderServiceProvider).buildPdf(
+        imagePaths: [processedPath],
+        paperSizes: const [DocumentPaperSize.a4],
+      );
+      await File(pdfPath).writeAsBytes(pdfBytes, flush: true);
+
+      // Add to staged queue for instant PC download
+      final drop = SharedDropFile(
+        id: 'scan_${now.millisecondsSinceEpoch}',
+        name: '$title.pdf',
+        filePath: pdfPath,
+        fileSize: pdfBytes.length,
+        sharedAt: now,
+        mimeType: 'application/pdf',
+        isFromAppLibrary: true,
+      );
+      _webDropService.addStagedFile(drop);
+
+      // Also record in app pending uploads so user can see it in library
+      await ref.read(pendingUploadsControllerProvider.notifier).addDocument(
+            PendingUpload(
+              id: 'scan_${now.millisecondsSinceEpoch}',
+              filePath: pdfPath,
+              fileName: '$title.pdf',
+              fileType: 'pdf',
+              createdAt: now,
+              status: 'saved',
+              pageCount: 1,
+              thumbnailPath: processedPath,
+              pages: [
+                ScannedPage(
+                  imagePath: processedPath,
+                  originalImagePath: processedPath,
+                )
+              ],
+            ),
+          );
+
+      if (mounted) {
+        setState(() {
+          _isImportingFiles = false;
+          _importStatusText = '';
+        });
+        HapticFeedback.heavyImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                      '✅ تم مسح "$title" وجاهز للتحميل فوراً على الكمبيوتر!'),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF34C759),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } on ScannerPermissionDeniedException catch (e) {
+      if (mounted) {
+        await showScannerPermissionDialog(context, e);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isImportingFiles = false;
+          _importStatusText = '';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر إتمام المسح: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openServerChoiceSheet() async {
+    final url = _webDropService.serverUrl;
+    if (url.isEmpty) return;
+    HapticFeedback.selectionClick();
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'فتح خادم المشاركة المحلي',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                url,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                  color: Color(0xFF007AFF),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.open_in_browser_rounded,
+                      color: Color(0xFF007AFF)),
+                ),
+                title: const Text('فتح في متصفح خارجي (Chrome / Safari)',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text(
+                    'لتجربة الصفحة وتنزيل/إرسال الملفات من متصفح هاتفك أو أجهزتك'),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () => Navigator.pop(ctx, 'external'),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.smartphone_rounded,
+                      color: Color(0xFF34C759)),
+                ),
+                title: const Text('عرض ومعاينة داخل التطبيق',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text(
+                    'استعراض الروابط والملفات المنقولة ومتابعة نشاط الاتصال الحالي'),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () => Navigator.pop(ctx, 'in_app'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (choice == null || !mounted) return;
+
+    if (choice == 'external') {
+      try {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          await launchUrl(uri);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر فتح المتصفح الخارجي: $e')),
+          );
+        }
+      }
+    } else if (choice == 'in_app') {
+      _showInAppServerPreviewDialog();
+    }
+  }
+
+  void _showInAppServerPreviewDialog() {
+    final url = _webDropService.serverUrl;
+    final staged = _webDropService.stagedFiles;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.language_rounded,
+                  color: Color(0xFF007AFF), size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'معاينة خادم Web Drop',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color:
+                    isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('عنوان الرابط المباشر:',
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  const SizedBox(height: 2),
+                  SelectableText(
+                    url,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF007AFF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'حالة المشاركة: جاهز لبث ${staged.length} ملف للكمبيوتر',
+              style:
+                  const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '• للوصول من الكمبيوتر، افتح متصفحك واكتب الرابط أعلاه.\n• لنقل الملفات إلى هاتفك، اسحبها وأفلتها في صفحة المتصفح.\n• لا يلزم توفر إنترنت إطلاقاً (أوفلاين 100%).',
+              style: TextStyle(fontSize: 11.5, height: 1.5, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إغلاق'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _copyUrlToClipboard();
+            },
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            label: const Text('نسخ الرابط'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -706,6 +1020,33 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
 
                     const SizedBox(height: 10),
 
+                    // Open Server Choice Button (External Browser vs In-App Preview)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 38,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF007AFF),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: _openServerChoiceSheet,
+                        icon: const Icon(Icons.open_in_browser_rounded, size: 18),
+                        label: const Text(
+                          'فتح صفحة السيرفر (متصفح خارجي أو معاينة داخلية)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
                     // Uniform 3-Button Action Row (Exact same height: 38px, radius: 10px)
                     Row(
                       children: [
@@ -889,6 +1230,32 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
+
+                  // 1. Prominent Mobile Camera Scan Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 42,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: _isImportingFiles ? null : _scanFromMobileCamera,
+                      icon: const Icon(Icons.camera_alt_rounded, size: 19),
+                      label: const Text(
+                        'مسح مستند بكاميرا الهاتف الآن',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
 
                   // Action Buttons: Two perfectly balanced buttons (Height: 40px, Radius: 12px)
                   Row(

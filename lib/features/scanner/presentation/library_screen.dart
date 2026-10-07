@@ -28,6 +28,9 @@ import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 import 'widgets/theme_selection_sheet.dart';
+import '../data/batch_zip_service.dart';
+import '../data/native_scanner_bridge.dart';
+import 'id_card_a4_screen.dart';
 
 enum LibraryTab {
   documents('المستندات'),
@@ -80,9 +83,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadFolders();
+    NativeScannerBridge.setQuickActionListener(_handleQuickAction);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkInitialSecurityAndIntents();
     });
+  }
+
+  void _handleQuickAction(String action) {
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    switch (action) {
+      case 'scan':
+        _startNewScanSession();
+        break;
+      case 'gov':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const IdCardA4Screen()),
+        );
+        break;
+      case 'vault':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const VaultScreen()),
+        );
+        break;
+    }
   }
 
   @override
@@ -108,6 +132,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       await _promptAppUnlock();
     }
     await _consumeSharedIncomingFiles();
+    final initialAction = await NativeScannerBridge.getInitialQuickAction();
+    if (initialAction != null) {
+      _handleQuickAction(initialAction);
+    }
   }
 
   Future<void> _onAppResumed() async {
@@ -1394,6 +1422,197 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     await Share.shareXFiles(selected);
   }
 
+  Future<void> _exportSelectedAsBatchZip(List<PendingUpload> allDocs) async {
+    final selected =
+        allDocs.where((d) => _selectedDocIds.contains(d.id)).toList();
+    if (selected.isEmpty) return;
+
+    double progress = 0.0;
+    String status = 'جارٍ تجهيز ملفات الأرشيف...';
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (ctx, setDlgState) {
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.folder_zip_rounded,
+                    color: Color(0xFF007AFF), size: 24),
+                SizedBox(width: 10),
+                Text('تصدير كأرشيف ZIP مجمع',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LinearProgressIndicator(
+                  value: progress > 0 ? progress : null,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  status,
+                  style: const TextStyle(fontSize: 12.5),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    try {
+      final zipFile = await BatchZipService.instance.createBatchZip(
+        documents: selected,
+        onProgress: (p, s) {
+          progress = p;
+          status = s;
+        },
+      );
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        setState(() => _selectedDocIds.clear());
+
+        HapticFeedback.mediumImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                      'تم إنشاء الأرشيف بنجاح: ${p.basename(zipFile.path)} (${(zipFile.lengthSync() / 1024).toStringAsFixed(1)} KB)'),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF34C759),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'مشاركة ZIP',
+              textColor: Colors.white,
+              onPressed: () => Share.shareXFiles([XFile(zipFile.path)]),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر إنشاء الأرشيف: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildMultiSelectBottomBar(
+    List<PendingUpload> allDocs,
+    AppThemePalette palette,
+    bool isDark,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.08),
+            width: 0.5,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMultiSelectActionItem(
+                icon: Icons.folder_zip_rounded,
+                label: 'أرشيف ZIP',
+                color: const Color(0xFF007AFF),
+                onTap: () => _exportSelectedAsBatchZip(allDocs),
+              ),
+              _buildMultiSelectActionItem(
+                icon: Icons.drive_file_move_rounded,
+                label: 'نقل لمجلد',
+                color: palette.accent,
+                onTap: () {
+                  final selected = allDocs
+                      .where((d) => _selectedDocIds.contains(d.id))
+                      .toList();
+                  _showMoveToFolderSheet(selected);
+                },
+              ),
+              _buildMultiSelectActionItem(
+                icon: Icons.ios_share_rounded,
+                label: 'مشاركة',
+                color: const Color(0xFF34C759),
+                onTap: () => _shareSelectedDocuments(allDocs),
+              ),
+              _buildMultiSelectActionItem(
+                icon: Icons.delete_outline_rounded,
+                label: 'حذف',
+                color: palette.danger,
+                onTap: _deleteSelectedDocuments,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMultiSelectActionItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final docsAsync = ref.watch(pendingUploadsControllerProvider);
@@ -1444,6 +1663,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     });
                   },
                   icon: const Icon(Icons.select_all_rounded),
+                ),
+                IconButton(
+                  tooltip: 'تصدير كأرشيف ZIP مجمع',
+                  onPressed: () => _exportSelectedAsBatchZip(allDocs),
+                  icon: const Icon(Icons.folder_zip_rounded, color: Color(0xFF007AFF)),
                 ),
                 IconButton(
                   tooltip: 'نقل إلى مجلد',
@@ -1802,10 +2026,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
               ],
             ),
-      bottomNavigationBar: AppleBottomNavBar(
-        currentIndex: 0,
-        onScanTap: _startNewScanSession,
-      ),
+      bottomNavigationBar: _isMultiSelectMode
+          ? _buildMultiSelectBottomBar(allDocs, palette, isDark)
+          : AppleBottomNavBar(
+              currentIndex: 0,
+              onScanTap: _startNewScanSession,
+            ),
       body: RefreshIndicator(
         onRefresh: () async {
           await ref.read(pendingUploadsControllerProvider.notifier).refresh();

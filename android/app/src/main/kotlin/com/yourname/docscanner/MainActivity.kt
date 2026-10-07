@@ -746,6 +746,13 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onNewIntent(newIntent: Intent) {
         super.onNewIntent(newIntent)
         intent = newIntent
+        val action = newIntent.getStringExtra("quick_action")
+        if (action != null) {
+            flutterEngine?.dartExecutor?.binaryMessenger?.let {
+                MethodChannel(it, docScannerChannel).invokeMethod("onQuickAction", action)
+                MethodChannel(it, altScannerChannel).invokeMethod("onQuickAction", action)
+            }
+        }
         if (newIntent.getBooleanExtra("run_ocr_benchmark", false)) {
             runOcrDeviceBenchmark()
         }
