@@ -398,19 +398,26 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFFF9500),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF9500),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.camera_alt_rounded, size: 20),
+                label: const Text(
+                  'اختيار صورة للبدء بالعدّ',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                ),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _pickImage();
+                },
               ),
-              icon: const Icon(Icons.camera_alt_rounded, size: 20),
-              label: const Text(
-                'اختيار صورة للبدء بالعدّ',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-              ),
-              onPressed: _pickImage,
             ),
           ],
         ),

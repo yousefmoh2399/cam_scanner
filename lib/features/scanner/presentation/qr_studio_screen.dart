@@ -381,12 +381,14 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
                 child: Container(
@@ -427,49 +429,46 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF34C759).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModalSourceCard(
+                      ctx: ctx,
+                      icon: Icons.camera_alt_rounded,
+                      title: 'كاميرا الهاتف',
+                      subtitle: 'مسح فوري الآن',
+                      color: const Color(0xFF34C759),
+                      isDark: isDark,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(ctx, 'camera');
+                      },
+                    ),
                   ),
-                  child: const Icon(Icons.camera_alt_rounded,
-                      color: Color(0xFF34C759)),
-                ),
-                title: const Text('فتح الكاميرا للمسح فوراً',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                subtitle: const Text('توجيه الكاميرا إلى أي كود لمسحه أوفلاين',
-                    style: TextStyle(fontSize: 11, color: Colors.grey)),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                onTap: () => Navigator.pop(ctx, 'camera'),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5856D6).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModalSourceCard(
+                      ctx: ctx,
+                      icon: Icons.photo_library_rounded,
+                      title: 'ألبوم الصور',
+                      subtitle: 'لقطة أو صورة',
+                      color: const Color(0xFF5856D6),
+                      isDark: isDark,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(ctx, 'gallery');
+                      },
+                    ),
                   ),
-                  child: const Icon(Icons.photo_library_rounded,
-                      color: Color(0xFF5856D6)),
-                ),
-                title: const Text('اختيار صورة من المعرض',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                subtitle: const Text('قراءة رمز من لقطة شاشة أو صورة محفوظة',
-                    style: TextStyle(fontSize: 11, color: Colors.grey)),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                onTap: () => Navigator.pop(ctx, 'gallery'),
+                ],
               ),
             ],
           ),
         ),
-      ),
-    );
+      );
+    },
+  );
 
     if (source == null || !mounted) return;
 
@@ -571,6 +570,67 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
     await QrScannerService.instance.handleScannedPayload(
       context: context,
       payload: payload,
+    );
+  }
+
+  Widget _buildModalSourceCard({
+    required BuildContext ctx,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withValues(alpha: 0.25),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -783,21 +843,47 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
             const SizedBox(height: 14),
 
             // Quick Action Buttons Under Preview (Save PNG, Share, Print, Copy)
+            // Quick Action Buttons Under Preview (Save PNG, Print, Copy)
             Row(
               children: [
                 Expanded(
                   child: SizedBox(
-                    height: 38,
-                    child: FilledButton.tonalIcon(
-                      onPressed: _isExporting ? null : _exportAsPng,
-                      icon: const Icon(Icons.file_download_outlined, size: 16),
-                      label: const Text('حفظ PNG',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700)),
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        padding: EdgeInsets.zero,
+                    height: 46,
+                    child: InkWell(
+                      onTap: _isExporting
+                          ? null
+                          : () {
+                              HapticFeedback.lightImpact();
+                              _exportAsPng();
+                            },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF007AFF)
+                              .withValues(alpha: isDark ? 0.18 : 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color:
+                                const Color(0xFF007AFF).withValues(alpha: 0.3),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.file_download_outlined,
+                                size: 17, color: Color(0xFF007AFF)),
+                            SizedBox(width: 6),
+                            Text(
+                              'حفظ PNG',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF007AFF),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -805,17 +891,40 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: SizedBox(
-                    height: 38,
-                    child: FilledButton.tonalIcon(
-                      onPressed: _printOrExportPdf,
-                      icon: const Icon(Icons.print_outlined, size: 16),
-                      label: const Text('طباعة PDF',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700)),
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        padding: EdgeInsets.zero,
+                    height: 46,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _printOrExportPdf();
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF34C759)
+                              .withValues(alpha: isDark ? 0.18 : 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color:
+                                const Color(0xFF34C759).withValues(alpha: 0.3),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.print_outlined,
+                                size: 17, color: Color(0xFF34C759)),
+                            SizedBox(width: 6),
+                            Text(
+                              'طباعة PDF',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF34C759),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -823,17 +932,41 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: SizedBox(
-                    height: 38,
-                    child: FilledButton.tonalIcon(
-                      onPressed: _copyPayload,
-                      icon: const Icon(Icons.copy_rounded, size: 15),
-                      label: const Text('نسخ الكود',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700)),
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        padding: EdgeInsets.zero,
+                    height: 46,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _copyPayload();
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: (isDark
+                              ? const Color(0xFF2C2C2E)
+                              : const Color(0xFFE5E5EA)),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.black12,
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.copy_rounded,
+                                size: 16,
+                                color: isDark ? Colors.white : Colors.black87),
+                            const SizedBox(width: 6),
+                            Text(
+                              'نسخ الكود',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -494,27 +494,33 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
                   const SizedBox(height: 12),
 
                   // ── Save Redacted Copy Button ──
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  SizedBox(
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1C1C1E),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Icon(Icons.lock_rounded, size: 20),
+                      label: Text(
+                        _isSaving ? 'جاري حرق التسويد والحفظ...' : 'حفظ المستند المحجوب نهائياً',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                      ),
+                      onPressed: _selectedImagePath != null && !_isSaving
+                          ? () {
+                              HapticFeedback.mediumImpact();
+                              _saveRedactedDocument();
+                            }
+                          : null,
                     ),
-                    icon: _isSaving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Icon(Icons.lock_rounded),
-                    label: Text(
-                      _isSaving ? 'جاري حرق التسويد والحفظ...' : 'حفظ المستند المحجوب نهائياً',
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                    ),
-                    onPressed: _selectedImagePath != null && !_isSaving
-                        ? _saveRedactedDocument
-                        : null,
                   ),
                 ],
               ),

@@ -292,18 +292,26 @@ class _NotebookLinesRemoverScreenState
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF007AFF),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF007AFF),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.photo_library_rounded, size: 20),
+                label: const Text(
+                  'اختيار صفحة كشكول من المعرض',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                ),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _pickImage();
+                },
               ),
-              icon: const Icon(Icons.photo_library_rounded, size: 20),
-              label: const Text(
-                'اختيار صفحة كشكول من المعرض',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-              ),
-              onPressed: _pickImage,
             ),
           ],
         ),
@@ -595,31 +603,56 @@ class _NotebookLinesRemoverScreenState
 
           const SizedBox(height: 18),
 
-          // Primary Action Buttons
+          // Primary Action Buttons: Apple Balanced 50% / 50% Tactile Cards
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: SizedBox(
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                      foregroundColor: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: isDark ? Colors.white12 : Colors.black12,
+                          width: 0.8,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                    label: const Text('تصدير PDF', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                    onPressed: _processedBytes != null && !_isProcessing
+                        ? () {
+                            HapticFeedback.lightImpact();
+                            _exportPdf();
+                          }
+                        : null,
                   ),
-                  icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                  label: const Text('تصدير PDF', style: TextStyle(fontWeight: FontWeight.w800)),
-                  onPressed: _processedBytes != null && !_isProcessing ? _exportPdf : null,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF007AFF),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: SizedBox(
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF007AFF),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.save_alt_rounded, size: 18),
+                    label: const Text('حفظ الصورة', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                    onPressed: _processedBytes != null && !_isProcessing
+                        ? () {
+                            HapticFeedback.mediumImpact();
+                            _saveResult();
+                          }
+                        : null,
                   ),
-                  icon: const Icon(Icons.save_alt_rounded, size: 18),
-                  label: const Text('حفظ الصورة', style: TextStyle(fontWeight: FontWeight.w800)),
-                  onPressed: _processedBytes != null && !_isProcessing ? _saveResult : null,
                 ),
               ),
             ],

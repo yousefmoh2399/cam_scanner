@@ -371,39 +371,103 @@ class _SmartContractStudioScreenState
               Row(
                 children: [
                   Expanded(
-                    child: FilledButton.tonalIcon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        OpenFilex.open(filePath);
-                      },
-                      icon: const Icon(Icons.visibility_rounded),
-                      label: const Text('معاينة العقد'),
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(ctx);
+                          OpenFilex.open(filePath);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(ctx).brightness == Brightness.dark
+                              ? const Color(0xFF2C2C2E)
+                              : const Color(0xFFF2F2F7),
+                          foregroundColor: Theme.of(ctx).brightness == Brightness.dark
+                              ? Colors.white
+                              : const Color(0xFF1C1C1E),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(
+                              color: Theme.of(ctx).brightness == Brightness.dark
+                                  ? Colors.white12
+                                  : Colors.black12,
+                              width: 0.8,
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.visibility_rounded, size: 18),
+                        label: const Text(
+                          'معاينة العقد',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        Share.shareXFiles([XFile(filePath)], subject: fileName);
-                      },
-                      icon: const Icon(Icons.ios_share_rounded),
-                      label: const Text('مشاركة العقد'),
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          Navigator.pop(ctx);
+                          Share.shareXFiles([XFile(filePath)], subject: fileName);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF007AFF),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.ios_share_rounded, size: 18),
+                        label: const Text(
+                          'مشاركة العقد',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Printing.layoutPdf(
-                    name: fileName,
-                    onLayout: (_) async => pdfBytes,
-                  );
-                },
-                icon: const Icon(Icons.print_rounded),
-                label: const Text('طباعة العقد مباشرة'),
+              SizedBox(
+                height: 48,
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(ctx);
+                    Printing.layoutPdf(
+                      name: fileName,
+                      onLayout: (_) async => pdfBytes,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).brightness == Brightness.dark
+                        ? const Color(0xFF2C2C2E)
+                        : const Color(0xFFF2F2F7),
+                    foregroundColor: Theme.of(ctx).brightness == Brightness.dark
+                        ? Colors.white
+                        : const Color(0xFF1C1C1E),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(
+                        color: Theme.of(ctx).brightness == Brightness.dark
+                            ? Colors.white12
+                            : Colors.black12,
+                        width: 0.8,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.print_rounded, size: 18),
+                  label: const Text(
+                    'طباعة العقد مباشرة (AirPrint)',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ),
               ),
             ],
           ),

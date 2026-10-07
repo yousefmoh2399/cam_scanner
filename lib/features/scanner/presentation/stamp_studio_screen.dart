@@ -48,35 +48,155 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
   Future<void> _createNewStampDialog() async {
     HapticFeedback.lightImpact();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final choice = await showModalBottomSheet<String>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
                 'إضافة ختم جديد للمكتبة',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
               ),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: Color(0xFF007AFF)),
-              title: const Text('تصوير ختم من ورقة حقيقية'),
-              subtitle: const Text('وجّه الكاميرا نحو الختم المطبوع على الورقة'),
-              onTap: () => Navigator.pop(ctx, 'camera'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: Color(0xFF34C759)),
-              title: const Text('اختيار صورة ختم من المعرض'),
-              onTap: () => Navigator.pop(ctx, 'gallery'),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                'التقط ختماً من ورقة حقيقية أو استورد تصميماً جاهزاً',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(ctx, 'camera');
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF007AFF), size: 22),
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'تصوير ختم حي',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'من ورقة بالكاميرا',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(ctx, 'gallery');
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF34C759).withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF34C759).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.photo_library_rounded, color: Color(0xFF34C759), size: 22),
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'ألبوم الصور',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'استيراد صورة ختم',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -276,47 +396,56 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                   const SizedBox(height: 16),
 
                   // Save Button
-                  FilledButton.icon(
-                    onPressed: isProcessing
-                        ? null
-                        : () async {
-                            setSheetState(() => isProcessing = true);
-                            try {
-                              await _storageService.createCustomStampFromBytes(
-                                rawImageBytes: rawBytes,
-                                title: nameController.text.trim().isEmpty
-                                    ? 'ختم رسمي'
-                                    : nameController.text.trim(),
-                                sensitivity: sensitivity,
-                                colorFilter: selectedColor,
-                                opacity: opacity,
-                              );
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              await _loadStamps();
-                            } catch (e) {
-                              if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(content: Text('تعذر استخراج الختم: $e')),
+                  SizedBox(
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: isProcessing
+                          ? null
+                          : () async {
+                              HapticFeedback.mediumImpact();
+                              setSheetState(() => isProcessing = true);
+                              try {
+                                await _storageService.createCustomStampFromBytes(
+                                  rawImageBytes: rawBytes,
+                                  title: nameController.text.trim().isEmpty
+                                      ? 'ختم رسمي'
+                                      : nameController.text.trim(),
+                                  sensitivity: sensitivity,
+                                  colorFilter: selectedColor,
+                                  opacity: opacity,
                                 );
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                await _loadStamps();
+                              } catch (e) {
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(content: Text('تعذر استخراج الختم: $e')),
+                                  );
+                                }
+                              } finally {
+                                if (ctx.mounted) setSheetState(() => isProcessing = false);
                               }
-                            } finally {
-                              if (ctx.mounted) setSheetState(() => isProcessing = false);
-                            }
-                          },
-                    icon: isProcessing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.check_rounded),
-                    label: Text(isProcessing ? 'جاري الاستخراج والتفريغ...' : 'حفظ الختم في المكتبة'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            },
+                      icon: isProcessing
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.check_rounded, size: 20),
+                      label: Text(
+                        isProcessing ? 'جاري الاستخراج والتفريغ...' : 'حفظ الختم في المكتبة',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF007AFF),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
                     ),
                   ),
                 ],
@@ -448,14 +577,24 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                         'لا توجد أختام محفوظة',
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                       ),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF007AFF),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            _createNewStampDialog();
+                          },
+                          icon: const Icon(Icons.add_rounded, size: 20),
+                          label: const Text('إضافة ختم جديد', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                         ),
-                        onPressed: _createNewStampDialog,
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('إضافة ختم جديد'),
                       ),
                     ],
                   ),

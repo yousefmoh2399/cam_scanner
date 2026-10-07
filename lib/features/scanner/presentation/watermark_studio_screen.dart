@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -351,67 +351,137 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // ── Document Selection Row ──
-              Card(
-                elevation: 0,
-                color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: palette.accent.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.verified_user_rounded,
-                        color: _colorTheme.color,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _selectedDoc != null
-                                  ? _selectedDoc!.title
-                                  : (_selectedImagePath != null
-                                      ? 'صورة خارجية محددة'
-                                      : 'لم يتم اختيار مستند'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+              // ── Document Selection Row: Apple Dual Tactile Cards ──
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _selectDocumentFromLibrary();
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _selectedDoc != null
+                                ? const Color(0xFF007AFF)
+                                : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
+                            width: _selectedDoc != null ? 1.5 : 0.8,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
-                            Text(
-                              'اختر من المكتبة أو المعرض',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: theme.colorScheme.onSurfaceVariant,
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              child: const Icon(Icons.folder_open_rounded, color: Color(0xFF007AFF), size: 20),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'من المكتبة',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                                  ),
+                                  Text(
+                                    _selectedDoc != null ? _selectedDoc!.title : 'مستندات التطبيق',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'المكتبة',
-                        icon: const Icon(Icons.folder_open_rounded, size: 22),
-                        onPressed: _selectDocumentFromLibrary,
-                      ),
-                      IconButton(
-                        tooltip: 'صورة من المعرض',
-                        icon: const Icon(Icons.photo_library_rounded, size: 22),
-                        onPressed: _pickExternalImage,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _pickExternalImage();
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _selectedImagePath != null && _selectedDoc == null
+                                ? const Color(0xFF5856D6)
+                                : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
+                            width: _selectedImagePath != null && _selectedDoc == null ? 1.5 : 0.8,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF5856D6).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.photo_library_rounded, color: Color(0xFF5856D6), size: 20),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'من الهاتف',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                                  ),
+                                  Text(
+                                    _selectedImagePath != null && _selectedDoc == null ? 'صورة خارجية' : 'معرض الصور',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 12),
@@ -708,31 +778,38 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
               const SizedBox(height: 20),
 
               // ── Save Button ──
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _colorTheme.color,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _colorTheme.color,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.shield_rounded, size: 20),
+                  label: Text(
+                    _isSaving
+                        ? 'جاري تطبيق الحماية الأمنية...'
+                        : 'حفظ المستند المحمي في المكتبة',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                  onPressed: _selectedImagePath != null && !_isSaving
+                      ? () {
+                          HapticFeedback.mediumImpact();
+                          _saveProtectedDocument();
+                        }
+                      : null,
                 ),
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.shield_rounded),
-                label: Text(
-                  _isSaving
-                      ? 'جاري تطبيق الحماية الأمنية...'
-                      : 'حفظ المستند المحمي في المكتبة',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                ),
-                onPressed: _selectedImagePath != null && !_isSaving
-                    ? _saveProtectedDocument
-                    : null,
               ),
 
               const SizedBox(height: 24),

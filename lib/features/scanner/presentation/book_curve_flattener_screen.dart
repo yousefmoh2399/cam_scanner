@@ -383,22 +383,28 @@ class _BookCurveFlattenerScreenState
                               const SizedBox(height: 12),
 
                               // Bottom Save Button
-                              FilledButton.icon(
-                                onPressed: _flattenedBytes != null && !_isProcessing
-                                    ? _saveToLibrary
-                                    : null,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF59E0B),
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(vertical: 13),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
+                              SizedBox(
+                                height: 52,
+                                child: ElevatedButton.icon(
+                                  onPressed: _flattenedBytes != null && !_isProcessing
+                                      ? () {
+                                          HapticFeedback.mediumImpact();
+                                          _saveToLibrary();
+                                        }
+                                      : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFF59E0B),
+                                    foregroundColor: Colors.black,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
                                   ),
-                                ),
-                                icon: const Icon(Icons.check_circle_rounded, size: 20),
-                                label: const Text(
-                                  'حفظ الصفحة المسطحة بالمكتبة (PDF)',
-                                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                                  icon: const Icon(Icons.check_circle_rounded, size: 20),
+                                  label: const Text(
+                                    'حفظ الصفحة المسطحة بالمكتبة (PDF)',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                                  ),
                                 ),
                               ),
                             ],

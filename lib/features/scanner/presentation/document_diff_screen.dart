@@ -75,58 +75,168 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
     HapticFeedback.lightImpact();
     final docs = ref.read(pendingUploadsControllerProvider).value ?? [];
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final choice = await showModalBottomSheet<String>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Text(
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Text(
                   isDocA ? 'اختر المستند الأول (الأصلي)' : 'اختر المستند الثاني (المعدل)',
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                 ),
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.file_open_rounded, color: Color(0xFF007AFF)),
-                title: const Text('اختيار ملف من ذاكرة الجهاز (PDF أو صورة)'),
-                onTap: () => Navigator.pop(ctx, 'file_picker'),
-              ),
-              if (docs.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'أو من مكتبة المستندات بالتطبيق:',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                const SizedBox(height: 4),
+                Text(
+                  'قارن النصوص أو الاختلافات البصرية بالذكاء الاصطناعي',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // External File Picker Apple Tactile Card
+                InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(ctx, 'file_picker');
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.file_open_rounded, color: Color(0xFF007AFF), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'اختيار ملف من ذاكرة الجهاز',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'مستند PDF أو صورة عالية الدقة',
+                                style: TextStyle(fontSize: 11, color: Color(0xFF8E8E93)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF8E8E93)),
+                      ],
                     ),
                   ),
                 ),
-                SizedBox(
-                  height: 200,
-                  child: ListView.builder(
-                    itemCount: docs.length,
-                    itemBuilder: (c, idx) {
-                      final d = docs[idx];
-                      return ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.description_rounded),
-                        title: Text(d.fileName, maxLines: 1),
-                        subtitle: Text('${d.pageCount} صفحة'),
-                        onTap: () => Navigator.pop(ctx, d.id),
-                      );
-                    },
+                if (docs.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'أو من مكتبة المستندات بالتطبيق (${docs.length}):',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (c, idx) {
+                        final d = docs[idx];
+                        return InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pop(ctx, d.id);
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: (isDocA ? const Color(0xFF007AFF) : const Color(0xFF34C759))
+                                        .withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.description_rounded,
+                                    size: 18,
+                                    color: isDocA ? const Color(0xFF007AFF) : const Color(0xFF34C759),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        d.fileName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                      ),
+                                      Text(
+                                        '${d.pageCount} صفحة',
+                                        style: const TextStyle(fontSize: 10.5, color: Color(0xFF8E8E93)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         );
       },

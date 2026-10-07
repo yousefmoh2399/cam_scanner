@@ -1538,67 +1538,74 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   ) {
     final bool hasSelection = _selectedDocIds.isNotEmpty;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.black.withValues(alpha: 0.08),
-            width: 0.5,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
         child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildMultiSelectActionItem(
-                icon: Icons.folder_zip_rounded,
-                label: 'أرشيف ZIP',
-                color: const Color(0xFF007AFF),
-                enabled: hasSelection,
-                onTap: () => _exportSelectedAsBatchZip(allDocs),
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xE6141416)
+                : const Color(0xF2FFFFFF),
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.08),
+                width: 0.5,
               ),
-              _buildMultiSelectActionItem(
-                icon: Icons.drive_file_move_rounded,
-                label: 'نقل لمجلد',
-                color: palette.accent,
-                enabled: hasSelection,
-                onTap: () {
-                  final selected = allDocs
-                      .where((d) => _selectedDocIds.contains(d.id))
-                      .toList();
-                  _showMoveToFolderSheet(selected);
-                },
-              ),
-              _buildMultiSelectActionItem(
-                icon: Icons.ios_share_rounded,
-                label: 'مشاركة',
-                color: const Color(0xFF34C759),
-                enabled: hasSelection,
-                onTap: () => _shareSelectedDocuments(allDocs),
-              ),
-              _buildMultiSelectActionItem(
-                icon: Icons.delete_outline_rounded,
-                label: 'حذف',
-                color: palette.danger,
-                enabled: hasSelection,
-                onTap: _deleteSelectedDocuments,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                blurRadius: 18,
+                offset: const Offset(0, -4),
               ),
             ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Container(
+              height: 68,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildMultiSelectActionItem(
+                    icon: Icons.folder_zip_rounded,
+                    label: 'أرشيف ZIP',
+                    color: const Color(0xFF007AFF),
+                    enabled: hasSelection,
+                    onTap: () => _exportSelectedAsBatchZip(allDocs),
+                  ),
+                  _buildMultiSelectActionItem(
+                    icon: Icons.drive_file_move_rounded,
+                    label: 'نقل لمجلد',
+                    color: palette.accent,
+                    enabled: hasSelection,
+                    onTap: () {
+                      final selected = allDocs
+                          .where((d) => _selectedDocIds.contains(d.id))
+                          .toList();
+                      _showMoveToFolderSheet(selected);
+                    },
+                  ),
+                  _buildMultiSelectActionItem(
+                    icon: Icons.ios_share_rounded,
+                    label: 'مشاركة',
+                    color: const Color(0xFF34C759),
+                    enabled: hasSelection,
+                    onTap: () => _shareSelectedDocuments(allDocs),
+                  ),
+                  _buildMultiSelectActionItem(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'حذف',
+                    color: palette.danger,
+                    enabled: hasSelection,
+                    onTap: _deleteSelectedDocuments,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -1620,20 +1627,37 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             : Colors.black.withValues(alpha: 0.25));
 
     return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(12),
+      onTap: enabled
+          ? () {
+              HapticFeedback.lightImpact();
+              onTap();
+            }
+          : null,
+      borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: effectiveColor, size: 22),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: enabled
+                    ? color.withValues(alpha: isDark ? 0.18 : 0.12)
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.04)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: effectiveColor, size: 20),
+            ),
             const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
+                fontWeight: enabled ? FontWeight.w800 : FontWeight.w600,
                 color: effectiveColor,
               ),
             ),
@@ -1678,86 +1702,127 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               scrolledUnderElevation: 0,
               backgroundColor:
                   isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
-              leadingWidth: 72,
-              leading: TextButton(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  setState(() {
-                    _isSelectionMode = false;
-                    _selectedDocIds.clear();
-                  });
-                },
-                child: Text(
-                  'إلغاء',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: palette.accent,
-                    fontSize: 15,
+              leadingWidth: 78,
+              leading: Center(
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 12),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _isSelectionMode = false;
+                        _selectedDocIds.clear();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF1C1C1E)
+                            : const Color(0xFFE5E5EA),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'إلغاء',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black87,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _selectedDocIds.isEmpty
-                        ? 'تحديد العناصر'
-                        : (_selectedDocIds.length == 1
-                            ? 'تم تحديد عنصر واحد'
-                            : (_selectedDocIds.length == 2
-                                ? 'تم تحديد عنصرين'
-                                : 'تم تحديد ${_selectedDocIds.length} عناصر')),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      letterSpacing: -0.3,
+              title: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _selectedDocIds.isEmpty
+                          ? 'تحديد العناصر'
+                          : (_selectedDocIds.length == 1
+                              ? 'عنصر واحد'
+                              : (_selectedDocIds.length == 2
+                                  ? 'عنصران'
+                                  : '${_selectedDocIds.length} عناصر')),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        letterSpacing: -0.3,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    activeFolder != null
-                        ? 'مجلد: ${activeFolder.name}'
-                        : (visibleDocs.isEmpty
-                            ? 'لا توجد مستندات'
-                            : 'من إجمالي ${visibleDocs.length} مستند'),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: isDark
-                          ? const Color(0xFF8E8E93)
-                          : const Color(0xFF6C6C70),
-                    ),
-                  ),
-                ],
+                    if (visibleDocs.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: palette.accent.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'من ${visibleDocs.length}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: palette.accent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               actions: [
                 Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 8),
-                  child: TextButton(
-                    onPressed: visibleDocs.isEmpty
-                        ? null
-                        : () {
-                            HapticFeedback.selectionClick();
-                            setState(() {
-                              if (_selectedDocIds.length == visibleDocs.length) {
-                                _selectedDocIds.clear();
-                              } else {
-                                _selectedDocIds
-                                    .addAll(visibleDocs.map((d) => d.id));
-                              }
-                            });
-                          },
-                    child: Text(
-                      _selectedDocIds.isNotEmpty &&
-                              _selectedDocIds.length == visibleDocs.length
-                          ? 'إلغاء الكل'
-                          : 'تحديد الكل',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: visibleDocs.isEmpty
-                            ? Colors.grey
-                            : palette.accent,
-                        fontSize: 14,
+                  padding: const EdgeInsetsDirectional.only(end: 12),
+                  child: Center(
+                    child: InkWell(
+                      onTap: visibleDocs.isEmpty
+                          ? null
+                          : () {
+                              HapticFeedback.selectionClick();
+                              setState(() {
+                                if (_selectedDocIds.length == visibleDocs.length) {
+                                  _selectedDocIds.clear();
+                                } else {
+                                  _selectedDocIds
+                                      .addAll(visibleDocs.map((d) => d.id));
+                                }
+                              });
+                            },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        height: 32,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: visibleDocs.isEmpty
+                              ? Colors.transparent
+                              : (_selectedDocIds.length == visibleDocs.length
+                                  ? (isDark
+                                      ? const Color(0xFF2C2C2E)
+                                      : const Color(0xFFE5E5EA))
+                                  : palette.accent.withValues(alpha: 0.14)),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          _selectedDocIds.isNotEmpty &&
+                                  _selectedDocIds.length == visibleDocs.length
+                              ? 'إلغاء الكل'
+                              : 'تحديد الكل',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: visibleDocs.isEmpty
+                                ? Colors.grey
+                                : palette.accent,
+                            fontSize: 12.5,
+                          ),
+                        ),
                       ),
                     ),
                   ),
