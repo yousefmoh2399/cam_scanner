@@ -511,53 +511,134 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
           const SizedBox(height: 8),
           const Divider(height: 1),
 
-          // Actions row
+          // Balanced Apple HIG Actions Row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
             child: Row(
               children: [
-                // Print CR-80 PVC 1:1
+                // 1. PVC Card Print (50%)
                 Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: () => _printPvcCard(card),
-                    icon: const Icon(Icons.print_rounded, size: 16),
-                    label: const Text('طابعة PVC (1:1)'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  child: Material(
+                    color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      onTap: () => _printPvcCard(card),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 42,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.print_rounded, size: 17, color: Color(0xFF007AFF)),
+                            SizedBox(width: 6),
+                            Text(
+                              'طابعة PVC (1:1)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // 2. A4 Sheet Export (50%)
+                Expanded(
+                  child: Material(
+                    color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      onTap: () => _openInIdCardA4Studio(card),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 42,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.picture_as_pdf_rounded, size: 17, color: Color(0xFF34C759)),
+                            SizedBox(width: 6),
+                            Text(
+                              'ورقة A4 (1:1)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Share Icon Squircle
+                Material(
+                  color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: () => _shareCardImages(card),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.ios_share_rounded, size: 17),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 6),
 
-                // Print A4 Sheet with Crop Marks
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openInIdCardA4Studio(card),
-                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
-                    label: const Text('ورقة A4 (1:1)'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                // Delete Icon Squircle
+                Material(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: () => _deleteCard(card),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: 0.2),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.delete_outline_rounded, size: 17, color: Colors.red),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 4),
-
-                IconButton(
-                  tooltip: 'مشاركة الصور',
-                  icon: const Icon(Icons.ios_share_rounded, size: 18),
-                  onPressed: () => _shareCardImages(card),
-                ),
-
-                IconButton(
-                  tooltip: 'حذف',
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
-                  onPressed: () => _deleteCard(card),
                 ),
               ],
             ),
@@ -778,17 +859,55 @@ class _AddCardSheetState extends ConsumerState<_AddCardSheet> {
 
             const SizedBox(height: 18),
 
-            FilledButton.icon(
-              onPressed: _isSaving ? null : _save,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF007AFF),
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            Material(
+              color: _isSaving
+                  ? const Color(0xFF007AFF).withValues(alpha: 0.6)
+                  : const Color(0xFF007AFF),
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: _isSaving ? null : _save,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.28),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_isSaving) ...[
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ] else ...[
+                        const Icon(Icons.save_rounded, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        _isSaving ? 'جارٍ الحفظ المشفر...' : 'حفظ البطاقة بالمحفظة',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              icon: const Icon(Icons.save_rounded),
-              label: Text(_isSaving ? 'جارٍ الحفظ...' : 'حفظ البطاقة بالمحفظة'),
             ),
           ],
         ),

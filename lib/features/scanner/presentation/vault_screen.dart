@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -355,57 +354,95 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                       isFirstSetup ? _handleSetupPin() : _handleVerifyPin(),
                 ),
               ),
-              const SizedBox(height: 18),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () =>
-                      isFirstSetup ? _handleSetupPin() : _handleVerifyPin(),
-                  icon: const Icon(Icons.lock_open_rounded, size: 20),
-                  label: Text(
-                    isFirstSetup
-                        ? 'تفعيل التشفير وحفظ الرمز'
-                        : 'فتح الخزنة السرية',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: palette.accent,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
+              const SizedBox(height: 20),
+              Material(
+                color: palette.accent,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    if (isFirstSetup) {
+                      _handleSetupPin();
+                    } else {
+                      _handleVerifyPin();
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: palette.accent.withValues(alpha: 0.28),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.lock_open_rounded, size: 20, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          isFirstSetup
+                              ? 'تفعيل التشفير وحفظ الرمز'
+                              : 'فتح الخزنة السرية',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
               if (!isFirstSetup && _settings.biometricsEnabled) ...[
                 const SizedBox(height: 12),
-                SizedBox(
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final ok = await _securityService
-                          .authenticateWithBiometrics();
+                Material(
+                  color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: () async {
+                      HapticFeedback.lightImpact();
+                      final ok = await _securityService.authenticateWithBiometrics();
                       if (ok && mounted) {
                         await _unlockAndLoadDocs();
                       }
                     },
-                    icon: const Icon(Icons.fingerprint_rounded, size: 22),
-                    label: const Text(
-                      'فتح باستخدام البصمة / الوجه',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: palette.accent,
-                      side: BorderSide(color: palette.accent, width: 1),
-                      shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white12
+                              : Colors.black.withValues(alpha: 0.06),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.fingerprint_rounded,
+                            size: 22,
+                            color: palette.accent,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'فتح باستخدام البصمة / الوجه',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

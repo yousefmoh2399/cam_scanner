@@ -871,26 +871,41 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          width: 46,
+                          height: 46,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: const Icon(
                             Icons.add_a_photo_rounded,
-                            color: Color(0xFF007AFF),
-                            size: 24,
+                            color: Colors.white,
+                            size: 22,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         Text(
-                          isFront ? 'التقاط الوجه الأمامي' : 'التقاط الوجه الخلفي',
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                          isFront ? 'التقاط الوجه الأمامي (Front)' : 'التقاط الوجه الخلفي (Back)',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
                         ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'انقر للتصوير أو اختيار صورة',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        const SizedBox(height: 3),
+                        Text(
+                          'مسح بالكاميرا، اختيار من الصور أو المكتبة',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.white60 : const Color(0xFF8E8E93),
+                          ),
                         ),
                       ],
                     ),
@@ -1538,18 +1553,28 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.05),
+            width: 0.8,
+          ),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
@@ -1563,16 +1588,24 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
                   ),
+                  const SizedBox(height: 1),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_left_rounded, color: Colors.grey, size: 18),
+            Icon(
+              Icons.chevron_left_rounded,
+              color: isDark ? Colors.white38 : Colors.black38,
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -1584,50 +1617,190 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF101012) : Colors.white,
+          color: isDark ? const Color(0xFF121214) : Colors.white,
           border: Border(
             top: BorderSide(
               color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+              width: 0.5,
             ),
           ),
         ),
         child: Row(
           children: [
-            // Instant Print Button
+            // 1. Tonal Apple Print Button (50%)
             Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: Material(
+                color: _canExport
+                    ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7))
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.black.withValues(alpha: 0.03)),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: _canExport
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          _previewPdf();
+                        }
+                      : null,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    height: 52,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _canExport
+                            ? (isDark
+                                ? Colors.white12
+                                : Colors.black.withValues(alpha: 0.06))
+                            : Colors.transparent,
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: _canExport
+                                ? (isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.05))
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: Icon(
+                            Icons.print_rounded,
+                            size: 18,
+                            color: _canExport
+                                ? (isDark ? Colors.white : Colors.black87)
+                                : Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'طباعة فورية',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12.5,
+                                  color: _canExport
+                                      ? (isDark ? Colors.white : Colors.black87)
+                                      : Colors.grey,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'بالمقاس الطبيعي 1:1',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: _canExport
+                                      ? (isDark ? Colors.white60 : Colors.black54)
+                                      : Colors.grey,
+                                ),
+                                maxLines: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                icon: const Icon(Icons.print_rounded, size: 19),
-                label: const Text(
-                  'طباعة فورية',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                ),
-                onPressed: _canExport ? _previewPdf : null,
               ),
             ),
             const SizedBox(width: 10),
-            // Primary Save & Share Button
+            // 2. Primary Vibrant Blue Export Button (50%)
             Expanded(
-              flex: 2,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF007AFF),
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: Material(
+                color: _canExport
+                    ? const Color(0xFF007AFF)
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06)),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: _canExport
+                      ? () {
+                          HapticFeedback.mediumImpact();
+                          _saveAndSharePdf();
+                        }
+                      : null,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    height: 52,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: _canExport
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.28),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: _canExport
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: Icon(
+                            Icons.picture_as_pdf_rounded,
+                            size: 18,
+                            color: _canExport ? Colors.white : Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _canExport ? 'تصدير ورقة A4' : 'أكمل الوجهين',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12.5,
+                                  color: _canExport ? Colors.white : Colors.grey,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                _canExport ? 'حفظ ومشاركة PDF' : 'التقط الأمامي والخلفي',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: _canExport ? Colors.white70 : Colors.grey,
+                                ),
+                                maxLines: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                icon: const Icon(Icons.picture_as_pdf_rounded, size: 19),
-                label: Text(
-                  _canExport ? 'تصدير ورقة A4 (1:1)' : 'التقط وجهي البطاقة أولاً',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-                ),
-                onPressed: _canExport ? _saveAndSharePdf : null,
               ),
             ),
           ],

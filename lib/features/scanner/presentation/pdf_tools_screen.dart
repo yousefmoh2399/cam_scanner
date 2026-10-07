@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
 import 'package:open_filex/open_filex.dart';
@@ -1116,42 +1117,200 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
 
   // ───────────────────────────────────────────────────────────────────────────
   // TAB 1 VIEW: MERGE
+  Widget _buildAppleDualSourceCards({
+    required String leftTitle,
+    required String leftSubtitle,
+    required IconData leftIcon,
+    required Color leftColor,
+    required VoidCallback onLeftTap,
+    required String rightTitle,
+    required String rightSubtitle,
+    required IconData rightIcon,
+    required Color rightColor,
+    required VoidCallback onRightTap,
+    required bool isDark,
+  }) {
+    return Row(
+      children: [
+        // Left Card (50%)
+        Expanded(
+          child: Material(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onLeftTap();
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                height: 58,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06),
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: leftColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(leftIcon, color: leftColor, size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            leftTitle,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            leftSubtitle,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Right Card (50%)
+        Expanded(
+          child: Material(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onRightTap();
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                height: 58,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06),
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: rightColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(rightIcon, color: rightColor, size: 20),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            rightTitle,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            rightSubtitle,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // TAB 1 VIEW: MERGE
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildMergeTab(AppThemePalette palette) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Source selection buttons
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.file_upload_rounded),
-                label: const Text('إضافة ملفات من الهاتف'),
-                onPressed: _addExternalFilesToMerge,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.folder_special_rounded),
-                label: const Text('إضافة من المكتبة'),
-                onPressed: _addLibraryDocToMerge,
-              ),
-            ),
-          ],
+        // Source selection cards (50% / 50%)
+        _buildAppleDualSourceCards(
+          leftTitle: 'ملفات من الهاتف',
+          leftSubtitle: 'PDF أو صور بالذاكرة',
+          leftIcon: Icons.file_upload_rounded,
+          leftColor: const Color(0xFF9333EA),
+          onLeftTap: _addExternalFilesToMerge,
+          rightTitle: 'من المكتبة',
+          rightSubtitle: 'المستندات الممسوحة',
+          rightIcon: Icons.folder_special_rounded,
+          rightColor: const Color(0xFF007AFF),
+          onRightTap: _addLibraryDocToMerge,
+          isDark: isDark,
         ),
         const SizedBox(height: 16),
 
@@ -1301,41 +1460,24 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildSplitTab(AppThemePalette palette) {
     final hasDoc = _splitPdfPath != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Select source
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.file_open_rounded),
-                label: const Text('اختيار PDF من الهاتف'),
-                onPressed: _pickExternalPdfForSplit,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.folder_shared_rounded),
-                label: const Text('اختيار من المكتبة'),
-                onPressed: _pickLibraryDocForSplit,
-              ),
-            ),
-          ],
+        // Select source cards (50% / 50%)
+        _buildAppleDualSourceCards(
+          leftTitle: 'PDF من الهاتف',
+          leftSubtitle: 'اختيار ملف خارجي',
+          leftIcon: Icons.file_open_rounded,
+          leftColor: const Color(0xFF0D9488),
+          onLeftTap: _pickExternalPdfForSplit,
+          rightTitle: 'من المكتبة',
+          rightSubtitle: 'مستند من التطبيق',
+          rightIcon: Icons.folder_shared_rounded,
+          rightColor: const Color(0xFF007AFF),
+          onRightTap: _pickLibraryDocForSplit,
+          isDark: isDark,
         ),
         const SizedBox(height: 16),
 
@@ -1494,40 +1636,24 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildCompressTab(AppThemePalette palette) {
     final hasDoc = _compressPdfPath != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.file_open_rounded),
-                label: const Text('اختيار PDF من الهاتف'),
-                onPressed: _pickExternalPdfForCompress,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.folder_shared_rounded),
-                label: const Text('اختيار من المكتبة'),
-                onPressed: _pickLibraryDocForCompress,
-              ),
-            ),
-          ],
+        // Select source cards (50% / 50%)
+        _buildAppleDualSourceCards(
+          leftTitle: 'PDF من الهاتف',
+          leftSubtitle: 'تقليص حجم ملف خارجي',
+          leftIcon: Icons.file_open_rounded,
+          leftColor: const Color(0xFF4F46E5),
+          onLeftTap: _pickExternalPdfForCompress,
+          rightTitle: 'من المكتبة',
+          rightSubtitle: 'ضغط مستند ممسوح',
+          rightIcon: Icons.folder_shared_rounded,
+          rightColor: const Color(0xFF007AFF),
+          onRightTap: _pickLibraryDocForCompress,
+          isDark: isDark,
         ),
         const SizedBox(height: 16),
 
@@ -1677,15 +1803,20 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
   // TAB 4 VIEW: IMPORT & OCR
   // ───────────────────────────────────────────────────────────────────────────
   Widget _buildImportTab(AppThemePalette palette) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF059669).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.2)),
+            color: const Color(0xFF059669).withValues(alpha: isDark ? 0.12 : 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFF059669).withValues(alpha: isDark ? 0.3 : 0.2),
+              width: 0.8,
+            ),
           ),
           child: const Row(
             children: [
@@ -1705,39 +1836,101 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
         Container(
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              const Icon(Icons.drive_folder_upload_rounded,
-                  size: 56, color: Color(0xFF059669)),
-              const SizedBox(height: 14),
-              const Text(
-                'استيراد مستند خارجي جديد',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'يدعم ملفات PDF المتعددة، أو صور JPG/PNG/WebP',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                  backgroundColor: const Color(0xFF059669),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF059669), Color(0xFF10B981)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF059669).withValues(alpha: 0.28),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.drive_folder_upload_rounded,
+                    size: 34,
+                    color: Colors.white,
                   ),
                 ),
-                icon: const Icon(Icons.file_open_rounded),
-                label: const Text(
-                  'اختيار الملفات من ذاكرة الجهاز',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'استيراد مستند خارجي جديد',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'يدعم ملفات PDF المتعددة، أو صور JPG / PNG / WebP',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.white60 : Colors.black54,
                 ),
-                onPressed: _importExternalPdfOrImages,
+              ),
+              const SizedBox(height: 24),
+              Material(
+                color: const Color(0xFF059669),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    _importExternalPdfOrImages();
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    height: 52,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF059669).withValues(alpha: 0.28),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.file_open_rounded, color: Colors.white, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'اختيار الملفات من ذاكرة الجهاز',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
 import 'package:open_filex/open_filex.dart';
@@ -308,28 +309,30 @@ class _GovernmentDocumentsScreenState
     required bool isDark,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.black.withValues(alpha: 0.03),
+          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDark
                 ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
+                : Colors.black.withValues(alpha: 0.05),
+            width: 0.8,
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
+                color: iconColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: iconColor, size: 22),
@@ -342,7 +345,7 @@ class _GovernmentDocumentsScreenState
                   Text(
                     title,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
                   ),
@@ -359,7 +362,7 @@ class _GovernmentDocumentsScreenState
             ),
             Icon(
               Icons.chevron_left_rounded,
-              color: isDark ? Colors.white30 : Colors.black26,
+              color: isDark ? Colors.white38 : Colors.black38,
               size: 20,
             ),
           ],
@@ -575,66 +578,143 @@ class _GovernmentDocumentsScreenState
                   ),
                 const SizedBox(height: 24),
 
-                // Primary: Open
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF007AFF),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                // Primary: Open Preview
+                Material(
+                  color: const Color(0xFF007AFF),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.pop(ctx);
+                      OpenFilex.open(filePath);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.28),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.open_in_new_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'فتح المستند للمعاينة',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  icon: const Icon(Icons.open_in_new_rounded, size: 20),
-                  label: const Text(
-                    'فتح المستند للمعاينة',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    OpenFilex.open(filePath);
-                  },
                 ),
                 const SizedBox(height: 10),
 
-                // Secondary row: Share + Print
+                // Secondary row: Share + Print (Balanced 50% / 50%)
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                      child: Material(
+                        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                        borderRadius: BorderRadius.circular(14),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pop(ctx);
+                            Share.shareXFiles([XFile(filePath)]);
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white12
+                                    : Colors.black.withValues(alpha: 0.06),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.share_rounded,
+                                  size: 18,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'مشاركة',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        icon: const Icon(Icons.share_rounded, size: 19),
-                        label: const Text('مشاركة',
-                            style: TextStyle(fontWeight: FontWeight.w700)),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          Share.shareXFiles([XFile(filePath)]);
-                        },
                       ),
                     ),
                     if (isPdf) ...[
                       const SizedBox(width: 10),
                       Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                        child: Material(
+                          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                          borderRadius: BorderRadius.circular(14),
+                          child: InkWell(
+                            onTap: () async {
+                              HapticFeedback.lightImpact();
+                              Navigator.pop(ctx);
+                              final bytes = await File(filePath).readAsBytes();
+                              await Printing.layoutPdf(onLayout: (_) => bytes);
+                            },
+                            borderRadius: BorderRadius.circular(14),
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white12
+                                      : Colors.black.withValues(alpha: 0.06),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.print_rounded,
+                                    size: 18,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'طباعة فورية',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          icon: const Icon(Icons.print_rounded, size: 19),
-                          label: const Text('طباعة فورية',
-                              style: TextStyle(fontWeight: FontWeight.w700)),
-                          onPressed: () async {
-                            Navigator.pop(ctx);
-                            final bytes = await File(filePath).readAsBytes();
-                            await Printing.layoutPdf(onLayout: (_) => bytes);
-                          },
                         ),
                       ),
                     ],
