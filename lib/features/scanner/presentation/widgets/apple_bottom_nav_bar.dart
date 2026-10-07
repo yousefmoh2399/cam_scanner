@@ -17,6 +17,7 @@ import '../vault_screen.dart';
 import '../id_card_a4_screen.dart';
 import '../notebook_lines_remover_screen.dart';
 import '../object_counter_screen.dart';
+import '../anti_moire_whiteboard_screen.dart';
 
 /// An Apple Human Interface Guidelines bottom navigation bar featuring:
 /// - Frosted glass blur backdrop filter
@@ -384,6 +385,21 @@ class AppleBottomNavBar extends ConsumerWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const ObjectCounterScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildQuickActionTile(
+                    sheetCtx: sheetCtx,
+                    icon: Icons.screenshot_monitor_rounded,
+                    color: const Color(0xFF007AFF),
+                    title: 'مزيل تموجات الشاشات والسبورة 🖥️',
+                    subtitle: 'إزالة خطوط الشاشة ولمعان الضوء لتخرج كصورة أصلية',
+                    onTap: () {
+                      Navigator.pop(sheetCtx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const AntiMoireWhiteboardScreen(),
                         ),
                       );
                     },

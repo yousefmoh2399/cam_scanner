@@ -770,11 +770,18 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           batch: false,
         );
         if (results.isNotEmpty && mounted) {
-          final path = results.first.path;
-          if (File(path).existsSync()) {
+          final res = results.first;
+          final processedPath = await openScanReviewScreen(
+            context,
+            rawImagePath: res.path,
+            initialCorners: res.corners,
+            imageWidth: res.width,
+            imageHeight: res.height,
+          );
+          if (processedPath != null && File(processedPath).existsSync() && mounted) {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => BookCurveFlattenerScreen(imagePath: path),
+                builder: (_) => BookCurveFlattenerScreen(imagePath: processedPath),
               ),
             );
           }
@@ -793,11 +800,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     } else if (choice == 'pick_external') {
       final res = await FilePicker.platform.pickFiles(type: FileType.image);
       if (res != null && res.files.single.path != null && mounted) {
-        final path = res.files.single.path!;
-        if (File(path).existsSync()) {
+        final rawPath = res.files.single.path!;
+        final processedPath = await openScanReviewScreen(
+          context,
+          rawImagePath: rawPath,
+        );
+        if (processedPath != null && File(processedPath).existsSync() && mounted) {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => BookCurveFlattenerScreen(imagePath: path),
+              builder: (_) => BookCurveFlattenerScreen(imagePath: processedPath),
             ),
           );
         }
@@ -1666,8 +1677,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           destDir: draftsDir.path,
           batch: false,
         );
-        if (scanResults.isNotEmpty) {
-          path = scanResults.first.path;
+        if (scanResults.isNotEmpty && mounted) {
+          final res = scanResults.first;
+          path = await openScanReviewScreen(
+            context,
+            rawImagePath: res.path,
+            initialCorners: res.corners,
+            imageWidth: res.width,
+            imageHeight: res.height,
+          );
         }
       } on ScannerPermissionDeniedException catch (e) {
         if (mounted) {
@@ -1687,7 +1705,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         type: FileType.image,
         allowMultiple: false,
       );
-      path = result?.files.firstOrNull?.path;
+      if (result != null && result.files.firstOrNull?.path != null && mounted) {
+        path = await openScanReviewScreen(
+          context,
+          rawImagePath: result.files.firstOrNull!.path!,
+        );
+      }
     }
 
     if (path == null) return;
