@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -972,13 +973,13 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
                 // Actions row: Rotate & Edit Crop & Save Page
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton.filledTonal(
-                          tooltip: 'تدوير 90 درجة لليسار',
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: IconButton.filledTonal(
+                          tooltip: 'تدوير 90 درجة',
                           icon: const Icon(Icons.rotate_left_rounded, size: 22),
                           style: IconButton.styleFrom(
                             backgroundColor: isDark
@@ -987,59 +988,78 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
                             foregroundColor:
                                 isDark ? Colors.white : Colors.black87,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: _isBusy ? null : _rotateLeft,
-                        ),
-                        const SizedBox(width: 10),
-                        TextButton.icon(
-                          icon: const Icon(Icons.crop_free_rounded, size: 20),
-                          label: const Text('إعادة ضبط حدود القص'),
-                          style: TextButton.styleFrom(
-                            foregroundColor:
-                                isDark ? Colors.white70 : Colors.black87,
-                            backgroundColor: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : Colors.black.withValues(alpha: 0.05),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 11,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                           onPressed: _isBusy
                               ? null
                               : () {
-                                  setState(() => _isEditingCrop = true);
+                                  HapticFeedback.lightImpact();
+                                  _rotateLeft();
                                 },
                         ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.done_all_rounded, size: 20),
-                          label: const Text('حفظ الصفحة'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: palette.accent,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: TextButton.icon(
+                            icon: const Icon(Icons.crop_free_rounded, size: 19),
+                            label: const Text(
+                              'حدود القص',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 13),
                             ),
-                            elevation: 0,
-                            textStyle: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
+                            style: TextButton.styleFrom(
+                              foregroundColor:
+                                  isDark ? Colors.white : Colors.black87,
+                              backgroundColor: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            onPressed: _isBusy
+                                ? null
+                                : () {
+                                    HapticFeedback.lightImpact();
+                                    setState(() => _isEditingCrop = true);
+                                  },
                           ),
-                          onPressed: _isBusy ? null : _confirmAndSave,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.check_rounded, size: 20),
+                            label: const Text(
+                              'حفظ الصفحة',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: palette.accent,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: _isBusy
+                                ? null
+                                : () {
+                                    HapticFeedback.mediumImpact();
+                                    _confirmAndSave();
+                                  },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

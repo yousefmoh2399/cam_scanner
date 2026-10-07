@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/signature_model.dart';
@@ -589,53 +589,67 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
             child: Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: (!_hasDrawingState || _saving)
-                        ? null
-                        : () => _confirmNewSignature(save: false),
-                    icon: const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('استخدام الآن'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: (!_hasDrawingState || _saving)
+                          ? null
+                          : () {
+                              HapticFeedback.lightImpact();
+                              _confirmNewSignature(save: false);
+                            },
+                      icon: const Icon(Icons.check_rounded, size: 18),
+                      label: const Text(
+                        'استخدام الآن',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 13),
                       ),
-                      foregroundColor: palette.accent,
-                      side: BorderSide(
-                        color: _hasDrawingState
-                            ? palette.accent.withValues(alpha: 0.6)
-                            : theme.colorScheme.outlineVariant,
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        foregroundColor: palette.accent,
+                        side: BorderSide(
+                          color: _hasDrawingState
+                              ? palette.accent.withValues(alpha: 0.6)
+                              : theme.colorScheme.outlineVariant,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  flex: 2,
-                  child: FilledButton.icon(
-                    onPressed: (!_hasDrawingState || _saving)
-                        ? null
-                        : () => _confirmNewSignature(save: true),
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.done_all_rounded, size: 18),
-                    label: const Text(
-                      'اعتماد وحفظ التوقيع',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: palette.accent,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(0, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: (!_hasDrawingState || _saving)
+                          ? null
+                          : () {
+                              HapticFeedback.mediumImpact();
+                              _confirmNewSignature(save: true);
+                            },
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.done_all_rounded, size: 18),
+                      label: const Text(
+                        'اعتماد وحفظ',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 13),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: palette.accent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),

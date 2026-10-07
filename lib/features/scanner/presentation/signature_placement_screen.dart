@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../data/signature_composer_service.dart';
@@ -493,49 +493,69 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: _applying
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: isDark ? Colors.white : Colors.black,
-                            side: BorderSide(
-                              color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
-                              width: 0.5,
+                        child: SizedBox(
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: _applying
+                                ? null
+                                : () {
+                                    HapticFeedback.lightImpact();
+                                    Navigator.of(context).pop();
+                                  },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor:
+                                  isDark ? Colors.white : Colors.black,
+                              side: BorderSide(
+                                color: isDark
+                                    ? const Color(0xFF38383A)
+                                    : const Color(0xFFE5E5EA),
+                                width: 0.8,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
-                            minimumSize: const Size(0, 48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                            child: const Text(
+                              'إلغاء',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 13.5),
                             ),
                           ),
-                          child: const Text('إلغاء'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 2,
-                        child: FilledButton.icon(
-                          onPressed: _applying ? null : _apply,
-                          icon: _applying
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.done_all_rounded),
-                          label: const Text(
-                            'اعتماد التوقيع على الورقة',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: palette.accent,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(0, 48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                        child: SizedBox(
+                          height: 52,
+                          child: FilledButton.icon(
+                            onPressed: _applying
+                                ? null
+                                : () {
+                                    HapticFeedback.mediumImpact();
+                                    _apply();
+                                  },
+                            icon: _applying
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.done_all_rounded, size: 20),
+                            label: const Text(
+                              'اعتماد التوقيع على الورقة',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 14),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: palette.accent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
                           ),
                         ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -45,6 +46,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'حذف نهائي لا يمكن الرجوع عنه',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
@@ -54,14 +56,47 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
           style: const TextStyle(fontSize: 14),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: palette.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('حذف نهائياً'),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.pop(ctx, false);
+                    },
+                    child: const Text('إلغاء',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: palette.danger,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      Navigator.pop(ctx, true);
+                    },
+                    child: const Text('حذف نهائياً',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -87,6 +122,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'تفريغ سلة المحذوفات بالكامل',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
@@ -96,14 +132,47 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
           style: const TextStyle(fontSize: 14, height: 1.5),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: palette.danger),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('تفريغ السلة الآن'),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.pop(ctx, false);
+                    },
+                    child: const Text('إلغاء',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: palette.danger,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      HapticFeedback.heavyImpact();
+                      Navigator.pop(ctx, true);
+                    },
+                    child: const Text('تفريغ السلة',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

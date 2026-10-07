@@ -577,7 +577,6 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
 
   Future<void> _showAddPageSheet() async {
     if (_isRebuildingPdf) return;
-    final palette = context.appThemePalette;
     final choice = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -612,22 +611,30 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                       style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
                     ),
                     const SizedBox(height: 14),
-                    _buildAddPageOptionTile(
-                      icon: Icons.camera_alt_rounded,
-                      color: palette.accent,
-                      title: 'مسح بالكاميرا الذكية',
-                      subtitle: 'التقاط صفحة جديدة مباشرة وإلحاقها بهذا الملف',
-                      onTap: () => Navigator.pop(ctx, 'camera'),
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildAddPageOptionTile(
-                      icon: Icons.photo_library_rounded,
-                      color: const Color(0xFFFF2D55),
-                      title: 'استيراد من ألبوم الصور',
-                      subtitle: 'اختيار صور من المعرض وإضافتها لهذا الملف',
-                      onTap: () => Navigator.pop(ctx, 'gallery'),
-                      isDark: isDark,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildModalSourceCard(
+                            icon: Icons.camera_alt_rounded,
+                            color: const Color(0xFF007AFF),
+                            title: 'كاميرا الهاتف',
+                            subtitle: 'التقاط فوري مباشر',
+                            onTap: () => Navigator.pop(ctx, 'camera'),
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildModalSourceCard(
+                            icon: Icons.photo_library_rounded,
+                            color: const Color(0xFF5856D6),
+                            title: 'ألبوم الصور',
+                            subtitle: 'اختيار من المعرض',
+                            onTap: () => Navigator.pop(ctx, 'gallery'),
+                            isDark: isDark,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -714,7 +721,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     }
   }
 
-  Widget _buildAddPageOptionTile({
+  Widget _buildModalSourceCard({
     required IconData icon,
     required Color color,
     required String title,
@@ -722,55 +729,56 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     required VoidCallback onTap,
     required bool isDark,
   }) {
-    return Material(
-      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: isDark ? Colors.white54 : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14,
-                color: isDark ? Colors.white30 : Colors.black26,
-              ),
-            ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withValues(alpha: 0.25),
+            width: 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+              ),
+            ),
+          ],
         ),
       ),
     );
