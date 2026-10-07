@@ -28,7 +28,6 @@ import 'auto_redaction_screen.dart';
 import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
-import 'widgets/theme_selection_sheet.dart';
 import 'document_diff_screen.dart';
 import 'magic_clean_screen.dart';
 import 'stamp_studio_screen.dart';
@@ -42,6 +41,9 @@ import 'scan_review_screen.dart';
 import 'id_card_a4_screen.dart';
 import 'notebook_lines_remover_screen.dart';
 import 'object_counter_screen.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '../data/qr_scanner_service.dart';
 import 'anti_moire_whiteboard_screen.dart';
 import 'qr_studio_screen.dart';
 
@@ -297,9 +299,19 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       subtitle: 'توليد رموز فورية للواي فاي، كروت الأعمال vCard، الروابط مع تخصيص الألوان والشعار وطباعتها أوفلاين',
       category: ToolCategory.intelligence,
       icon: Icons.qr_code_2_rounded,
-      badge: 'QR & Barcode 📱',
+      badge: 'QR Studio 📱',
       accentColor: Color(0xFF007AFF),
       keywords: ['qr', 'باركود', 'كود', 'واي فاي', 'wifi', 'vcard', 'كارت', 'رابط', 'url', 'طباعة', 'واتساب', 'barcode'],
+    ),
+    ToolItem(
+      id: 'ai_qr_scanner',
+      title: 'ماسح رموز QR والباركود الذكي',
+      subtitle: 'مسح وقراءة الرموز عبر الكاميرا أو المعرض والتنقل الفوري للروابط أو شبكات الواي فاي وسيرفرات المشاركة',
+      category: ToolCategory.intelligence,
+      icon: Icons.qr_code_scanner_rounded,
+      badge: 'مسح فوري 📷',
+      accentColor: Color(0xFF34C759),
+      keywords: ['qr', 'باركود', 'مسح', 'scanner', 'كاميرا', 'سيرفر', 'barcode', 'كود', 'شاشة'],
     ),
 
     // ── PDF Tools Category ──
@@ -706,7 +718,210 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           ),
         );
         break;
+
+      case 'ai_qr_scanner':
+        _launchQrScannerTool();
+        break;
     }
+  }
+
+  Future<void> _launchQrScannerTool() async {
+    HapticFeedback.mediumImpact();
+    final source = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.qr_code_scanner_rounded,
+                        color: Color(0xFF34C759), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('ماسح رموز QR والباركود الذكي',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 15)),
+                        SizedBox(height: 2),
+                        Text('اختر طريقة المسح والقراءة الفورية أوفلاين',
+                            style: TextStyle(fontSize: 11.5, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded,
+                      color: Color(0xFF34C759)),
+                ),
+                title: const Text('فتح الكاميرا للمسح فوراً',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                subtitle: const Text('توجيه الكاميرا إلى أي كود لمسحه أوفلاين',
+                    style: TextStyle(fontSize: 11, color: Colors.grey)),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () => Navigator.pop(ctx, 'camera'),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5856D6).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded,
+                      color: Color(0xFF5856D6)),
+                ),
+                title: const Text('اختيار صورة من المعرض',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                subtitle: const Text('قراءة رمز من لقطة شاشة أو صورة محفوظة',
+                    style: TextStyle(fontSize: 11, color: Colors.grey)),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () => Navigator.pop(ctx, 'gallery'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    String? targetPath;
+    if (source == 'camera') {
+      try {
+        final tmpDir = await getTemporaryDirectory();
+        final res = await NativeScannerBridge.startSingleScan(
+          destDir: tmpDir.path,
+        );
+        if (res == null || !mounted) return;
+        targetPath = res.path;
+      } on ScannerPermissionDeniedException catch (e) {
+        if (mounted) await showScannerPermissionDialog(context, e);
+        return;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر فتح الكاميرا: $e')),
+          );
+        }
+        return;
+      }
+    } else if (source == 'gallery') {
+      try {
+        final res = await FilePicker.platform.pickFiles(type: FileType.image);
+        if (res == null ||
+            res.files.isEmpty ||
+            res.files.first.path == null ||
+            !mounted) {
+          return;
+        }
+        targetPath = res.files.first.path!;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر اختيار الصورة: $e')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (targetPath == null || !mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(strokeWidth: 2.5),
+                SizedBox(width: 16),
+                Text('جارٍ فحص الرمز...',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final payload = await QrScannerService.instance.scanImage(targetPath);
+
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (payload == null || payload.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline_rounded,
+                    color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child:
+                      Text('لم يتم العثور على رمز QR أو باركود واضح في الصورة.'),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFFFF3B30),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    await QrScannerService.instance.handleScannedPayload(
+      context: context,
+      payload: payload,
+    );
   }
 
   // ── Action Handlers ──
@@ -2112,7 +2327,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final childAspectRatio =
-        isTablet ? 1.55 : (screenWidth < 370 ? 1.30 : 1.42);
+        isTablet ? 1.38 : (screenWidth < 370 ? 1.05 : 1.16);
 
     final isDefaultGroupedView =
         _selectedCategory == ToolCategory.all && _searchQuery.trim().isEmpty;
@@ -2131,7 +2346,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'الأدوات',
+              'مركز الأدوات',
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
@@ -2139,7 +2354,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               ),
             ),
             Text(
-              '${_allTools.length} أداة • أوفلاين 100%',
+              '${_allTools.length} أداة احترافية • أوفلاين 100%',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -2151,106 +2366,44 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           ],
         ),
         actions: [
-          // View Mode Switcher (Grid vs List toggle)
+          // Cupertino Segmented View Switcher (Grid / List)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                _setViewMode(!_isGridView);
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
+            padding: const EdgeInsetsDirectional.only(end: 14),
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF1C1C1E)
+                    : const Color(0xFFE5E5EA),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
                   color: isDark
-                      ? const Color(0xFF1C1C1E)
-                      : const Color(0xFFE5E5EA),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.05),
-                    width: 0.5,
-                  ),
-                ),
-                child: Icon(
-                  _isGridView
-                      ? Icons.view_agenda_rounded
-                      : Icons.grid_view_rounded,
-                  size: 18,
-                  color: isDark
-                      ? const Color(0xFFE5E5EA)
-                      : const Color(0xFF1C1C1E),
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.05),
+                  width: 0.5,
                 ),
               ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: InkWell(
-              onTap: () => showThemeSelectionSheet(context, ref),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF1C1C1E)
-                      : const Color(0xFFE5E5EA),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.05),
-                    width: 0.5,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildViewSegmentItem(
+                    icon: Icons.grid_view_rounded,
+                    isSelected: _isGridView,
+                    tooltip: 'عرض شبكي',
+                    onTap: () => _setViewMode(true),
+                    isDark: isDark,
+                    palette: palette,
                   ),
-                ),
-                child: Icon(
-                  Icons.palette_outlined,
-                  size: 18,
-                  color: isDark
-                      ? const Color(0xFFE5E5EA)
-                      : const Color(0xFF1C1C1E),
-                ),
-              ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.only(left: 12, right: 4),
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                ref
-                    .read(userPreferencesControllerProvider.notifier)
-                    .toggleDarkMode();
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF1C1C1E)
-                      : const Color(0xFFE5E5EA),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.05),
-                    width: 0.5,
+                  _buildViewSegmentItem(
+                    icon: Icons.view_agenda_rounded,
+                    isSelected: !_isGridView,
+                    tooltip: 'عرض قائمة',
+                    onTap: () => _setViewMode(false),
+                    isDark: isDark,
+                    palette: palette,
                   ),
-                ),
-                child: Icon(
-                  isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                  size: 18,
-                  color: isDark
-                      ? const Color(0xFFE5E5EA)
-                      : const Color(0xFF1C1C1E),
-                ),
+                ],
               ),
             ),
           ),
@@ -2581,6 +2734,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               else if (isDefaultGroupedView)
                 // Grouped by Category when viewing All and no search query
                 ...[
+                  // 1. Featured Quick Access / Shortcuts Section (Top 4 Tools)
+                  SliverToBoxAdapter(
+                    child: _buildQuickAccessSection(isDark, palette),
+                  ),
+
+                  // 2. Inset Grouped Categories
                   for (final cat in [
                     ToolCategory.government,
                     ToolCategory.intelligence,
@@ -2632,21 +2791,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                               ),
                             )
                           else
-                            SliverPadding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              sliver: SliverList(
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    return _buildListCard(
-                                      context: context,
-                                      tool: categoryTools[index],
-                                      isDark: isDark,
-                                      palette: palette,
-                                    );
-                                  },
-                                  childCount: categoryTools.length,
-                                ),
+                            SliverToBoxAdapter(
+                              child: _buildInsetGroupedCategoryList(
+                                context: context,
+                                tools: categoryTools,
+                                isDark: isDark,
+                                palette: palette,
                               ),
                             ),
                           const SliverToBoxAdapter(
@@ -2685,20 +2835,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       ),
                     )
                   else
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            return _buildListCard(
-                              context: context,
-                              tool: tools[index],
-                              isDark: isDark,
-                              palette: palette,
-                            );
-                          },
-                          childCount: tools.length,
-                        ),
+                    SliverToBoxAdapter(
+                      child: _buildInsetGroupedCategoryList(
+                        context: context,
+                        tools: tools,
+                        isDark: isDark,
+                        palette: palette,
                       ),
                     ),
                 ],
@@ -2737,6 +2879,258 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
   // ── Helper Widgets ──
 
+  Widget _buildViewSegmentItem({
+    required IconData icon,
+    required bool isSelected,
+    required String tooltip,
+    required VoidCallback onTap,
+    required bool isDark,
+    required AppThemePalette palette,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: 32,
+          height: 28,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? const Color(0xFF2C2C2E) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Icon(
+            icon,
+            size: 16,
+            color: isSelected
+                ? palette.accent
+                : (isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Featured Quick Access Section ──
+
+  Widget _buildQuickAccessSection(bool isDark, AppThemePalette palette) {
+    final quickToolIds = [
+      'gov_id_card',
+      'ai_excel_converter',
+      'transfer_web_drop',
+      'ai_qr_studio',
+    ];
+    final quickTools = quickToolIds
+        .map((id) => _allTools.firstWhere((t) => t.id == id))
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9500).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(
+                  Icons.bolt_rounded,
+                  size: 15,
+                  color: Color(0xFFFF9500),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'الوصول السريع',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14.5,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9500).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  'الأكثر طلباً ⚡',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFFF9500),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickAccessCard(
+                  tool: quickTools[0],
+                  isDark: isDark,
+                  palette: palette,
+                  gradient: const [Color(0xFF007AFF), Color(0xFF0051A8)],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildQuickAccessCard(
+                  tool: quickTools[1],
+                  isDark: isDark,
+                  palette: palette,
+                  gradient: const [Color(0xFF10B981), Color(0xFF047857)],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickAccessCard(
+                  tool: quickTools[2],
+                  isDark: isDark,
+                  palette: palette,
+                  gradient: const [Color(0xFF5856D6), Color(0xFF3B39A3)],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildQuickAccessCard(
+                  tool: quickTools[3],
+                  isDark: isDark,
+                  palette: palette,
+                  gradient: const [Color(0xFFFF9500), Color(0xFFD97706)],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAccessCard({
+    required ToolItem tool,
+    required bool isDark,
+    required AppThemePalette palette,
+    required List<Color> gradient,
+  }) {
+    return Material(
+      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          _onToolSelected(tool);
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 66,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: 0.6,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: gradient,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(11),
+                  boxShadow: [
+                    BoxShadow(
+                      color: gradient.first.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(tool.icon, color: Colors.white, size: 20),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tool.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      tool.badge,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: gradient.first,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Section Header ──
+
   Widget _buildSectionHeader({
     required ToolCategory category,
     required int count,
@@ -2760,22 +3154,38 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            category.sectionTitle,
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 14.5,
-              letterSpacing: -0.2,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  category.sectionTitle,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                Text(
+                  category.sectionSubtitle,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: Color(0xFF8E8E93),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.08)
                   : Colors.black.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               '$count أدوات',
@@ -2791,7 +3201,161 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
-  // ── Grid Card Design ──
+  // ── Inset Grouped List Design (Apple iOS Settings Style) ──
+
+  Widget _buildInsetGroupedCategoryList({
+    required BuildContext context,
+    required List<ToolItem> tools,
+    required bool isDark,
+    required AppThemePalette palette,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Column(
+          children: [
+            for (int i = 0; i < tools.length; i++) ...[
+              _buildInsetGroupRow(
+                context: context,
+                tool: tools[i],
+                isDark: isDark,
+                palette: palette,
+              ),
+              if (i < tools.length - 1)
+                Divider(
+                  height: 0.5,
+                  thickness: 0.5,
+                  indent: 62,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInsetGroupRow({
+    required BuildContext context,
+    required ToolItem tool,
+    required bool isDark,
+    required AppThemePalette palette,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          _onToolSelected(tool);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Squircle App Icon
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: tool.accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  tool.icon,
+                  color: tool.accentColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Title, Badge, Subtitle
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            tool.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: tool.accentColor.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            tool.badge,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: tool.accentColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2.5),
+                    Text(
+                      tool.subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF8E8E93),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 13,
+                color: Color(0xFF8E8E93),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Grid Card Design (Apple Shortcuts Grid Style) ──
 
   Widget _buildGridCard({
     required BuildContext context,
@@ -2802,12 +3366,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.06),
-          width: 0.5,
+          width: 0.6,
         ),
         boxShadow: [
           BoxShadow(
@@ -2819,15 +3383,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           onTap: () {
             HapticFeedback.lightImpact();
             _onToolSelected(tool);
           },
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(13),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2836,8 +3400,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 38,
+                      height: 38,
                       decoration: BoxDecoration(
                         color: tool.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
@@ -2869,154 +3433,34 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     ),
                   ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 10),
 
                 // Title
                 Text(
                   tool.title,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 12.5,
-                    height: 1.2,
+                    fontSize: 13,
+                    height: 1.25,
+                    letterSpacing: -0.2,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
 
                 // Subtitle
-                Text(
-                  tool.subtitle,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF8E8E93),
-                    height: 1.25,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── List Card Design ──
-
-  Widget _buildListCard({
-    required BuildContext context,
-    required ToolItem tool,
-    required bool isDark,
-    required AppThemePalette palette,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.06),
-          width: 0.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () {
-            HapticFeedback.lightImpact();
-            _onToolSelected(tool);
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Tool Icon Box
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: tool.accentColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    tool.icon,
-                    color: tool.accentColor,
-                    size: 19,
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Tool Content
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              tool.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: tool.accentColor.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              tool.badge,
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: tool.accentColor,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        tool.subtitle,
-                        style: const TextStyle(
-                          fontSize: 10.5,
-                          color: Color(0xFF8E8E93),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  child: Text(
+                    tool.subtitle,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: Color(0xFF8E8E93),
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 13,
-                  color: Color(0xFF8E8E93),
                 ),
               ],
             ),

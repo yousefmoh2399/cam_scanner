@@ -462,6 +462,16 @@ class NativeScannerBridge {
       return null;
     }
   }
+
+  /// Decodes a QR code natively using OpenCV QRCodeDetector from an image path.
+  static Future<String?> decodeQrCode(String path) async {
+    try {
+      final res = await _channel.invokeMethod<String>('decodeQrCode', {'path': path});
+      return res;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 

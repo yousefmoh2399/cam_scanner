@@ -66,6 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>يحتاج التطبيق إلى إذن استخدام الكاميرا لمسح المستندات والبطاقات الشخصية وجوازات السفر ضوئياً بدقة عالية.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

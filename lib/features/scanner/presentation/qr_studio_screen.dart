@@ -7,10 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
+
+import '../data/native_scanner_bridge.dart';
+import '../data/qr_scanner_service.dart';
 
 /// Categories / types of QR codes that can be generated offline
 enum QrStudioType {
@@ -370,6 +374,206 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
     );
   }
 
+  Future<void> _scanQrCode() async {
+    HapticFeedback.mediumImpact();
+    final source = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.qr_code_scanner_rounded,
+                        color: Color(0xFF007AFF), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('مسح وقراءة رمز QR أو باركود',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 15)),
+                        SizedBox(height: 2),
+                        Text('امسح عبر الكاميرا أو اختر صورة من المعرض',
+                            style:
+                                TextStyle(fontSize: 11.5, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded,
+                      color: Color(0xFF34C759)),
+                ),
+                title: const Text('فتح الكاميرا للمسح فوراً',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                subtitle: const Text('توجيه الكاميرا إلى أي كود لمسحه أوفلاين',
+                    style: TextStyle(fontSize: 11, color: Colors.grey)),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () => Navigator.pop(ctx, 'camera'),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5856D6).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded,
+                      color: Color(0xFF5856D6)),
+                ),
+                title: const Text('اختيار صورة من المعرض',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                subtitle: const Text('قراءة رمز من لقطة شاشة أو صورة محفوظة',
+                    style: TextStyle(fontSize: 11, color: Colors.grey)),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: () => Navigator.pop(ctx, 'gallery'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    String? targetPath;
+    if (source == 'camera') {
+      try {
+        final tmpDir = await getTemporaryDirectory();
+        final res = await NativeScannerBridge.startSingleScan(
+          destDir: tmpDir.path,
+        );
+        if (res == null || !mounted) return;
+        targetPath = res.path;
+      } on ScannerPermissionDeniedException catch (e) {
+        if (mounted) await showScannerPermissionDialog(context, e);
+        return;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر فتح الكاميرا: $e')),
+          );
+        }
+        return;
+      }
+    } else if (source == 'gallery') {
+      try {
+        final res = await FilePicker.platform.pickFiles(type: FileType.image);
+        if (res == null ||
+            res.files.isEmpty ||
+            res.files.first.path == null ||
+            !mounted) {
+          return;
+        }
+        targetPath = res.files.first.path!;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر اختيار الصورة: $e')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (targetPath == null || !mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(strokeWidth: 2.5),
+                SizedBox(width: 16),
+                Text('جارٍ فحص الرمز...',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final payload = await QrScannerService.instance.scanImage(targetPath);
+
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (payload == null || payload.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline_rounded,
+                    color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child:
+                      Text('لم يتم العثور على رمز QR أو باركود واضح في الصورة.'),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFFFF3B30),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    await QrScannerService.instance.handleScannedPayload(
+      context: context,
+      payload: payload,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -407,6 +611,11 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'مسح رمز QR أو باركود',
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF007AFF)),
+            onPressed: _scanQrCode,
+          ),
           IconButton(
             tooltip: 'طباعة فورية',
             icon: const Icon(Icons.print_rounded),

@@ -76,7 +76,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   List<DocumentFolder> _folders = const [];
 
   final Set<String> _selectedDocIds = <String>{};
-  bool get _isMultiSelectMode => _selectedDocIds.isNotEmpty;
+  bool _isSelectionMode = false;
+  bool get _isMultiSelectMode => _isSelectionMode || _selectedDocIds.isNotEmpty;
 
   @override
   void initState() {
@@ -575,7 +576,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   for (final d in docs) {
                     await _moveDocToFolder(d, null);
                   }
-                  setState(() => _selectedDocIds.clear());
+                  setState(() {
+                    _selectedDocIds.clear();
+                    _isSelectionMode = false;
+                  });
                 },
               ),
               const Divider(height: 1),
@@ -611,7 +615,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           for (final d in docs) {
                             await _moveDocToFolder(d, folder);
                           }
-                          setState(() => _selectedDocIds.clear());
+                          setState(() {
+                            _selectedDocIds.clear();
+                            _isSelectionMode = false;
+                          });
                         },
                       );
                     },
@@ -1408,7 +1415,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
     if (confirmed != true || !mounted) return;
     final ids = _selectedDocIds.toList();
-    setState(() => _selectedDocIds.clear());
+    setState(() {
+      _selectedDocIds.clear();
+      _isSelectionMode = false;
+    });
     await ref.read(pendingUploadsControllerProvider.notifier).removeMultiple(ids);
   }
 
@@ -1418,7 +1428,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         .map((d) => XFile(d.filePath))
         .toList();
     if (selected.isEmpty) return;
-    setState(() => _selectedDocIds.clear());
+    setState(() {
+      _selectedDocIds.clear();
+      _isSelectionMode = false;
+    });
     await Share.shareXFiles(selected);
   }
 
@@ -1479,7 +1492,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        setState(() => _selectedDocIds.clear());
+        setState(() {
+          _selectedDocIds.clear();
+          _isSelectionMode = false;
+        });
 
         HapticFeedback.mediumImpact();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1520,6 +1536,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     AppThemePalette palette,
     bool isDark,
   ) {
+    final bool hasSelection = _selectedDocIds.isNotEmpty;
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
@@ -1551,12 +1569,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 icon: Icons.folder_zip_rounded,
                 label: 'أرشيف ZIP',
                 color: const Color(0xFF007AFF),
+                enabled: hasSelection,
                 onTap: () => _exportSelectedAsBatchZip(allDocs),
               ),
               _buildMultiSelectActionItem(
                 icon: Icons.drive_file_move_rounded,
                 label: 'نقل لمجلد',
                 color: palette.accent,
+                enabled: hasSelection,
                 onTap: () {
                   final selected = allDocs
                       .where((d) => _selectedDocIds.contains(d.id))
@@ -1568,12 +1588,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 icon: Icons.ios_share_rounded,
                 label: 'مشاركة',
                 color: const Color(0xFF34C759),
+                enabled: hasSelection,
                 onTap: () => _shareSelectedDocuments(allDocs),
               ),
               _buildMultiSelectActionItem(
                 icon: Icons.delete_outline_rounded,
                 label: 'حذف',
                 color: palette.danger,
+                enabled: hasSelection,
                 onTap: _deleteSelectedDocuments,
               ),
             ],
@@ -1588,23 +1610,31 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     required String label,
     required Color color,
     required VoidCallback onTap,
+    bool enabled = true,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = enabled
+        ? color
+        : (isDark
+            ? Colors.white.withValues(alpha: 0.28)
+            : Colors.black.withValues(alpha: 0.25));
+
     return InkWell(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 2),
+            Icon(icon, color: effectiveColor, size: 22),
+            const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: color,
+                color: effectiveColor,
               ),
             ),
           ],
@@ -1626,14 +1656,37 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         .length;
     final favDocsCount = allDocs.where((d) => d.isFavorite).length;
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_isMultiSelectMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _isMultiSelectMode) {
+          HapticFeedback.lightImpact();
+          setState(() {
+            _isSelectionMode = false;
+            _selectedDocIds.clear();
+          });
+        }
+      },
+      child: Scaffold(
       extendBody: true,
       backgroundColor:
           isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: _isMultiSelectMode
           ? AppBar(
+              centerTitle: true,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              backgroundColor:
+                  isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+              leadingWidth: 72,
               leading: TextButton(
-                onPressed: () => setState(() => _selectedDocIds.clear()),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  setState(() {
+                    _isSelectionMode = false;
+                    _selectedDocIds.clear();
+                  });
+                },
                 child: Text(
                   'إلغاء',
                   style: TextStyle(
@@ -1643,53 +1696,70 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ),
                 ),
               ),
-              title: Text(
-                'تم تحديد ${_selectedDocIds.length}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _selectedDocIds.isEmpty
+                        ? 'تحديد العناصر'
+                        : (_selectedDocIds.length == 1
+                            ? 'تم تحديد عنصر واحد'
+                            : (_selectedDocIds.length == 2
+                                ? 'تم تحديد عنصرين'
+                                : 'تم تحديد ${_selectedDocIds.length} عناصر')),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    activeFolder != null
+                        ? 'مجلد: ${activeFolder.name}'
+                        : (visibleDocs.isEmpty
+                            ? 'لا توجد مستندات'
+                            : 'من إجمالي ${visibleDocs.length} مستند'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: isDark
+                          ? const Color(0xFF8E8E93)
+                          : const Color(0xFF6C6C70),
+                    ),
+                  ),
+                ],
               ),
               actions: [
-                IconButton(
-                  tooltip: 'تحديد الكل',
-                  onPressed: () {
-                    setState(() {
-                      if (_selectedDocIds.length == visibleDocs.length) {
-                        _selectedDocIds.clear();
-                      } else {
-                        _selectedDocIds.addAll(visibleDocs.map((d) => d.id));
-                      }
-                    });
-                  },
-                  icon: const Icon(Icons.select_all_rounded),
-                ),
-                IconButton(
-                  tooltip: 'تصدير كأرشيف ZIP مجمع',
-                  onPressed: () => _exportSelectedAsBatchZip(allDocs),
-                  icon: const Icon(Icons.folder_zip_rounded, color: Color(0xFF007AFF)),
-                ),
-                IconButton(
-                  tooltip: 'نقل إلى مجلد',
-                  onPressed: () {
-                    final selected = allDocs
-                        .where((d) => _selectedDocIds.contains(d.id))
-                        .toList();
-                    _showMoveToFolderSheet(selected);
-                  },
-                  icon: const Icon(Icons.drive_file_move_rounded),
-                ),
-                IconButton(
-                  tooltip: 'مشاركة المحدد',
-                  onPressed: () => _shareSelectedDocuments(allDocs),
-                  icon: const Icon(Icons.ios_share_rounded),
-                ),
-                IconButton(
-                  tooltip: 'حذف المحدد',
-                  onPressed: _deleteSelectedDocuments,
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    color: palette.danger,
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: TextButton(
+                    onPressed: visibleDocs.isEmpty
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              if (_selectedDocIds.length == visibleDocs.length) {
+                                _selectedDocIds.clear();
+                              } else {
+                                _selectedDocIds
+                                    .addAll(visibleDocs.map((d) => d.id));
+                              }
+                            });
+                          },
+                    child: Text(
+                      _selectedDocIds.isNotEmpty &&
+                              _selectedDocIds.length == visibleDocs.length
+                          ? 'إلغاء الكل'
+                          : 'تحديد الكل',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: visibleDocs.isEmpty
+                            ? Colors.grey
+                            : palette.accent,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1805,9 +1875,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     onTap: () {
                       HapticFeedback.selectionClick();
                       setState(() {
-                        if (visibleDocs.isNotEmpty) {
-                          _selectedDocIds.add(visibleDocs.first.id);
-                        }
+                        _isSelectionMode = true;
+                        _selectedDocIds.clear();
                       });
                     },
                     borderRadius: BorderRadius.circular(18),
@@ -2290,7 +2359,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 0.77,
+                    childAspectRatio: 0.73,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => _buildDocumentGridCard(
@@ -2317,8 +2386,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildAppleSegmentedControl({
     required bool isDark,
@@ -2378,6 +2448,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           setState(() {
             _currentTab = tab;
             _activeFolderId = null;
+            _isSelectionMode = false;
+            _selectedDocIds.clear();
             if (tab == LibraryTab.favorites) {
               _showFavoritesOnly = true;
             } else {
@@ -3293,20 +3365,44 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     Positioned(
                       top: 10,
                       left: 10,
-                      child: isSelected
-                          ? CircleAvatar(
-                              radius: 12,
-                              backgroundColor: palette.accent,
-                              child: const Icon(
-                                Icons.check_rounded,
-                                size: 15,
-                                color: Colors.white,
+                      child: _isMultiSelectMode
+                          ? AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected
+                                    ? palette.accent
+                                    : Colors.black.withValues(alpha: 0.45),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? palette.accent
+                                      : Colors.white,
+                                  width: 1.8,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: isSelected
+                                    ? const Icon(
+                                        Icons.check_rounded,
+                                        size: 16,
+                                        color: Colors.white,
+                                      )
+                                    : null,
                               ),
                             )
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(14),
                               child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                filter:
+                                    ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                                 child: InkWell(
                                   onTap: () {
                                     ref
@@ -3316,7 +3412,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.all(4.5),
-                                    color: Colors.black.withValues(alpha: 0.55),
+                                    color:
+                                        Colors.black.withValues(alpha: 0.55),
                                     child: Icon(
                                       doc.isFavorite
                                           ? Icons.star_rounded
@@ -3346,12 +3443,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               children: [
                 Text(
                   doc.title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                     letterSpacing: -0.2,
+                    height: 1.25,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -3549,12 +3647,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           children: [
                             Text(
                               doc.title,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14.5,
                                 letterSpacing: -0.2,
+                                height: 1.25,
                               ),
                             ),
                             const SizedBox(height: 3),
@@ -3621,24 +3720,54 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               ),
             ),
           ),
-          IconButton(
-            tooltip: 'تصدير PDF / Word / Excel',
-            onPressed: () => _exportDocumentSheet(doc),
-            icon: const Icon(
-              Icons.ios_share_rounded,
-              size: 18,
-              color: Color(0xFF8E8E93),
+          if (_isMultiSelectMode)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? palette.accent : Colors.transparent,
+                  border: Border.all(
+                    color: isSelected
+                        ? palette.accent
+                        : (isDark ? Colors.white38 : Colors.black38),
+                    width: 1.8,
+                  ),
+                ),
+                child: Center(
+                  child: isSelected
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        )
+                      : null,
+                ),
+              ),
+            )
+          else ...[
+            IconButton(
+              tooltip: 'تصدير PDF / Word / Excel',
+              onPressed: () => _exportDocumentSheet(doc),
+              icon: const Icon(
+                Icons.ios_share_rounded,
+                size: 18,
+                color: Color(0xFF8E8E93),
+              ),
             ),
-          ),
-          IconButton(
-            tooltip: 'المزيد',
-            onPressed: () => _showDocumentOptionsMenu(doc),
-            icon: const Icon(
-              Icons.more_horiz_rounded,
-              size: 20,
-              color: Color(0xFF8E8E93),
+            IconButton(
+              tooltip: 'المزيد',
+              onPressed: () => _showDocumentOptionsMenu(doc),
+              icon: const Icon(
+                Icons.more_horiz_rounded,
+                size: 20,
+                color: Color(0xFF8E8E93),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

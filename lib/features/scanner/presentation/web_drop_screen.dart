@@ -19,6 +19,7 @@ import '../../../shared/providers/providers.dart';
 import '../../../shared/services/local_media_storage_service.dart';
 import '../data/local_web_drop_service.dart';
 import '../data/native_scanner_bridge.dart';
+import '../data/qr_scanner_service.dart';
 import '../data/transferred_files_service.dart';
 import 'scan_review_screen.dart';
 import 'transferred_files_screen.dart';
@@ -509,6 +510,220 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
     );
   }
 
+  Future<void> _scanFriendServerQr({bool? directCamera}) async {
+    HapticFeedback.mediumImpact();
+
+    String? source;
+    if (directCamera != null) {
+      source = directCamera ? 'camera' : 'gallery';
+    } else {
+      source = await showModalBottomSheet<String>(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.qr_code_scanner_rounded,
+                          color: Color(0xFF007AFF), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('مسح رمز QR للاتصال بجهاز آخر',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 15)),
+                          SizedBox(height: 2),
+                          Text(
+                              'وجّه الكاميرا إلى شاشة هاتف صديقك أو شاشة الكمبيوتر',
+                              style:
+                                  TextStyle(fontSize: 11.5, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded,
+                        color: Color(0xFF34C759)),
+                  ),
+                  title: const Text('فتح الكاميرا لمسح الرمز فوراً',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 13.5)),
+                  subtitle: const Text(
+                      'تصوير رمز QR من شاشة هاتف صديقك مباشرة',
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  trailing:
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () => Navigator.pop(ctx, 'camera'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5856D6).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.photo_library_rounded,
+                        color: Color(0xFF5856D6)),
+                  ),
+                  title: const Text('اختيار لقطة شاشة من المعرض',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 13.5)),
+                  subtitle: const Text(
+                      'قراءة رمز QR من صورة محفوظة على هاتفك',
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  trailing:
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () => Navigator.pop(ctx, 'gallery'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (source == null || !mounted) return;
+
+    String? targetImagePath;
+
+    if (source == 'camera') {
+      try {
+        final tmpDir = await getTemporaryDirectory();
+        final result = await NativeScannerBridge.startSingleScan(
+          destDir: tmpDir.path,
+        );
+        if (result == null || !mounted) return;
+        targetImagePath = result.path;
+      } on ScannerPermissionDeniedException catch (e) {
+        if (mounted) await showScannerPermissionDialog(context, e);
+        return;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر فتح الكاميرا: $e')),
+          );
+        }
+        return;
+      }
+    } else if (source == 'gallery') {
+      try {
+        final res = await FilePicker.platform.pickFiles(type: FileType.image);
+        if (res == null ||
+            res.files.isEmpty ||
+            res.files.first.path == null ||
+            !mounted) {
+          return;
+        }
+        targetImagePath = res.files.first.path!;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر اختيار الصورة: $e')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (targetImagePath == null || !mounted) return;
+
+    // Show processing indicator
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(strokeWidth: 2.5),
+                SizedBox(width: 16),
+                Text('جارٍ قراءة رمز QR...',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final payload = await QrScannerService.instance.scanImage(targetImagePath);
+
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (payload == null || payload.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline_rounded,
+                    color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                      'لم يتم العثور على رمز QR واضح في الصورة. يرجى إعادة المحاولة وتقريب الكاميرا.'),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFFFF3B30),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    // Present the Apple-styled choice dialog (External Browser vs In-App WebView)
+    await QrScannerService.instance.handleScannedPayload(
+      context: context,
+      payload: payload,
+    );
+  }
+
   Future<void> _pickExternalFiles() async {
     if (_isImportingFiles) return;
     HapticFeedback.lightImpact();
@@ -815,6 +1030,11 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'مسح QR لسيرفر صديقك أو جهاز آخر',
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: Color(0xFF34C759)),
+            onPressed: () => _scanFriendServerQr(),
+          ),
           IconButton(
             tooltip: 'الملفات المنقولة',
             icon: const Icon(Icons.folder_shared_rounded, color: Color(0xFF007AFF)),
@@ -1164,6 +1384,10 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                 ],
               ),
             ),
+
+            // ── Connect to Friend's Phone / PC QR Scanner Card ──
+            const SizedBox(height: 14),
+            _buildScanFriendServerCard(isDark),
 
             // ── Live Transfer Progress Indicator Card ──
             if (_activeTransfer != null) ...[
@@ -1773,6 +1997,245 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildScanFriendServerCard(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF007AFF).withValues(alpha: isDark ? 0.35 : 0.22),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF007AFF).withValues(alpha: isDark ? 0.15 : 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(13),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'الاتصال بسيرفر صديقك أو جهاز آخر',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'امسح رمز QR من هاتف صديقك لفتح ملفاته وتنزيلها أو إرسال ملفات إليه فوراً',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white60 : const Color(0xFF6C6C70),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Two Perfectly Balanced Apple Action Cards (Equal 50% / 50% width, 52px height)
+          Row(
+            children: [
+              // 1. Primary Action: Camera Scan
+              Expanded(
+                child: Material(
+                  color: const Color(0xFF007AFF),
+                  borderRadius: BorderRadius.circular(14),
+                  elevation: 0,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _scanFriendServerQr(directCamera: true);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      height: 52,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.28),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Flexible(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'مسح بالكاميرا',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12.5,
+                                    color: Colors.white,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'توجيه العدسة فوراً',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white70,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // 2. Secondary Action: Gallery Picker
+              Expanded(
+                child: Material(
+                  color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _scanFriendServerQr(directCamera: false);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      height: 52,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.08),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF5856D6).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: const Icon(
+                              Icons.photo_library_rounded,
+                              color: Color(0xFF5856D6),
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'من المعرض',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12.5,
+                                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Text(
+                                  'صورة أو لقطة شاشة',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF8E8E93),
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

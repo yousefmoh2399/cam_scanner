@@ -629,6 +629,36 @@ class MainActivity : FlutterFragmentActivity() {
                             }
                         }
                     }
+                    "decodeQrCode" -> {
+                        val path = call.argument<String>("path")
+                        if (path.isNullOrBlank()) {
+                            result.error("INVALID_ARGS", "path is required", null)
+                            return@setMethodCallHandler
+                        }
+                        mainScope.launch(Dispatchers.Default) {
+                            try {
+                                val src = Imgcodecs.imread(path)
+                                if (src.empty()) {
+                                    withContext(Dispatchers.Main) { result.success(null) }
+                                    return@launch
+                                }
+                                val detector = org.opencv.objdetect.QRCodeDetector()
+                                val decoded = detector.detectAndDecode(src)
+                                src.release()
+                                withContext(Dispatchers.Main) {
+                                    if (!decoded.isNullOrBlank()) {
+                                        result.success(decoded)
+                                    } else {
+                                        result.success(null)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    result.success(null)
+                                }
+                            }
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
