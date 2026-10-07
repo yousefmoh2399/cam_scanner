@@ -1755,6 +1755,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child: Image.file(
                           File(rightPath),
+                          cacheWidth: 400,
                           height: 150,
                           fit: BoxFit.cover,
                         ),
@@ -1775,6 +1776,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child: Image.file(
                           File(leftPath),
+                          cacheWidth: 400,
                           height: 150,
                           fit: BoxFit.cover,
                         ),

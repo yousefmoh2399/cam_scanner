@@ -141,18 +141,23 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
   Widget build(BuildContext context) {
     final palette = context.appThemePalette;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF090D16),
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF090D16),
-        foregroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text(
           'تحديد موضع التوقيع',
           style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             fontSize: 17,
           ),
         ),
@@ -198,11 +203,19 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.12),
+                    color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
+                    width: 0.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -218,7 +231,6 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                         'اسحب التوقيع للمكان المطلوب • تحكم في الحجم من الشريط بالأسفل',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.88),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -284,6 +296,7 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                           padding: const EdgeInsets.all(8),
                           child: Image.file(
                             File(widget.pageImagePath),
+                            cacheWidth: 1440,
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -321,6 +334,7 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                                   ),
                                   child: Image.memory(
                                     widget.signatureBytes,
+                                    cacheWidth: 400,
                                     fit: BoxFit.contain,
                                     gaplessPlayback: true,
                                   ),
@@ -404,13 +418,23 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
             // ── Bottom control panel (Size slider + Action buttons) ──
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF131926),
+                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
+                  top: Radius.circular(20),
                 ),
                 border: Border(
-                  top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
+                    width: 0.5,
+                  ),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
               ),
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
               child: Column(
@@ -418,16 +442,16 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.photo_size_select_small_rounded,
-                        color: Colors.white70,
+                        color: isDark ? Colors.white70 : const Color(0xFF8E8E93),
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'حجم التوقيع',
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: isDark ? Colors.white70 : const Color(0xFF1C1C1E),
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -445,7 +469,7 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                             min: 0.12,
                             max: 0.85,
                             activeColor: palette.accent,
-                            inactiveColor: Colors.white24,
+                            inactiveColor: isDark ? Colors.white24 : Colors.black12,
                             onChanged: (v) {
                               setState(() {
                                 _relW = v;
@@ -457,8 +481,8 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                       ),
                       Text(
                         '${(_relW * 100).round()}%',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
@@ -474,8 +498,11 @@ class _SignaturePlacementScreenState extends State<SignaturePlacementScreen> {
                               ? null
                               : () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white24),
+                            foregroundColor: isDark ? Colors.white : Colors.black,
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
+                              width: 0.5,
+                            ),
                             minimumSize: const Size(0, 48),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),

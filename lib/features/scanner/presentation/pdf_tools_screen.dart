@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -980,67 +981,134 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
   @override
   Widget build(BuildContext context) {
     final palette = context.appThemePalette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
-        title: const Text(
-          'أدوات PDF الاحترافية الشاملة',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-          tabs: const [
-            Tab(icon: Icon(Icons.call_merge_rounded, size: 20), text: 'دمج ملفات'),
-            Tab(icon: Icon(Icons.call_split_rounded, size: 20), text: 'تقسيم واستخراج'),
-            Tab(icon: Icon(Icons.compress_rounded, size: 20), text: 'ضغط الحجم'),
-            Tab(icon: Icon(Icons.file_download_rounded, size: 20), text: 'استيراد خارجي'),
-          ],
+        title: const Text(
+          'أدوات PDF',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
       ),
-      body: Stack(
+      body: Column(
         children: [
-          TabBarView(
-            controller: _tabController,
-            children: [
-              _buildMergeTab(palette),
-              _buildSplitTab(palette),
-              _buildCompressTab(palette),
-              _buildImportTab(palette),
-            ],
-          ),
-          if (_isWorking)
-            Container(
-              color: Colors.black45,
-              alignment: Alignment.center,
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+            child: Container(
+              height: 40,
+              padding: const EdgeInsets.all(2.5),
+              decoration: BoxDecoration(
+                color:
+                    isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: Colors.transparent,
+                indicator: BoxDecoration(
+                  color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 16),
-                      Text(
-                        _statusMessage.isNotEmpty
-                            ? _statusMessage
-                            : 'جارٍ المعالجة...',
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
+                labelColor: isDark ? Colors.white : Colors.black,
+                unselectedLabelColor: const Color(0xFF8E8E93),
+                labelStyle:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                unselectedLabelStyle:
+                    const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                tabs: const [
+                  Tab(text: 'دمج'),
+                  Tab(text: 'تقسيم'),
+                  Tab(text: 'ضغط'),
+                  Tab(text: 'استيراد'),
+                ],
               ),
             ),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildMergeTab(palette),
+                    _buildSplitTab(palette),
+                    _buildCompressTab(palette),
+                    _buildImportTab(palette),
+                  ],
+                ),
+                if (_isWorking)
+                  Container(
+                    color: Colors.black45,
+                    alignment: Alignment.center,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 26,
+                            vertical: 22,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (isDark
+                                    ? const Color(0xFF1C1C1E)
+                                    : Colors.white)
+                                .withValues(alpha: 0.94),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white12
+                                  : Colors.black.withValues(alpha: 0.08),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(palette.accent),
+                                strokeWidth: 3,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _statusMessage.isNotEmpty
+                                    ? _statusMessage
+                                    : 'جارٍ المعالجة...',
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ),
     );

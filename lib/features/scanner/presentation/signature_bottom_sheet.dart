@@ -402,6 +402,7 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
                           ),
                           child: Image.file(
                             File(sig.filePath),
+                            cacheWidth: 250,
                             fit: BoxFit.contain,
                             errorBuilder: (_, _, _) => const Center(
                               child: Icon(Icons.broken_image_outlined),

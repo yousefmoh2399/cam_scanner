@@ -839,6 +839,8 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     final title = stripFileExtension(_doc.fileName);
 
     return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -1075,13 +1077,14 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0xFF1E1E24)
-                          : theme.colorScheme.surface,
+                          ? const Color(0xFF1C1C1E)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: theme.colorScheme.outlineVariant.withValues(
-                          alpha: isDark ? 0.3 : 0.6,
-                        ),
+                        color: isDark
+                            ? Colors.white12
+                            : Colors.black.withValues(alpha: 0.08),
+                        width: 0.5,
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -1199,6 +1202,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                             : index,
                                       ),
                                       fit: BoxFit.contain,
+                                      cacheWidth: 1440,
                                       errorBuilder: (_, __, ___) => Center(
                                         child: Column(
                                           mainAxisAlignment:
@@ -1346,6 +1350,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                         child: Image.file(
                                           File(pages[idx].imagePath),
                                           fit: BoxFit.cover,
+                                          cacheWidth: 100,
                                           errorBuilder: (_, __, ___) =>
                                               const Center(
                                             child: Icon(

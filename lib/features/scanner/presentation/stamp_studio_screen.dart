@@ -412,15 +412,20 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
     final palette = context.appThemePalette;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           tooltip: 'رجوع',
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'استوديو ومكتبة الأختام',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
         actions: [
           IconButton(
@@ -437,14 +442,17 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.verified_user_outlined, size: 64, color: Colors.grey),
+                      const Icon(Icons.verified_user_outlined, size: 64, color: Color(0xFF8E8E93)),
                       const SizedBox(height: 12),
                       const Text(
                         'لا توجد أختام محفوظة',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                       ),
                       const SizedBox(height: 16),
                       FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
                         onPressed: _createNewStampDialog,
                         icon: const Icon(Icons.add_rounded),
                         label: const Text('إضافة ختم جديد'),
@@ -466,20 +474,21 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                     final stamp = _stamps[idx];
                     return InkWell(
                       onTap: () => _selectStamp(stamp),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E1E24) : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
+                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+                            color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
+                            width: 0.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
+                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
@@ -516,7 +525,7 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                     child: const Padding(
                                       padding: EdgeInsets.all(4),
-                                      child: Icon(Icons.delete_outline_rounded, size: 16, color: Colors.grey),
+                                      child: Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFF8E8E93)),
                                     ),
                                   ),
                               ],
@@ -529,6 +538,7 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                                 constraints: const BoxConstraints(maxHeight: 80),
                                 child: Image.file(
                                   File(stamp.imagePath),
+                                  cacheWidth: 320,
                                   fit: BoxFit.contain,
                                   errorBuilder: (_, __, ___) => const Center(
                                     child: Icon(Icons.broken_image_rounded, size: 36),
@@ -545,7 +555,7 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w700,
                                 fontSize: 13,
                               ),
                             ),
@@ -558,7 +568,7 @@ class _StampStudioScreenState extends State<StampStudioScreen> {
                               style: TextStyle(
                                 fontSize: 10.5,
                                 color: palette.accent,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],

@@ -323,10 +323,19 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         appBar: AppBar(
+          backgroundColor:
+              isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
           title: const Text(
             'العلامة المائية والأختام الأمنية',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
           ),
           actions: [
             IconButton(
@@ -439,6 +448,7 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
                         Image.file(
                           File(_selectedImagePath!),
                           fit: BoxFit.contain,
+                          cacheWidth: 1440,
                           errorBuilder: (_, __, ___) => const Center(
                             child: Icon(Icons.broken_image_rounded, size: 48),
                           ),

@@ -1,8 +1,11 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+
+import '../../../core/theme/app_theme.dart';
 
 import '../../../shared/models/image_filter_type.dart';
 import '../../../shared/models/scan_page.dart';
@@ -475,6 +478,8 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final palette = context.appThemePalette;
+    final isDark = theme.brightness == Brightness.dark;
 
     return PopScope(
       canPop: false,
@@ -487,9 +492,11 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
         await _handleBackPress();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F1115),
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         appBar: AppBar(
-          backgroundColor: const Color(0xFF16181F),
+          backgroundColor:
+              isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
           elevation: 0,
           title: Text(
             _isEditingCrop
@@ -499,7 +506,7 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
                 : (widget.totalPages != null && widget.totalPages! > 1
                     ? 'مراجعة الصفحة (${widget.pageIndex ?? 1} من ${widget.totalPages})'
                     : 'مراجعة وتحسين المسح'),
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
@@ -520,7 +527,7 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
                     ? null
                     : () => _confirmAndSave(saveAllRemaining: true),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.white70,
+                  foregroundColor: const Color(0xFF8E8E93),
                   textStyle: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
@@ -533,8 +540,8 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
                 icon: const Icon(Icons.crop_rounded, size: 18),
                 label: const Text('تعديل الحواف'),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.white70,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                  foregroundColor: palette.accent,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 onPressed: _isBusy
                     ? null
@@ -554,7 +561,7 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
                       }
                     },
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF00E676),
+                foregroundColor: palette.accent,
                 textStyle: const TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -631,41 +638,61 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
           ),
           if (_isBusy)
             Container(
-              color: Colors.black54,
+              color: Colors.black45,
               child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E222D),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black38, blurRadius: 16),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF00E676),
-                        ),
-                        strokeWidth: 3,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 26,
+                        vertical: 22,
                       ),
-                      if (_statusText != null) ...[
-                        const SizedBox(height: 14),
-                        Text(
-                          _statusText!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      decoration: BoxDecoration(
+                        color: (isDark
+                                ? const Color(0xFF1C1C1E)
+                                : Colors.white)
+                            .withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white12
+                              : Colors.black.withValues(alpha: 0.08),
+                          width: 0.5,
                         ),
-                      ],
-                    ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.4 : 0.12,
+                            ),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(palette.accent),
+                            strokeWidth: 3,
+                          ),
+                          if (_statusText != null) ...[
+                            const SizedBox(height: 14),
+                            Text(
+                              _statusText!,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -677,25 +704,27 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
 }
 
   Widget _buildPreviewDisplay() {
+    final palette = context.appThemePalette;
     final preview = _currentPreviewPath;
     if (preview == null) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
+          valueColor: AlwaysStoppedAnimation<Color>(palette.accent),
         ),
       );
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(16),
       child: Image.file(
         File(preview),
         fit: BoxFit.contain,
+        cacheWidth: 1440,
         errorBuilder: (_, _, _) => const Center(
           child: Icon(
             Icons.broken_image_rounded,
             size: 48,
-            color: Colors.white38,
+            color: Color(0xFF8E8E93),
           ),
         ),
       ),
@@ -703,77 +732,114 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
   }
 
   Widget _buildCropToolbar() {
-    return Container(
-      color: const Color(0xFF16181F),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton.icon(
-                icon: const Icon(Icons.restore_rounded, size: 18),
-                label: const Text('الحدود المكتشفة'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white70,
-                  side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-                onPressed: () {
-                  setState(() {
-                    _corners = List<double>.from(
-                      widget.initialCorners.length == 8
-                          ? widget.initialCorners
-                          : [0.05, 0.05, 0.95, 0.05, 0.95, 0.95, 0.05, 0.95],
-                    );
-                  });
-                },
+    final palette = context.appThemePalette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: (isDark ? const Color(0xFF1C1C1E) : Colors.white)
+                .withValues(alpha: 0.94),
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white12
+                    : Colors.black.withValues(alpha: 0.08),
+                width: 0.5,
               ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.fullscreen_rounded, size: 18),
-                label: const Text('كامل الصورة'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white70,
-                  side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.restore_rounded, size: 18),
+                    label: const Text('الحدود المكتشفة'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                      side: BorderSide(
+                        color: isDark
+                            ? Colors.white12
+                            : Colors.black.withValues(alpha: 0.12),
+                        width: 0.5,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _corners = List<double>.from(
+                          widget.initialCorners.length == 8
+                              ? widget.initialCorners
+                              : [0.05, 0.05, 0.95, 0.05, 0.95, 0.95, 0.05, 0.95],
+                        );
+                      });
+                    },
                   ),
-                ),
-                onPressed: () {
-                  setState(() {
-                    _corners = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
-                  });
-                },
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.fullscreen_rounded, size: 18),
+                    label: const Text('كامل الصورة'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                      side: BorderSide(
+                        color: isDark
+                            ? Colors.white12
+                            : Colors.black.withValues(alpha: 0.12),
+                        width: 0.5,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _corners = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.check_rounded, size: 20),
+                    label: const Text('تطبيق القص'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: palette.accent,
+                      foregroundColor: Colors.white,
+                      textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 11,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      setState(() => _isEditingCrop = false);
+                      _preparePreview();
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.check_rounded, size: 20),
-                label: const Text('تطبيق القص'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00E676),
-                  foregroundColor: Colors.black,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () {
-                  setState(() => _isEditingCrop = false);
-                  _preparePreview();
-                },
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -781,168 +847,204 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
   }
 
   Widget _buildReviewToolbar(ThemeData theme) {
-    return Container(
-      color: const Color(0xFF16181F),
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Filter Thumbnails Horizontal List
-            SizedBox(
-              height: 88,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _filters.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final filter = _filters[index];
-                  final isSelected = filter.key == _selectedFilter;
-                  final thumbPath =
-                      _filterThumbnails[filter.key] ?? _warpedPreviewPath;
+    final palette = context.appThemePalette;
+    final isDark = theme.brightness == Brightness.dark;
 
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: _isBusy ? null : () => _applyFilter(filter.key),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      width: 72,
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF00E676).withValues(alpha: 0.16)
-                            : const Color(0xFF222631),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: (isDark ? const Color(0xFF1C1C1E) : Colors.white)
+                .withValues(alpha: 0.94),
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white12
+                    : Colors.black.withValues(alpha: 0.08),
+                width: 0.5,
+              ),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Filter Thumbnails Horizontal List
+                SizedBox(
+                  height: 90,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _filters.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
+                    itemBuilder: (context, index) {
+                      final filter = _filters[index];
+                      final isSelected = filter.key == _selectedFilter;
+                      final thumbPath =
+                          _filterThumbnails[filter.key] ?? _warpedPreviewPath;
+
+                      return InkWell(
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF00E676)
-                              : Colors.white12,
-                          width: isSelected ? 2.0 : 1.0,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(9),
-                              child: thumbPath != null &&
-                                      File(thumbPath).existsSync()
-                                  ? Image.file(
-                                      File(thumbPath),
-                                      width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      cacheWidth: 160,
-                                      errorBuilder: (_, __, ___) => Center(
-                                        child: Icon(
-                                          filter.icon,
-                                          size: 20,
-                                          color: isSelected
-                                              ? const Color(0xFF00E676)
-                                              : Colors.white70,
-                                        ),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Icon(
-                                        filter.icon,
-                                        size: 20,
-                                        color: isSelected
-                                            ? const Color(0xFF00E676)
-                                            : Colors.white70,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            filter.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                        onTap: _isBusy ? null : () => _applyFilter(filter.key),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 74,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? palette.accent.withValues(alpha: 0.12)
+                                : (isDark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.black.withValues(alpha: 0.04)),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
                               color: isSelected
-                                  ? const Color(0xFF00E676)
-                                  : Colors.white,
-                              fontWeight: isSelected
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              fontSize: 10.5,
+                                  ? palette.accent
+                                  : (isDark
+                                      ? Colors.white12
+                                      : Colors.black.withValues(alpha: 0.08)),
+                              width: isSelected ? 1.5 : 0.5,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // Actions row: Rotate & Edit Crop & Save Page
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton.filledTonal(
-                      tooltip: 'تدوير 90 درجة لليسار',
-                      icon: const Icon(Icons.rotate_left_rounded, size: 22),
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF222631),
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _isBusy ? null : _rotateLeft,
-                    ),
-                    const SizedBox(width: 10),
-                    TextButton.icon(
-                      icon: const Icon(Icons.crop_free_rounded, size: 20),
-                      label: const Text('إعادة ضبط حدود القص'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        backgroundColor: const Color(0xFF222631),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: thumbPath != null &&
+                                          File(thumbPath).existsSync()
+                                      ? Image.file(
+                                          File(thumbPath),
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                          cacheWidth: 160,
+                                          errorBuilder: (_, __, ___) => Center(
+                                            child: Icon(
+                                              filter.icon,
+                                              size: 20,
+                                              color: isSelected
+                                                  ? palette.accent
+                                                  : const Color(0xFF8E8E93),
+                                            ),
+                                          ),
+                                        )
+                                      : Center(
+                                          child: Icon(
+                                            filter.icon,
+                                            size: 20,
+                                            color: isSelected
+                                                ? palette.accent
+                                                : const Color(0xFF8E8E93),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                filter.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? palette.accent
+                                      : (isDark
+                                          ? Colors.white
+                                          : Colors.black87),
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  fontSize: 10.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: _isBusy
-                          ? null
-                          : () {
-                              setState(() => _isEditingCrop = true);
-                            },
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.done_all_rounded, size: 20),
-                      label: const Text('حفظ الصفحة'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00E676),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 11,
-                        ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: _isBusy ? null : _confirmAndSave,
-                    ),
-                  ],
+                      );
+                    },
+                  ),
                 ),
-              ),
+                const SizedBox(height: 12),
+
+                // Actions row: Rotate & Edit Crop & Save Page
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton.filledTonal(
+                          tooltip: 'تدوير 90 درجة لليسار',
+                          icon: const Icon(Icons.rotate_left_rounded, size: 22),
+                          style: IconButton.styleFrom(
+                            backgroundColor: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.05),
+                            foregroundColor:
+                                isDark ? Colors.white : Colors.black87,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _isBusy ? null : _rotateLeft,
+                        ),
+                        const SizedBox(width: 10),
+                        TextButton.icon(
+                          icon: const Icon(Icons.crop_free_rounded, size: 20),
+                          label: const Text('إعادة ضبط حدود القص'),
+                          style: TextButton.styleFrom(
+                            foregroundColor:
+                                isDark ? Colors.white70 : Colors.black87,
+                            backgroundColor: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.05),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 11,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _isBusy
+                              ? null
+                              : () {
+                                  setState(() => _isEditingCrop = true);
+                                },
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.done_all_rounded, size: 20),
+                          label: const Text('حفظ الصفحة'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: palette.accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            elevation: 0,
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: _isBusy ? null : _confirmAndSave,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

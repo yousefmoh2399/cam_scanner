@@ -245,58 +245,75 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
     if (!_isUnlocked) {
       final isFirstSetup = !_settings.hasPinConfigured;
+      final isDark = theme.brightness == Brightness.dark;
       return Scaffold(
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         appBar: AppBar(
+          backgroundColor:
+              isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+          elevation: 0,
+          centerTitle: true,
           title: const Text(
-            'الخزنة السرية (AES-256-GCM)',
-            style: TextStyle(fontWeight: FontWeight.w800),
+            'الخزنة السرية (AES-256)',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
           ),
         ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 90),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 90),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               Center(
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundColor: palette.accent.withValues(alpha: 0.14),
+                child: Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: palette.accent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
                   child: Icon(
                     Icons.enhanced_encryption_rounded,
-                    size: 40,
+                    size: 38,
                     color: palette.accent,
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Text(
                 isFirstSetup
                     ? 'إعداد الرمز السري للخزنة المشفرة'
                     : 'أدخل الرمز السري لفتح الخزنة',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.titleLarge?.copyWith(
+                style: const TextStyle(
                   fontWeight: FontWeight.w800,
+                  fontSize: 18,
                 ),
               ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.amber.shade700),
+                  color: Colors.amber.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: Colors.amber.shade700.withValues(alpha: 0.4),
+                    width: 0.5,
+                  ),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.amber),
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.amber, size: 22),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'تنبيه هام: التشفير يتم محلياً بمعيار AES-256-GCM بدون أي سيرفر؛ نسيان الرمز السري يعني استحالة استرجاع الملفات المشفرة نهائياً.',
                         style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
                         ),
                       ),
                     ),
@@ -304,48 +321,94 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              TextField(
-                controller: _pinController,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 8,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  letterSpacing: 8,
-                  fontWeight: FontWeight.w800,
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white12
+                        : Colors.black.withValues(alpha: 0.06),
+                    width: 0.5,
+                  ),
                 ),
-                decoration: InputDecoration(
-                  labelText: 'الرمز السري (4 إلى 8 أرقام)',
-                  errorText: _errorMessage,
-                  prefixIcon: const Icon(Icons.pin_rounded),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: _pinController,
+                  obscureText: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 8,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    letterSpacing: 8,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'الرمز السري (4 إلى 8 أرقام)',
+                    errorText: _errorMessage,
+                    border: InputBorder.none,
+                    counterText: '',
+                    prefixIcon: const Icon(Icons.pin_rounded),
+                  ),
+                  onSubmitted: (_) =>
+                      isFirstSetup ? _handleSetupPin() : _handleVerifyPin(),
                 ),
-                onSubmitted: (_) =>
-                    isFirstSetup ? _handleSetupPin() : _handleVerifyPin(),
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () =>
-                    isFirstSetup ? _handleSetupPin() : _handleVerifyPin(),
-                icon: const Icon(Icons.lock_open_rounded),
-                label: Text(
-                  isFirstSetup
-                      ? 'تفعيل التشفير وحفظ الرمز'
-                      : 'فتح الخزنة السرية',
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () =>
+                      isFirstSetup ? _handleSetupPin() : _handleVerifyPin(),
+                  icon: const Icon(Icons.lock_open_rounded, size: 20),
+                  label: Text(
+                    isFirstSetup
+                        ? 'تفعيل التشفير وحفظ الرمز'
+                        : 'فتح الخزنة السرية',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: palette.accent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                 ),
               ),
               if (!isFirstSetup && _settings.biometricsEnabled) ...[
                 const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final ok = await _securityService
-                        .authenticateWithBiometrics();
-                    if (ok && mounted) {
-                      await _unlockAndLoadDocs();
-                    }
-                  },
-                  icon: const Icon(Icons.fingerprint_rounded),
-                  label: const Text('فتح باستخدام البصمة / الوجه'),
+                SizedBox(
+                  height: 50,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final ok = await _securityService
+                          .authenticateWithBiometrics();
+                      if (ok && mounted) {
+                        await _unlockAndLoadDocs();
+                      }
+                    },
+                    icon: const Icon(Icons.fingerprint_rounded, size: 22),
+                    label: const Text(
+                      'فتح باستخدام البصمة / الوجه',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: palette.accent,
+                      side: BorderSide(color: palette.accent, width: 1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -355,11 +418,18 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       );
     }
 
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
+        centerTitle: true,
         title: const Text(
           'الخزنة السرية وإعدادات الحماية',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
         actions: [
           IconButton(
@@ -370,100 +440,121 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: palette.accent,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         onPressed: _moveLibraryDocToVault,
         icon: const Icon(Icons.enhanced_encryption_rounded),
-        label: const Text('نقل مستند للخزنة'),
+        label: const Text(
+          'نقل مستند للخزنة',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
         children: [
           // Security Controls Card
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'قفل التطبيق وحماية الشاشة',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'قفل التطبيق (App Lock)',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-                    ),
-                    subtitle: const Text(
-                      'طلب الرمز السري عند الفتح أو العودة من الخلفية',
-                      style: TextStyle(fontSize: 11.5),
-                    ),
-                    value: _settings.appLockEnabled,
-                    onChanged: (v) async {
-                      final next = _settings.copyWith(appLockEnabled: v);
-                      await _securityService.saveSettings(next);
-                      setState(() => _settings = next);
-                    },
-                  ),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'المصادقة بالبصمة / الوجه (Biometrics)',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-                    ),
-                    value: _settings.biometricsEnabled,
-                    onChanged: (v) async {
-                      final next = _settings.copyWith(biometricsEnabled: v);
-                      await _securityService.saveSettings(next);
-                      setState(() => _settings = next);
-                    },
-                  ),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'حظر لقطات الشاشة (FLAG_SECURE)',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-                    ),
-                    subtitle: const Text(
-                      'منع تصوير الشاشة وإخفاء المعاينة بالخلفية',
-                      style: TextStyle(fontSize: 11.5),
-                    ),
-                    value: _settings.secureScreenEnabled,
-                    onChanged: (v) async {
-                      final next = _settings.copyWith(secureScreenEnabled: v);
-                      await _securityService.saveSettings(next);
-                      setState(() => _settings = next);
-                    },
-                  ),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<AutoLockTimeout>(
-                    initialValue: _settings.autoLockTimeout,
-                    decoration: const InputDecoration(
-                      labelText: 'مهلة القفل التلقائي',
-                      prefixIcon: Icon(Icons.timer_outlined),
-                    ),
-                    items: AutoLockTimeout.values
-                        .map(
-                          (t) => DropdownMenuItem(
-                            value: t,
-                            child: Text(t.labelAr),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) async {
-                      if (val == null) return;
-                      final next = _settings.copyWith(autoLockTimeout: val);
-                      await _securityService.saveSettings(next);
-                      setState(() => _settings = next);
-                    },
-                  ),
-                ],
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white12
+                    : Colors.black.withValues(alpha: 0.06),
+                width: 0.5,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'قفل التطبيق وحماية الشاشة',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'قفل التطبيق (App Lock)',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  subtitle: const Text(
+                    'طلب الرمز السري عند الفتح أو العودة من الخلفية',
+                    style: TextStyle(fontSize: 11.5),
+                  ),
+                  value: _settings.appLockEnabled,
+                  onChanged: (v) async {
+                    final next = _settings.copyWith(appLockEnabled: v);
+                    await _securityService.saveSettings(next);
+                    setState(() => _settings = next);
+                  },
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'المصادقة بالبصمة / الوجه (Biometrics)',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  value: _settings.biometricsEnabled,
+                  onChanged: (v) async {
+                    final next = _settings.copyWith(biometricsEnabled: v);
+                    await _securityService.saveSettings(next);
+                    setState(() => _settings = next);
+                  },
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'حظر لقطات الشاشة (FLAG_SECURE)',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  subtitle: const Text(
+                    'منع تصوير الشاشة وإخفاء المعاينة بالخلفية',
+                    style: TextStyle(fontSize: 11.5),
+                  ),
+                  value: _settings.secureScreenEnabled,
+                  onChanged: (v) async {
+                    final next = _settings.copyWith(secureScreenEnabled: v);
+                    await _securityService.saveSettings(next);
+                    setState(() => _settings = next);
+                  },
+                ),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<AutoLockTimeout>(
+                  initialValue: _settings.autoLockTimeout,
+                  decoration: const InputDecoration(
+                    labelText: 'مهلة القفل التلقائي',
+                    prefixIcon: Icon(Icons.timer_outlined),
+                  ),
+                  items: AutoLockTimeout.values
+                      .map(
+                        (t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t.labelAr),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) async {
+                    if (val == null) return;
+                    final next = _settings.copyWith(autoLockTimeout: val);
+                    await _securityService.saveSettings(next);
+                    setState(() => _settings = next);
+                  },
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
@@ -491,10 +582,25 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             )
           else
             ..._vaultDocs.map(
-              (doc) => Card(
+              (doc) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                shape: RoundedRectangleBorder(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white12
+                        : Colors.black.withValues(alpha: 0.06),
+                    width: 0.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black
+                          .withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: ListTile(
                   leading: CircleAvatar(

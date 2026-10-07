@@ -190,9 +190,14 @@ class _BookCurveFlattenerScreenState
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Column(
@@ -201,13 +206,13 @@ class _BookCurveFlattenerScreenState
           children: [
             const Text(
               'تسوية انحناء صفحات الكتب (3D)',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
             ),
             Text(
               'فرد انحناء الكعب وإزالة الظل الداخلي 100% محلياً',
               style: TextStyle(
-                fontSize: 10.5,
-                color: isDark ? Colors.white60 : Colors.black54,
+                fontSize: 11,
+                color: const Color(0xFF8E8E93),
               ),
             ),
           ],
@@ -243,7 +248,7 @@ class _BookCurveFlattenerScreenState
                     Expanded(
                       flex: 6,
                       child: Container(
-                        color: isDark ? const Color(0xFF121214) : const Color(0xFFF1F5F9),
+                        color: isDark ? const Color(0xFF000000) : const Color(0xFFE5E5EA),
                         child: Center(
                           child: Padding(
                             padding: const EdgeInsets.all(12),
@@ -258,18 +263,25 @@ class _BookCurveFlattenerScreenState
                       flex: 4,
                       child: Container(
                         decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          border: Border(
+                            top: BorderSide(
+                              color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
+                              width: 0.5,
+                            ),
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-                              blurRadius: 16,
-                              offset: const Offset(0, -3),
+                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, -2),
                             ),
                           ],
                         ),
                         child: Material(
-                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                          color: Colors.transparent,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                           clipBehavior: Clip.antiAlias,
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -474,6 +486,7 @@ class _BookCurveFlattenerScreenState
     if (_flattenedBytes == null) {
       return Image.memory(
         _originalBytes,
+        cacheWidth: 1440,
         fit: BoxFit.contain,
         errorBuilder: (ctx, err, st) => const Center(
           child: Column(
@@ -493,9 +506,11 @@ class _BookCurveFlattenerScreenState
         borderRadius: BorderRadius.circular(12),
         child: Image.memory(
           _flattenedBytes!,
+          cacheWidth: 1440,
           fit: BoxFit.contain,
           errorBuilder: (ctx, err, st) => Image.memory(
             _originalBytes,
+            cacheWidth: 1440,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => const Center(
               child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
@@ -518,6 +533,7 @@ class _BookCurveFlattenerScreenState
               Positioned.fill(
                 child: Image.memory(
                   _originalBytes,
+                  cacheWidth: 1440,
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
@@ -529,6 +545,7 @@ class _BookCurveFlattenerScreenState
                   clipper: _HorizontalSplitClipper(_splitRatio),
                   child: Image.memory(
                     _flattenedBytes!,
+                    cacheWidth: 1440,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),

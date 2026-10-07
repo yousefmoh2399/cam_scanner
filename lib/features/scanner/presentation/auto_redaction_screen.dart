@@ -252,10 +252,19 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         appBar: AppBar(
+          backgroundColor:
+              isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
           title: const Text(
             'الحجب الأمني وتسويد البيانات',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
           ),
           actions: [
             IconButton(
@@ -363,6 +372,7 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
                                     Image.file(
                                       File(_selectedImagePath!),
                                       fit: BoxFit.contain,
+                                      cacheWidth: 1440,
                                       errorBuilder: (_, __, ___) => const Center(
                                         child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
                                       ),

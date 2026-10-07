@@ -128,17 +128,29 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
     final trashAsync = ref.watch(trashUploadsProvider);
 
     return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'سلة المحذوفات',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
             ),
             Text(
               'تحفظ الملفات لمدة 30 يوماً قبل الحذف التلقائي',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFF8E8E93),
+              ),
             ),
           ],
         ),
@@ -289,6 +301,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen> {
                             ? Image.file(
                                 File(doc.previewImagePath!),
                                 fit: BoxFit.cover,
+                                cacheWidth: 160,
                                 errorBuilder: (_, __, ___) => Container(
                                   color:
                                       palette.accent.withValues(alpha: 0.12),

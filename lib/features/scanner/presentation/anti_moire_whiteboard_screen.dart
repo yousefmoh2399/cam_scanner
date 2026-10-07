@@ -207,8 +207,16 @@ class _AntiMoireWhiteboardScreenState
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F0F12) : const Color(0xFFF6F8FA),
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text(
           'مزيل تموجات الشاشات والسبورة',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
@@ -305,7 +313,7 @@ class _AntiMoireWhiteboardScreenState
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF18181B) : Colors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
@@ -435,7 +443,7 @@ class _AntiMoireWhiteboardScreenState
 
   Widget _buildControlsArea(bool isDark) {
     return Material(
-      color: isDark ? const Color(0xFF141416) : Colors.white,
+      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       clipBehavior: Clip.antiAlias,
       child: ListView(

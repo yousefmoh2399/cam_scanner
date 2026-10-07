@@ -409,6 +409,7 @@ class _GovernmentDocumentsScreenState
                               borderRadius: BorderRadius.circular(8),
                               child: Image.file(
                                 File(firstPagePath),
+                                cacheWidth: 120,
                                 width: 44,
                                 height: 44,
                                 fit: BoxFit.cover,
@@ -815,13 +816,20 @@ class _GovernmentDocumentsScreenState
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: const Text(
           'استوديو الهوية والوثائق',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
         centerTitle: true,
-        elevation: 0,
       ),
       body: Stack(
         children: [
@@ -1699,6 +1707,7 @@ class _GovernmentDocumentsScreenState
                       borderRadius: BorderRadius.circular(10),
                       child: Image.file(
                         File(_compressImagePath!),
+                        cacheWidth: 180,
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
@@ -2011,6 +2020,7 @@ class _GovernmentDocumentsScreenState
                     child: Center(
                       child: Image.file(
                         File(imagePath),
+                        cacheWidth: 600,
                         fit: BoxFit.contain,
                         width: double.infinity,
                         height: double.infinity,

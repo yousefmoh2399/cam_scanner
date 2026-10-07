@@ -308,19 +308,23 @@ class _MagicCleanScreenState extends State<MagicCleanScreen> {
       );
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1117),
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0F1117),
-        foregroundColor: Colors.white,
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
           tooltip: 'إلغاء',
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'الممحاة الذكية وتنظيف الورق',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
         ),
         actions: [
           // Hold to see original
@@ -444,8 +448,17 @@ class _MagicCleanScreenState extends State<MagicCleanScreen> {
                   Container(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF161922),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(24)),
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark
+                              ? Colors.white12
+                              : Colors.black.withValues(alpha: 0.08),
+                          width: 0.5,
+                        ),
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.4),

@@ -226,15 +226,20 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
     final palette = context.appThemePalette;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           tooltip: 'رجوع',
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'مقارنة واكتشاف الفروقات',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
         ),
         actions: [
           if (_diffResult != null)
@@ -246,7 +251,7 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
           tabs: const [
             Tab(icon: Icon(Icons.splitscreen_rounded), text: 'المنزلق البصري'),
             Tab(icon: Icon(Icons.difference_rounded), text: 'تحليل الفروقات النصية'),
@@ -259,10 +264,11 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E24) : const Color(0xFFF2F2F7),
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
               border: Border(
                 bottom: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
+                  width: 0.5,
                 ),
               ),
             ),
@@ -276,10 +282,11 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.black38 : Colors.white,
+                        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: const Color(0xFF007AFF).withValues(alpha: 0.4),
+                          width: 0.5,
                         ),
                       ),
                       child: Column(
@@ -337,10 +344,11 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.black38 : Colors.white,
+                        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: const Color(0xFF34C759).withValues(alpha: 0.4),
+                          width: 0.5,
                         ),
                       ),
                       child: Column(
@@ -457,6 +465,7 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
                 child: Center(
                   child: Image.file(
                     File(_pathB!),
+                    cacheWidth: 1440,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => const Center(
                       child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
@@ -476,6 +485,7 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
                   child: Center(
                     child: Image.file(
                       File(_pathA!),
+                      cacheWidth: 1440,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const Center(
                         child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),

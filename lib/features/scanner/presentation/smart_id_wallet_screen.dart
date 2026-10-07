@@ -152,7 +152,12 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
     final cards = _filteredCards;
 
     return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.of(context).pop(),
@@ -167,9 +172,9 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
             ),
             Text(
               '${_cards.length} بطاقات • مقاس قياسي CR-80 وطباعة 1:1',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 10.5,
-                color: isDark ? Colors.white60 : Colors.black54,
+                color: Color(0xFF8E8E93),
               ),
             ),
           ],
@@ -184,20 +189,30 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
+          // Apple Inset Search Bar
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-            child: TextField(
-              onChanged: (val) => setState(() => _searchQuery = val),
-              decoration: InputDecoration(
-                hintText: 'ابحث في بطاقاتك (الاسم، الرقم، النوع)...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                filled: true,
-                fillColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color:
+                    isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: TextField(
+                onChanged: (val) => setState(() => _searchQuery = val),
+                style: const TextStyle(fontSize: 14),
+                decoration: const InputDecoration(
+                  hintText: 'بحث في البطاقات (الاسم، الرقم، النوع)...',
+                  hintStyle:
+                      TextStyle(color: Color(0xFF8E8E93), fontSize: 13),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: Color(0xFF8E8E93),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
             ),
@@ -402,6 +417,7 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
                                 child: Image.file(
                                   File(displayImagePath),
                                   fit: BoxFit.cover,
+                                  cacheWidth: 600,
                                   errorBuilder: (ctx, err, st) => Container(
                                     color: cardColor.withValues(alpha: 0.15),
                                     child: Center(
@@ -806,6 +822,7 @@ class _AddCardSheetState extends ConsumerState<_AddCardSheet> {
                 child: Image.file(
                   File(imagePath),
                   fit: BoxFit.cover,
+                  cacheWidth: 600,
                   errorBuilder: (ctx, err, st) => const Center(
                     child: Icon(Icons.broken_image_rounded, color: Colors.grey),
                   ),

@@ -261,6 +261,7 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
                                 borderRadius: BorderRadius.circular(6),
                                 child: Image.file(
                                   File(firstPage),
+                                  cacheWidth: 120,
                                   width: 40,
                                   height: 40,
                                   fit: BoxFit.cover,
@@ -840,7 +841,7 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Image.file(File(imagePath), fit: BoxFit.cover),
+                          Image.file(File(imagePath), cacheWidth: 600, fit: BoxFit.cover),
                           Positioned(
                             bottom: 8,
                             right: 8,
@@ -1516,7 +1517,7 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
       child: path != null
           ? ClipRRect(
               borderRadius: BorderRadius.circular(2),
-              child: Image.file(File(path), fit: BoxFit.cover),
+              child: Image.file(File(path), cacheWidth: 320, fit: BoxFit.cover),
             )
           : Center(
               child: Text(
