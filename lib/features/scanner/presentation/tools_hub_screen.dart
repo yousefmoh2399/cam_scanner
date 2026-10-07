@@ -2621,19 +2621,23 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                   child: Row(
                     children: [
-                      Text(
-                        _searchQuery.trim().isNotEmpty
-                            ? 'نتائج البحث (${tools.length} أداة)'
-                            : (_selectedCategory == ToolCategory.all
-                                ? 'جميع الأقسام المنظمة (${_allTools.length} أداة)'
-                                : '${_selectedCategory.sectionTitle} (${tools.length})'),
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF8E8E93),
+                      Expanded(
+                        child: Text(
+                          _searchQuery.trim().isNotEmpty
+                              ? 'نتائج البحث (${tools.length} أداة)'
+                              : (_selectedCategory == ToolCategory.all
+                                  ? 'جميع الأقسام المنظمة (${_allTools.length} أداة)'
+                                  : '${_selectedCategory.sectionTitle} (${tools.length})'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF8E8E93),
+                          ),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       // Layout indication pill
                       InkWell(
                         onTap: () => _setViewMode(!_isGridView),
@@ -2959,15 +2963,19 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'الوصول السريع',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14.5,
-                  letterSpacing: -0.2,
+              const Expanded(
+                child: Text(
+                  'الوصول السريع',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
@@ -3398,6 +3406,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 // Top Row: Squircle App Icon + Discrete Badge
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
                       width: 38,
@@ -3412,22 +3421,26 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         size: 20,
                       ),
                     ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: tool.accentColor.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        tool.badge,
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: tool.accentColor,
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: tool.accentColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          tool.badge,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: tool.accentColor,
+                          ),
                         ),
                       ),
                     ),

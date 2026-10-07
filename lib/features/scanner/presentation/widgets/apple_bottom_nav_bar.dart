@@ -121,8 +121,8 @@ class AppleBottomNavBar extends ConsumerWidget {
           padding: EdgeInsets.only(
             bottom: bottomPadding > 0 ? bottomPadding : 6,
             top: 4,
-            left: 12,
-            right: 12,
+            left: 8,
+            right: 8,
           ),
           decoration: BoxDecoration(
             color: isDark
@@ -145,57 +145,64 @@ class AppleBottomNavBar extends ConsumerWidget {
             ],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               // Tab 0: المستندات
-              _buildNavItem(
-                index: 0,
-                label: 'المستندات',
-                icon: Icons.folder_outlined,
-                activeIcon: Icons.folder_rounded,
-                isSelected: currentIndex == 0,
-                activeColor: activeColor,
-                isDark: isDark,
-                onTap: () => _onTabTapped(context, 0),
+              Expanded(
+                child: _buildNavItem(
+                  index: 0,
+                  label: 'المستندات',
+                  icon: Icons.folder_outlined,
+                  activeIcon: Icons.folder_rounded,
+                  isSelected: currentIndex == 0,
+                  activeColor: activeColor,
+                  isDark: isDark,
+                  onTap: () => _onTabTapped(context, 0),
+                ),
               ),
 
               // Tab 1: الأدوات
-              _buildNavItem(
-                index: 1,
-                label: 'الأدوات',
-                icon: Icons.grid_view_outlined,
-                activeIcon: Icons.grid_view_rounded,
-                isSelected: currentIndex == 1,
-                activeColor: activeColor,
-                isDark: isDark,
-                onTap: () => _onTabTapped(context, 1),
+              Expanded(
+                child: _buildNavItem(
+                  index: 1,
+                  label: 'الأدوات',
+                  icon: Icons.grid_view_outlined,
+                  activeIcon: Icons.grid_view_rounded,
+                  isSelected: currentIndex == 1,
+                  activeColor: activeColor,
+                  isDark: isDark,
+                  onTap: () => _onTabTapped(context, 1),
+                ),
               ),
 
               // ── Center Action Button: المسح الضوئي ──
               _buildCenterScanButton(context, ref, activeColor),
 
               // Tab 2: الهوية
-              _buildNavItem(
-                index: 2,
-                label: 'الهوية',
-                icon: Icons.badge_outlined,
-                activeIcon: Icons.badge_rounded,
-                isSelected: currentIndex == 2,
-                activeColor: activeColor,
-                isDark: isDark,
-                onTap: () => _onTabTapped(context, 2),
+              Expanded(
+                child: _buildNavItem(
+                  index: 2,
+                  label: 'الهوية',
+                  icon: Icons.badge_outlined,
+                  activeIcon: Icons.badge_rounded,
+                  isSelected: currentIndex == 2,
+                  activeColor: activeColor,
+                  isDark: isDark,
+                  onTap: () => _onTabTapped(context, 2),
+                ),
               ),
 
               // Tab 3: الخزنة
-              _buildNavItem(
-                index: 3,
-                label: 'الخزنة',
-                icon: Icons.lock_outline_rounded,
-                activeIcon: Icons.lock_rounded,
-                isSelected: currentIndex == 3,
-                activeColor: activeColor,
-                isDark: isDark,
-                onTap: () => _onTabTapped(context, 3),
+              Expanded(
+                child: _buildNavItem(
+                  index: 3,
+                  label: 'الخزنة',
+                  icon: Icons.lock_outline_rounded,
+                  activeIcon: Icons.lock_rounded,
+                  isSelected: currentIndex == 3,
+                  activeColor: activeColor,
+                  isDark: isDark,
+                  onTap: () => _onTabTapped(context, 3),
+                ),
               ),
             ],
           ),
@@ -585,14 +592,14 @@ class AppleBottomNavBar extends ConsumerWidget {
       highlightColor: Colors.transparent,
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
                 color: isSelected
                     ? activeColor.withValues(alpha: isDark ? 0.22 : 0.12)
@@ -606,13 +613,17 @@ class AppleBottomNavBar extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? activeColor : inactiveColor,
-                letterSpacing: -0.2,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? activeColor : inactiveColor,
+                  letterSpacing: -0.2,
+                ),
               ),
             ),
           ],

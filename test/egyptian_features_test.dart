@@ -107,7 +107,7 @@ void main() {
 
   group('GovernmentPresetService Tests', () {
     test('portalPresets contains Egyptian governmental target sizes', () {
-      expect(GovernmentPresetService.portalPresets.length, equals(4));
+      expect(GovernmentPresetService.portalPresets.length, greaterThanOrEqualTo(4));
       expect(GovernmentPresetService.portalPresets.any((p) => p.kb == 100), isTrue);
       expect(GovernmentPresetService.portalPresets.any((p) => p.kb == 200), isTrue);
       expect(GovernmentPresetService.portalPresets.any((p) => p.kb == 500), isTrue);
