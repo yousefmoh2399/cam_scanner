@@ -2074,8 +2074,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         _selectedCategory == ToolCategory.all && _searchQuery.trim().isEmpty;
 
     return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
         centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -2084,7 +2090,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               'الأدوات',
               style: TextStyle(
                 fontWeight: FontWeight.w800,
-                fontSize: 19,
+                fontSize: 20,
                 letterSpacing: -0.4,
               ),
             ),
@@ -2093,7 +2099,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF8E8E93),
               ),
@@ -2115,9 +2121,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 height: 36,
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF242426)
+                      ? const Color(0xFF1C1C1E)
                       : const Color(0xFFE5E5EA),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                    width: 0.5,
+                  ),
                 ),
                 child: Icon(
                   _isGridView
@@ -2142,9 +2154,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 height: 36,
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF242426)
+                      ? const Color(0xFF1C1C1E)
                       : const Color(0xFFE5E5EA),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                    width: 0.5,
+                  ),
                 ),
                 child: Icon(
                   Icons.palette_outlined,
@@ -2172,9 +2190,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 height: 36,
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF242426)
+                      ? const Color(0xFF1C1C1E)
                       : const Color(0xFFE5E5EA),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                    width: 0.5,
+                  ),
                 ),
                 child: Icon(
                   isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
@@ -2195,59 +2219,87 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
-              // Search Bar
+              // ── Apple Inset Search Bar ──
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                    decoration: InputDecoration(
-                      hintText:
-                          'ابحث في الأدوات (رقم قومي، إكسل، pdf، علامة مائية...)...',
-                      hintStyle: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.45),
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        color: palette.accent,
-                      ),
-                      suffixIcon: _searchQuery.isEmpty
-                          ? null
-                          : IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                            ),
-                      filled: true,
-                      fillColor: isDark
-                          ? const Color(0xFF1E1E22)
-                          : const Color(0xFFF1F5F9),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                  child: SizedBox(
+                    height: 42,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                      textAlignVertical: TextAlignVertical.center,
+                      style: const TextStyle(fontSize: 13.5),
+                      decoration: InputDecoration(
+                        hintText: 'البحث في الأدوات والذكاء الاصطناعي...',
+                        hintStyle: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF8E8E93),
+                          fontWeight: FontWeight.w400,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: Color(0xFF8E8E93),
+                          size: 19,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.cancel_rounded,
+                                  color: Color(0xFF8E8E93),
+                                  size: 18,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: isDark
+                            ? const Color(0xFF1C1C1E)
+                            : const Color(0xFFE5E5EA),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 0,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
+                            width: 0.5,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
+                            width: 0.5,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: palette.accent,
+                            width: 1.2,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
 
-              // Category Filter Chips
+              // ── Apple Category Filter Segmented Pills ──
               SliverToBoxAdapter(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                   child: Row(
                     children: ToolCategory.values.map((cat) {
                       final isSelected = _selectedCategory == cat;
@@ -2257,32 +2309,108 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
                       return Padding(
                         padding: const EdgeInsets.only(left: 8),
-                        child: FilterChip(
-                          selected: isSelected,
-                          avatar: Icon(
-                            cat.icon,
-                            size: 16,
-                            color: isSelected
-                                ? Colors.white
-                                : (isDark ? Colors.white70 : Colors.black87),
-                          ),
-                          label: Text(
-                            '${cat.label} ($count)',
-                            style: TextStyle(
-                              fontWeight: isSelected
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              fontSize: 12.5,
-                              color: isSelected
-                                  ? Colors.white
-                                  : (isDark ? Colors.white70 : Colors.black87),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _selectedCategory = cat);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? palette.accent
+                                    : (isDark
+                                        ? const Color(0xFF1C1C1E)
+                                        : Colors.white),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? palette.accent
+                                      : (isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Colors.black.withValues(alpha: 0.06)),
+                                  width: 0.5,
+                                ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: palette.accent.withValues(alpha: 0.25),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                              alpha: isDark ? 0.2 : 0.02),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    cat.icon,
+                                    size: 15,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : (isDark
+                                            ? const Color(0xFF8E8E93)
+                                            : const Color(0xFF636366)),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    cat.label,
+                                    style: TextStyle(
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                      fontSize: 12.5,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : (isDark
+                                              ? Colors.white
+                                              : const Color(0xFF1C1C1E)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? Colors.white.withValues(alpha: 0.22)
+                                          : (isDark
+                                              ? Colors.white.withValues(alpha: 0.08)
+                                              : Colors.black.withValues(alpha: 0.05)),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$count',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : const Color(0xFF8E8E93),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          selectedColor: palette.accent,
-                          checkmarkColor: Colors.white,
-                          onSelected: (_) {
-                            setState(() => _selectedCategory = cat);
-                          },
                         ),
                       );
                     }).toList(),
@@ -2293,7 +2421,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               // Section Header / Quick Summary Bar
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                   child: Row(
                     children: [
                       Text(
@@ -2302,13 +2430,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                             : (_selectedCategory == ToolCategory.all
                                 ? 'جميع الأقسام المنظمة (${_allTools.length} أداة)'
                                 : '${_selectedCategory.sectionTitle} (${tools.length})'),
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: const TextStyle(
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w700,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.7),
+                          color: Color(0xFF8E8E93),
                         ),
                       ),
                       const Spacer(),
@@ -2575,65 +2700,45 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     required AppThemePalette palette,
   }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(7),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: palette.accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               category.icon,
-              size: 18,
+              size: 16,
               color: palette.accent,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  category.sectionTitle,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
-                ),
-                Text(
-                  category.sectionSubtitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          const SizedBox(width: 8),
+          Text(
+            category.sectionTitle,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14.5,
+              letterSpacing: -0.2,
             ),
           ),
+          const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.08)
                   : Colors.black.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               '$count أدوات',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.75),
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8E8E93),
               ),
             ),
           ),
@@ -2656,14 +2761,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.10)
-              : Colors.black.withValues(alpha: 0.07),
-          width: 0.6,
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 6,
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -2678,49 +2783,49 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             _onToolSelected(tool);
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Row: Icon + Badge
+                // Top Row: Squircle App Icon + Discrete Badge
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      width: 34,
-                      height: 34,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: tool.accentColor.withValues(alpha: 0.14),
+                        color: tool.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         tool.icon,
                         color: tool.accentColor,
-                        size: 18,
+                        size: 20,
                       ),
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
-                        vertical: 2.5,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: tool.accentColor.withValues(alpha: 0.12),
+                        color: tool.accentColor.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         tool.badge,
                         style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
                           color: tool.accentColor,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const Spacer(),
 
                 // Title
                 Text(
@@ -2736,20 +2841,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 const SizedBox(height: 3),
 
                 // Subtitle
-                Expanded(
-                  child: Text(
-                    tool.subtitle,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.60),
-                      height: 1.25,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                Text(
+                  tool.subtitle,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF8E8E93),
+                    height: 1.25,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -2770,12 +2870,13 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E22) : Colors.white,
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
@@ -2801,16 +2902,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               children: [
                 // Tool Icon Box
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: tool.accentColor.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(11),
+                    color: tool.accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     tool.icon,
                     color: tool.accentColor,
-                    size: 20,
+                    size: 19,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -2840,14 +2941,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: tool.accentColor.withValues(alpha: 0.12),
+                              color: tool.accentColor.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(5),
                             ),
                             child: Text(
                               tool.badge,
                               style: TextStyle(
                                 fontSize: 9,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w700,
                                 color: tool.accentColor,
                               ),
                             ),
@@ -2857,12 +2958,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       const SizedBox(height: 2),
                       Text(
                         tool.subtitle,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 10.5,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.60),
+                          color: Color(0xFF8E8E93),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -2871,13 +2969,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
+                const Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 13,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.3),
+                  color: Color(0xFF8E8E93),
                 ),
               ],
             ),

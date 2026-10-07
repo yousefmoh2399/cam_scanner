@@ -435,7 +435,14 @@ class _SmartContractStudioScreenState
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           tooltip: 'رجوع',
@@ -447,33 +454,46 @@ class _SmartContractStudioScreenState
           children: [
             const Text(
               'استوديو العقود والقوالب الذكية',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16.5),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                letterSpacing: -0.3,
+              ),
             ),
-            Text(
+            const Text(
               'صيغ قانونية محكمة • توثيق وتفقيد مالي 100% أوفلاين',
               style: TextStyle(
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white60 : Colors.black54,
+                color: Color(0xFF8E8E93),
               ),
             ),
           ],
         ),
       ),
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Contract Type Selector Carousel ──
-            const Text(
-              'اختر نوع العقد أو الاتفاقية القانونية:',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+            // ── Contract Type Selector Segmented Carousel ──
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Text(
+                'نوع العقد أو النموذج القانوني',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: Color(0xFF8E8E93),
+                ),
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             SizedBox(
-              height: 48,
+              height: 44,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -484,58 +504,70 @@ class _SmartContractStudioScreenState
                   final isSelected = t == _selectedType;
                   final icon = _getContractIcon(t);
 
-                  return InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _selectedType = t;
-                        _updateRoleDefaults();
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(14),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF007AFF)
-                            : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _selectedType = t;
+                          _updateRoleDefaults();
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
                           color: isSelected
                               ? const Color(0xFF007AFF)
-                              : (isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.08)),
+                              : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF007AFF)
+                                : (isDark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.black.withValues(alpha: 0.06)),
+                            width: 0.5,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                         ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFF007AFF).withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            icon,
-                            size: 16,
-                            color: isSelected ? Colors.white : const Color(0xFF007AFF),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            t.titleAr,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                              color: isSelected ? Colors.white : (isDark ? Colors.white : Colors.black87),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 15,
+                              color: isSelected ? Colors.white : const Color(0xFF007AFF),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 7),
+                            Text(
+                              t.titleAr,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -543,15 +575,27 @@ class _SmartContractStudioScreenState
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
-            // ── Selected Contract Description Card ──
+            // ── Selected Contract Description Inset Card ──
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF007AFF).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF007AFF).withValues(alpha: 0.2)),
+                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                  width: 0.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -755,18 +799,24 @@ class _SmartContractStudioScreenState
               children: [
                 Expanded(
                   child: SizedBox(
-                    height: 52,
+                    height: 50,
                     child: OutlinedButton.icon(
                       onPressed: _isGenerating ? null : _previewContractPdf,
                       icon: const Icon(Icons.visibility_rounded, size: 18),
                       label: const Text(
                         'معاينة العقد',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
                       ),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF007AFF), width: 1.5),
-                        foregroundColor: const Color(0xFF007AFF),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.08),
+                          width: 0.8,
+                        ),
+                        foregroundColor: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
@@ -774,7 +824,7 @@ class _SmartContractStudioScreenState
                 const SizedBox(width: 12),
                 Expanded(
                   child: SizedBox(
-                    height: 52,
+                    height: 50,
                     child: FilledButton.icon(
                       onPressed: _isGenerating
                           ? null
@@ -788,12 +838,12 @@ class _SmartContractStudioScreenState
                           : const Icon(Icons.picture_as_pdf_rounded, size: 18),
                       label: Text(
                         _isGenerating ? 'جارٍ التوليد...' : 'تصدير العقد (PDF)',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF007AFF),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         elevation: 0,
                       ),
                     ),
@@ -819,17 +869,18 @@ class _SmartContractStudioScreenState
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.07),
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -843,9 +894,9 @@ class _SmartContractStudioScreenState
                 height: 32,
                 decoration: BoxDecoration(
                   color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, size: 18, color: const Color(0xFF007AFF)),
+                child: Icon(icon, size: 17, color: const Color(0xFF007AFF)),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -881,30 +932,36 @@ class _SmartContractStudioScreenState
       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
+        labelStyle: const TextStyle(
           fontSize: 12,
-          color: isDark ? Colors.white60 : Colors.black54,
+          color: Color(0xFF8E8E93),
         ),
-        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF007AFF)),
+        prefixIcon: Icon(icon, size: 17, color: const Color(0xFF8E8E93)),
         isDense: true,
         filled: true,
-        fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9FAFB),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black12,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04),
+            width: 0.5,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black12,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04),
+            width: 0.5,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF007AFF), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF007AFF), width: 1.2),
         ),
       ),
     );
@@ -917,17 +974,18 @@ class _SmartContractStudioScreenState
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.07),
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -941,9 +999,9 @@ class _SmartContractStudioScreenState
                 height: 32,
                 decoration: BoxDecoration(
                   color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: const Icon(Icons.palette_outlined, size: 18, color: Color(0xFF007AFF)),
+                child: const Icon(Icons.palette_outlined, size: 17, color: Color(0xFF007AFF)),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -956,7 +1014,7 @@ class _SmartContractStudioScreenState
                     ),
                     Text(
                       'اختر لون الورقة المناسب للطباعة والتوثيق',
-                      style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                      style: TextStyle(fontSize: 10.5, color: Color(0xFF8E8E93)),
                     ),
                   ],
                 ),
@@ -978,33 +1036,33 @@ class _SmartContractStudioScreenState
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                     decoration: BoxDecoration(
                       color: Color(color.paperHex),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
                             ? const Color(0xFF007AFF)
-                            : Colors.black.withValues(alpha: 0.15),
-                        width: isSelected ? 2.5 : 1,
+                            : Colors.black.withValues(alpha: 0.12),
+                        width: isSelected ? 2 : 0.8,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isSelected
-                              ? const Color(0xFF007AFF).withValues(alpha: 0.25)
-                              : Colors.black.withValues(alpha: 0.04),
-                          blurRadius: isSelected ? 6 : 2,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (isSelected)
                           const Icon(Icons.check_circle_rounded,
-                              size: 18, color: Color(0xFF007AFF))
+                              size: 16, color: Color(0xFF007AFF))
                         else
                           Container(
-                            width: 18,
-                            height: 18,
+                            width: 16,
+                            height: 16,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
@@ -1012,7 +1070,7 @@ class _SmartContractStudioScreenState
                               ),
                             ),
                           ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 5),
                         Text(
                           color.label,
                           textAlign: TextAlign.center,
@@ -1043,17 +1101,18 @@ class _SmartContractStudioScreenState
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.07),
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -1067,10 +1126,10 @@ class _SmartContractStudioScreenState
                 height: 32,
                 decoration: BoxDecoration(
                   color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(9),
                 ),
                 child: const Icon(Icons.format_list_numbered_rounded,
-                    size: 18, color: Color(0xFF007AFF)),
+                    size: 17, color: Color(0xFF007AFF)),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -1083,7 +1142,7 @@ class _SmartContractStudioScreenState
                     ),
                     Text(
                       'يمكنك تعديل أي بند أو حذفه أو إضافة بنود مخصصة',
-                      style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                      style: TextStyle(fontSize: 10.5, color: Color(0xFF8E8E93)),
                     ),
                   ],
                 ),
@@ -1108,10 +1167,13 @@ class _SmartContractStudioScreenState
               decoration: BoxDecoration(
                 color: isDark
                     ? const Color(0xFF2C2C2E)
-                    : const Color(0xFFF9FAFB),
+                    : const Color(0xFFF2F2F7),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isDark ? Colors.white12 : Colors.black12,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.04),
+                  width: 0.5,
                 ),
               ),
               child: Row(
@@ -1178,6 +1240,12 @@ class _SmartContractStudioScreenState
               label: const Text('إضافة بند جديد للعقد',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : Colors.black.withValues(alpha: 0.08),
+                  width: 0.8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

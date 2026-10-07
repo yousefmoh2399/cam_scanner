@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +29,15 @@ import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 import 'widgets/theme_selection_sheet.dart';
 
+enum LibraryTab {
+  documents('المستندات'),
+  folders('المجلدات'),
+  favorites('المفضلة');
+
+  const LibraryTab(this.label);
+  final String label;
+}
+
 enum LibrarySortOption {
   newest('الأحدث أولاً', Icons.schedule_rounded),
   name('الاسم (أ - ي)', Icons.sort_by_alpha_rounded),
@@ -52,6 +62,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   Map<String, DocumentSearchHit> _ocrSearchHits = const {};
   bool _isGridView = true;
   LibrarySortOption _sortOption = LibrarySortOption.newest;
+  LibraryTab _currentTab = LibraryTab.documents;
   String? _activeFolderId;
   DateTime? _backgroundedAt;
   bool _isAppLockedOverlay = false;
@@ -683,278 +694,370 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
   Future<void> _showDocumentOptionsMenu(PendingUpload doc) async {
     final palette = context.appThemePalette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Widget buildInsetGroup(List<Widget> children) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04),
+            width: 0.5,
+          ),
+        ),
+        child: Column(
+          children: children,
+        ),
+      );
+    }
+
+    Widget buildActionRow({
+      required IconData icon,
+      required Color iconColor,
+      required String title,
+      String? subtitle,
+      Color? titleColor,
+      required VoidCallback onTap,
+    }) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                        color: titleColor ??
+                            (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 1.5),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF8E8E93),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 13,
+                color: Color(0xFF8E8E93),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget buildDivider() {
+      return Divider(
+        height: 1,
+        thickness: 0.5,
+        indent: 52,
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.black.withValues(alpha: 0.06),
+      );
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 14),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(99),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top drag handle
+                Container(
+                  width: 36,
+                  height: 4.5,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8E8E93).withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
                 ),
-              ),
-              Text(
-                doc.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${formatPageCount(doc.pageCount)} • ${formatFileSize(doc.fileSizeBytes)} • ${formatDate(doc.createdAt)}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 14),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(Icons.visibility_rounded, color: palette.accent),
-                title: const Text(
-                  'معاينة وعرض المستند',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => DocumentViewerScreen(document: doc),
+
+                // Document Header Card
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.04),
+                      width: 0.5,
                     ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.transform_rounded,
-                  color: Color(0xFF2B579A),
-                ),
-                title: const Text(
-                  'حفظ / تحويل (PDF • Word .docx • Excel .xlsx)',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text(
-                  'تحويل بالذكاء الاصطناعي وتعرف النصوص OCR بدون إنترنت',
-                  style: TextStyle(fontSize: 11.5),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _exportDocumentSheet(doc);
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.table_chart_rounded,
-                  color: Color(0xFF059669),
-                ),
-                title: const Text(
-                  'تحويل الجداول إلى Excel احترافي (.xlsx)',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text(
-                  'إعادة بناء شبكة الجداول والخلايا وتنسيق الأرقام والعربي RTL',
-                  style: TextStyle(fontSize: 11.5),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _exportToExcelDirectly(doc);
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.document_scanner_rounded,
-                  color: Color(0xFF9333EA),
-                ),
-                title: const Text(
-                  'استخراج النص وتسمية ذكية (Tesseract OCR)',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text(
-                  'نسخ النص العربي/الإنجليزي، اقتراح عنوان ذكي، وفهرسة للبحث الفوري',
-                  style: TextStyle(fontSize: 11.5),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showOcrAndSmartRenameDialog(doc);
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.enhanced_encryption_rounded,
-                  color: Color(0xFF059669),
-                ),
-                title: const Text(
-                  'نقل إلى الخزنة السرية المشفرة (AES-256-GCM)',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text(
-                  'تشفير الملف فعلياً على القرص وإخفاؤه من المكتبة والبحث',
-                  style: TextStyle(fontSize: 11.5),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _moveSingleDocToSecretVault(doc);
-                },
-              ),
-              if (doc.pages.isNotEmpty)
-                ListTile(
-                  leading: Icon(
-                    Icons.edit_document,
-                    color: palette.success,
                   ),
-                  title: const Text(
-                    'تعديل الصفحات / إضافة صفحة / توقيع',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _reopenDocumentForEditing(doc);
-                  },
-                ),
-              ListTile(
-                leading: Icon(
-                  Icons.drive_file_rename_outline_rounded,
-                  color: palette.accent,
-                ),
-                title: const Text(
-                  'إعادة تسمية المستند',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _renameDocumentDialog(doc);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.drive_file_move_rounded,
-                  color: palette.warning,
-                ),
-                title: const Text(
-                  'نقل إلى مجلد...',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showMoveToFolderSheet([doc]);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.share_rounded, color: palette.accent),
-                title: const Text(
-                  'مشاركة الملف',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  await Share.shareXFiles(
-                    [XFile(doc.filePath)],
-                    subject: doc.title,
-                  );
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.print_rounded, color: palette.accent),
-                title: const Text(
-                  'طباعة مباشرة',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  final file = File(doc.filePath);
-                  if (await file.exists()) {
-                    final bytes = await file.readAsBytes();
-                    await Printing.layoutPdf(
-                      onLayout: (_) async => bytes,
-                      name: doc.fileName,
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  doc.isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
-                  color: Colors.amber,
-                ),
-                title: Text(
-                  doc.isFavorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  await ref
-                      .read(pendingUploadsControllerProvider.notifier)
-                      .toggleFavorite(doc.id);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.psychology_rounded,
-                  color: palette.accent,
-                ),
-                title: const Text(
-                  'استخراج ذكي وقراءة صوتية (OCR)',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text(
-                  'استخراج رقم قومي، هواتف، كروت vCard، وقراءة صوتية بدون إنترنت',
-                  style: TextStyle(fontSize: 11.5),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showSmartExtractionForDoc(doc);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.delete_outline_rounded,
-                  color: palette.danger,
-                ),
-                title: Text(
-                  'نقل إلى سلة المحذوفات',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: palette.danger,
-                  ),
-                ),
-                subtitle: const Text(
-                  'يمكنك استعادة المستند خلال 30 يوماً',
-                  style: TextStyle(fontSize: 11),
-                ),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  await ref
-                      .read(pendingUploadsControllerProvider.notifier)
-                      .moveToTrash(doc.id);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('تم نقل "${doc.title}" إلى سلة المحذوفات'),
-                        action: SnackBarAction(
-                          label: 'تراجع',
-                          onPressed: () {
-                            ref
-                                .read(pendingUploadsControllerProvider.notifier)
-                                .restoreFromTrash(doc.id);
-                          },
-                        ),
-                        behavior: SnackBarBehavior.floating,
+                  child: Row(
+                    children: [
+                      _buildDocumentThumbnail(
+                        doc,
+                        width: 44,
+                        height: 56,
+                        palette: palette,
                       ),
-                    );
-                  }
-                },
-              ),
-            ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              doc.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${formatPageCount(doc.pageCount)} • ${formatFileSize(doc.fileSizeBytes)} • ${formatDate(doc.createdAt)}',
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF8E8E93),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Group 1: Primary Actions
+                buildInsetGroup([
+                  buildActionRow(
+                    icon: Icons.visibility_rounded,
+                    iconColor: palette.accent,
+                    title: 'معاينة وعرض المستند',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DocumentViewerScreen(document: doc),
+                        ),
+                      );
+                    },
+                  ),
+                  buildDivider(),
+                  buildActionRow(
+                    icon: Icons.ios_share_rounded,
+                    iconColor: palette.accent,
+                    title: 'مشاركة المستند',
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await Share.shareXFiles(
+                        [XFile(doc.filePath)],
+                        subject: doc.title,
+                      );
+                    },
+                  ),
+                  buildDivider(),
+                  buildActionRow(
+                    icon: Icons.transform_rounded,
+                    iconColor: const Color(0xFF2B579A),
+                    title: 'حفظ وتصدير (PDF • Word • Excel)',
+                    subtitle: 'تحويل ذكي أوفلاين مع تعرف النصوص OCR',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _exportDocumentSheet(doc);
+                    },
+                  ),
+                  buildDivider(),
+                  buildActionRow(
+                    icon: Icons.table_chart_rounded,
+                    iconColor: const Color(0xFF107C41),
+                    title: 'تصدير مباشر إلى جداول Excel (XLSX)',
+                    subtitle: 'تحويل الجداول الممسوحة إلى إكسيل قابل للتعديل',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _exportToExcelDirectly(doc);
+                    },
+                  ),
+                  buildDivider(),
+                  buildActionRow(
+                    icon: Icons.print_rounded,
+                    iconColor: palette.accent,
+                    title: 'طباعة مباشرة',
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final file = File(doc.filePath);
+                      if (await file.exists()) {
+                        final bytes = await file.readAsBytes();
+                        await Printing.layoutPdf(
+                          onLayout: (_) async => bytes,
+                          name: doc.fileName,
+                        );
+                      }
+                    },
+                  ),
+                ]),
+
+                // Group 2: Organization & Editing
+                buildInsetGroup([
+                  if (doc.pages.isNotEmpty) ...[
+                    buildActionRow(
+                      icon: Icons.edit_document,
+                      iconColor: palette.success,
+                      title: 'تعديل الصفحات والتوقيع',
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _reopenDocumentForEditing(doc);
+                      },
+                    ),
+                    buildDivider(),
+                  ],
+                  buildActionRow(
+                    icon: Icons.drive_file_move_rounded,
+                    iconColor: palette.warning,
+                    title: 'نقل إلى مجلد...',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showMoveToFolderSheet([doc]);
+                    },
+                  ),
+                  buildDivider(),
+                  buildActionRow(
+                    icon: Icons.drive_file_rename_outline_rounded,
+                    iconColor: palette.accent,
+                    title: 'إعادة تسمية المستند',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _renameDocumentDialog(doc);
+                    },
+                  ),
+                  buildDivider(),
+                  buildActionRow(
+                    icon: doc.isFavorite
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
+                    iconColor: Colors.amber,
+                    title: doc.isFavorite
+                        ? 'إزالة من المفضلة'
+                        : 'إضافة إلى المفضلة',
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await ref
+                          .read(pendingUploadsControllerProvider.notifier)
+                          .toggleFavorite(doc.id);
+                    },
+                  ),
+                ]),
+
+                // Group 3: AI Intelligence & Security
+                buildInsetGroup([
+                  buildActionRow(
+                    icon: Icons.psychology_rounded,
+                    iconColor: const Color(0xFF9333EA),
+                    title: 'استخراج ذكي وقراءة صوتية (OCR)',
+                    subtitle: 'استخراج رقم قومي وهواتف وقراءة ناطقة',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showSmartExtractionForDoc(doc);
+                    },
+                  ),
+                  buildDivider(),
+                  buildActionRow(
+                    icon: Icons.auto_fix_high_rounded,
+                    iconColor: const Color(0xFF0284C7),
+                    title: 'التعرف على النص وإعادة التسمية الذكية',
+                    subtitle: 'تسمية المستند تلقائياً بناءً على محتواه وموضوعه',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showOcrAndSmartRenameDialog(doc);
+                    },
+                  ),
+                  buildDivider(),
+                  buildActionRow(
+                    icon: Icons.enhanced_encryption_rounded,
+                    iconColor: const Color(0xFF059669),
+                    title: 'نقل إلى الخزنة المشفرة (AES-256)',
+                    subtitle: 'تشفير كامل للملف وإخفاؤه من المكتبة',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _moveSingleDocToSecretVault(doc);
+                    },
+                  ),
+                ]),
+
+                // Group 4: Destructive Action
+                buildInsetGroup([
+                  buildActionRow(
+                    icon: Icons.delete_outline_rounded,
+                    iconColor: palette.danger,
+                    title: 'نقل إلى سلة المحذوفات',
+                    titleColor: palette.danger,
+                    subtitle: 'يمكنك استعادة المستند خلال 30 يوماً',
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await ref
+                          .read(pendingUploadsControllerProvider.notifier)
+                          .moveToTrash(doc.id);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'تم نقل "${doc.title}" إلى سلة المحذوفات',
+                            ),
+                            action: SnackBarAction(
+                              label: 'تراجع',
+                              onPressed: () {
+                                ref
+                                    .read(pendingUploadsControllerProvider
+                                        .notifier)
+                                    .restoreFromTrash(doc.id);
+                              },
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ]),
+              ],
+            ),
           ),
         ),
       ),
@@ -1210,8 +1313,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
   List<PendingUpload> _filterAndSortDocuments(List<PendingUpload> allDocs) {
     final query = _searchQuery.trim().toLowerCase();
+    final isFavMode = _showFavoritesOnly || _currentTab == LibraryTab.favorites;
     final filtered = allDocs.where((doc) {
-      if (_showFavoritesOnly && !doc.isFavorite) return false;
+      if (isFavMode && !doc.isFavorite) return false;
       if (_selectedCategoryFilter != null && doc.category != _selectedCategoryFilter) {
         return false;
       }
@@ -1220,7 +1324,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       } else {
         // At the root level of the library:
         // Hide documents that have been moved into folders so they don't linger outside!
-        if (query.isEmpty && !_showFavoritesOnly && _selectedCategoryFilter == null) {
+        if (query.isEmpty && !isFavMode && _selectedCategoryFilter == null) {
           if (doc.folderId != null && doc.folderId!.isNotEmpty) {
             return false;
           }
@@ -1298,19 +1402,49 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final palette = context.appThemePalette;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeFolder = _activeFolder;
+    final rootDocsCount = allDocs
+        .where((d) => d.folderId == null || d.folderId!.isEmpty)
+        .length;
+    final favDocsCount = allDocs.where((d) => d.isFavorite).length;
 
     return Scaffold(
       extendBody: true,
-      backgroundColor: isDark ? const Color(0xFF101012) : const Color(0xFFF7F8FA),
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: _isMultiSelectMode
           ? AppBar(
-              leading: IconButton(
+              leading: TextButton(
                 onPressed: () => setState(() => _selectedDocIds.clear()),
-                icon: const Icon(Icons.close_rounded),
-                tooltip: 'إلغاء التحديد',
+                child: Text(
+                  'إلغاء',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: palette.accent,
+                    fontSize: 15,
+                  ),
+                ),
               ),
-              title: Text('تم تحديد ${_selectedDocIds.length}'),
+              title: Text(
+                'تم تحديد ${_selectedDocIds.length}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
               actions: [
+                IconButton(
+                  tooltip: 'تحديد الكل',
+                  onPressed: () {
+                    setState(() {
+                      if (_selectedDocIds.length == visibleDocs.length) {
+                        _selectedDocIds.clear();
+                      } else {
+                        _selectedDocIds.addAll(visibleDocs.map((d) => d.id));
+                      }
+                    });
+                  },
+                  icon: const Icon(Icons.select_all_rounded),
+                ),
                 IconButton(
                   tooltip: 'نقل إلى مجلد',
                   onPressed: () {
@@ -1324,7 +1458,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 IconButton(
                   tooltip: 'مشاركة المحدد',
                   onPressed: () => _shareSelectedDocuments(allDocs),
-                  icon: const Icon(Icons.share_rounded),
+                  icon: const Icon(Icons.ios_share_rounded),
                 ),
                 IconButton(
                   tooltip: 'حذف المحدد',
@@ -1340,9 +1474,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               centerTitle: false,
               elevation: 0,
               scrolledUnderElevation: 0,
-              backgroundColor: isDark
-                  ? const Color(0xFF101012)
-                  : const Color(0xFFF7F8FA),
+              backgroundColor:
+                  isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
               leading: activeFolder != null
                   ? Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1357,7 +1490,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           height: 36,
                           decoration: BoxDecoration(
                             color: isDark
-                                ? const Color(0xFF242426)
+                                ? const Color(0xFF1C1C1E)
                                 : const Color(0xFFE5E5EA),
                             shape: BoxShape.circle,
                           ),
@@ -1375,8 +1508,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           borderRadius: BorderRadius.circular(10),
                           child: Image.asset(
                             'assets/images/app_icon.png',
-                            width: 36,
-                            height: 36,
+                            width: 34,
+                            height: 34,
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -1386,11 +1519,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    activeFolder != null ? activeFolder.name : 'لقطة',
+                    activeFolder != null ? activeFolder.name : 'المكتبة',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       fontSize: 20,
                       letterSpacing: -0.4,
                     ),
@@ -1398,7 +1531,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   Text(
                     activeFolder != null
                         ? '${visibleDocs.length} مستند بالمجلد'
-                        : 'Laqta Scanner • ${allDocs.length} مستند',
+                        : '${allDocs.length} مستند • أوفلاين',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -1410,71 +1543,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ],
               ),
               actions: [
-                // Web Drop / نقل للكمبيوتر محلياً
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: Tooltip(
-                    message: 'نقل للكمبيوتر محلياً (Web Drop)',
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const WebDropScreen(),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.wifi_tethering_rounded,
-                          size: 19,
-                          color: Color(0xFF007AFF),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Trash / سلة المحذوفات button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: InkWell(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const TrashScreen(),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF242426)
-                            : const Color(0xFFE5E5EA),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.delete_outline_rounded,
-                        size: 19,
-                        color: isDark
-                            ? const Color(0xFFE5E5EA)
-                            : const Color(0xFF1C1C1E),
-                      ),
-                    ),
-                  ),
-                ),
-
+                // View Mode Toggle (Grid vs List)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: InkWell(
@@ -1488,7 +1557,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       height: 36,
                       decoration: BoxDecoration(
                         color: isDark
-                            ? const Color(0xFF242426)
+                            ? const Color(0xFF1C1C1E)
                             : const Color(0xFFE5E5EA),
                         shape: BoxShape.circle,
                       ),
@@ -1504,14 +1573,53 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ),
                   ),
                 ),
+
+                // Apple Select Mode Pill Button
                 Padding(
-                  padding: const EdgeInsets.only(left: 10, right: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        if (visibleDocs.isNotEmpty) {
+                          _selectedDocIds.add(visibleDocs.first.id);
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      height: 36,
+                      padding: const EdgeInsets.symmetric(horizontal: 11),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF1C1C1E)
+                            : const Color(0xFFE5E5EA),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'تحديد',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? const Color(0xFFE5E5EA)
+                              : const Color(0xFF1C1C1E),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Apple More Menu Button (...)
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 3),
                   child: Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0xFF242426)
+                          ? const Color(0xFF1C1C1E)
                           : const Color(0xFFE5E5EA),
                       shape: BoxShape.circle,
                     ),
@@ -1526,161 +1634,174 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.black.withValues(alpha: 0.06),
-                          width: 0.5,
-                        ),
                       ),
-                  onSelected: (val) {
-                    if (val == 'select_mode') {
-                      setState(() {
-                        if (visibleDocs.isNotEmpty) {
-                          _selectedDocIds.add(visibleDocs.first.id);
+                      onSelected: (val) {
+                        if (val == 'web_drop') {
+                          HapticFeedback.lightImpact();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const WebDropScreen(),
+                            ),
+                          );
+                        } else if (val == 'trash_screen') {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const TrashScreen(),
+                            ),
+                          );
+                        } else if (val == 'dark_mode') {
+                          ref
+                              .read(userPreferencesControllerProvider.notifier)
+                              .toggleDarkMode();
+                        } else if (val == 'sort_newest') {
+                          setState(() => _sortOption = LibrarySortOption.newest);
+                        } else if (val == 'sort_name') {
+                          setState(() => _sortOption = LibrarySortOption.name);
+                        } else if (val == 'sort_size') {
+                          setState(() => _sortOption = LibrarySortOption.size);
+                        } else if (val == 'theme_palette') {
+                          showThemeSelectionSheet(context, ref);
                         }
-                      });
-                    } else if (val == 'dark_mode') {
-                      ref
-                          .read(userPreferencesControllerProvider.notifier)
-                          .toggleDarkMode();
-                    } else if (val == 'sort_newest') {
-                      setState(() => _sortOption = LibrarySortOption.newest);
-                    } else if (val == 'sort_name') {
-                      setState(() => _sortOption = LibrarySortOption.name);
-                    } else if (val == 'sort_size') {
-                      setState(() => _sortOption = LibrarySortOption.size);
-                    } else if (val == 'trash_screen') {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const TrashScreen(),
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                          value: 'web_drop',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.wifi_tethering_rounded,
+                                size: 18,
+                                color: Color(0xFF007AFF),
+                              ),
+                              SizedBox(width: 10),
+                              Text('نقل للكمبيوتر والماك (Web Drop)'),
+                            ],
+                          ),
                         ),
-                      );
-                    } else if (val == 'theme_palette') {
-                      showThemeSelectionSheet(context, ref);
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                      enabled: false,
-                      height: 28,
-                      child: Text(
-                        'ترتيب المستندات',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'sort_newest',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 18,
-                            color: _sortOption == LibrarySortOption.newest ? palette.accent : null,
+                        const PopupMenuItem(
+                          value: 'trash_screen',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline_rounded, size: 18),
+                              SizedBox(width: 10),
+                              Text('سلة المحذوفات'),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'الأحدث أولاً',
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          enabled: false,
+                          height: 26,
+                          child: Text(
+                            'ترتيب المستندات',
                             style: TextStyle(
-                              fontWeight: _sortOption == LibrarySortOption.newest
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF8E8E93),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'sort_name',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.sort_by_alpha_rounded,
-                            size: 18,
-                            color: _sortOption == LibrarySortOption.name ? palette.accent : null,
+                        ),
+                        PopupMenuItem(
+                          value: 'sort_newest',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 18,
+                                color: _sortOption == LibrarySortOption.newest
+                                    ? palette.accent
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'الأحدث أولاً',
+                                style: TextStyle(
+                                  fontWeight: _sortOption == LibrarySortOption.newest
+                                      ? FontWeight.w800
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'الاسم (أ - ي)',
-                            style: TextStyle(
-                              fontWeight: _sortOption == LibrarySortOption.name
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                            ),
+                        ),
+                        PopupMenuItem(
+                          value: 'sort_name',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.sort_by_alpha_rounded,
+                                size: 18,
+                                color: _sortOption == LibrarySortOption.name
+                                    ? palette.accent
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'الاسم (أ - ي)',
+                                style: TextStyle(
+                                  fontWeight: _sortOption == LibrarySortOption.name
+                                      ? FontWeight.w800
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'sort_size',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.data_usage_rounded,
-                            size: 18,
-                            color: _sortOption == LibrarySortOption.size ? palette.accent : null,
+                        ),
+                        PopupMenuItem(
+                          value: 'sort_size',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.data_usage_rounded,
+                                size: 18,
+                                color: _sortOption == LibrarySortOption.size
+                                    ? palette.accent
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'الحجم (الأكبر)',
+                                style: TextStyle(
+                                  fontWeight: _sortOption == LibrarySortOption.size
+                                      ? FontWeight.w800
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'الحجم (الأكبر)',
-                            style: TextStyle(
-                              fontWeight: _sortOption == LibrarySortOption.size
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                            ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'theme_palette',
+                          child: Row(
+                            children: [
+                              Icon(Icons.palette_outlined, size: 18),
+                              SizedBox(width: 10),
+                              Text('ألوان التمييز'),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'theme_palette',
-                      child: Row(
-                        children: [
-                          Icon(Icons.palette_outlined, size: 18),
-                          SizedBox(width: 10),
-                          Text('ألوان التمييز (Themes)'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'trash_screen',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline_rounded, size: 18),
-                          SizedBox(width: 10),
-                          Text('سلة المحذوفات'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'select_mode',
-                      child: Row(
-                        children: [
-                          Icon(Icons.checklist_rounded, size: 18),
-                          SizedBox(width: 10),
-                          Text('تحديد مستندات'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'dark_mode',
-                      child: Row(
-                        children: [
-                          Icon(
-                            isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                            size: 18,
+                        ),
+                        PopupMenuItem(
+                          value: 'dark_mode',
+                          child: Row(
+                            children: [
+                              Icon(
+                                isDark
+                                    ? Icons.light_mode_rounded
+                                    : Icons.dark_mode_rounded,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(isDark ? 'الوضع النهاري' : 'الوضع الليلي'),
+                            ],
                           ),
-                          Text(isDark ? 'الوضع النهاري' : 'الوضع الليلي'),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
       bottomNavigationBar: AppleBottomNavBar(
         currentIndex: 0,
         onScanTap: _startNewScanSession,
@@ -1691,12 +1812,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           await _loadFolders();
         },
         child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           slivers: [
-            // ── Apple iOS Search Bar ──
+            // ── Apple Inset Search Bar ──
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
                 child: SizedBox(
                   height: 42,
                   child: TextField(
@@ -1705,7 +1828,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     textAlignVertical: TextAlignVertical.center,
                     style: const TextStyle(fontSize: 13.5),
                     decoration: InputDecoration(
-                      hintText: 'بحث في المستندات...',
+                      hintText: 'البحث في المستندات والنصوص...',
                       hintStyle: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF8E8E93),
@@ -1739,26 +1862,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                             ),
                       filled: true,
                       fillColor: isDark
-                          ? const Color(0xFF242426)
+                          ? const Color(0xFF1C1C1E)
                           : const Color(0xFFE5E5EA),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 14),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : Colors.black.withValues(alpha: 0.04),
-                          width: 0.5,
-                        ),
+                        borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : Colors.black.withValues(alpha: 0.04),
-                          width: 0.5,
-                        ),
+                        borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1773,77 +1887,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               ),
             ),
 
-            // ── Quick Web Drop Capsule Banner (When not searching) ──
-            if (_searchQuery.trim().isEmpty && _activeFolderId == null)
+            // ── Apple Segmented Control (المستندات | المجلدات | المفضلة) ──
+            if (activeFolder == null && _searchQuery.trim().isEmpty)
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
-                  child: InkWell(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const WebDropScreen(),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF0F5FF),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFF007AFF).withValues(alpha: 0.22),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF007AFF).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.wifi_tethering_rounded,
-                              size: 19,
-                              color: Color(0xFF007AFF),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'نقل للكمبيوتر والماك (Web Drop)',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 13,
-                                    color: Color(0xFF007AFF),
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'تصفح وحمل ملفاتك أو اسحب ملفات جديدة عبر المتصفح محلياً',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF8E8E93),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 13,
-                            color: Color(0xFF007AFF),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                child: _buildAppleSegmentedControl(
+                  isDark: isDark,
+                  palette: palette,
+                  documentsCount: rootDocsCount,
+                  foldersCount: _folders.length,
+                  favoritesCount: favDocsCount,
                 ),
               ),
 
@@ -1851,7 +1903,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             if (_searchQuery.trim().isNotEmpty && _ocrSearchHits.isNotEmpty)
               SliverToBoxAdapter(
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: palette.accent.withValues(alpha: 0.08),
@@ -1888,122 +1941,112 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
               ),
 
-            // ── Quick Document Filter Chips Strip ──
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 38,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                  children: [
-                    _buildFilterPill(
-                      label: 'الكل',
-                      isSelected: !_showFavoritesOnly && _selectedCategoryFilter == null,
-                      onTap: () {
-                        setState(() {
-                          _showFavoritesOnly = false;
-                          _selectedCategoryFilter = null;
-                        });
-                      },
-                      palette: palette,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterPill(
-                      label: 'المفضلة',
-                      icon: Icons.star_rounded,
-                      iconColor: Colors.amber,
-                      isSelected: _showFavoritesOnly,
-                      onTap: () {
-                        setState(() {
-                          _showFavoritesOnly = !_showFavoritesOnly;
-                          if (_showFavoritesOnly) {
-                            _selectedCategoryFilter = null;
-                          }
-                        });
-                      },
-                      palette: palette,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 8),
-                    ...['هوية وبطاقات', 'فواتير وإيصالات', 'عقود ووثائق', 'شهادات رسمية'].map((cat) {
-                      final isSelected = _selectedCategoryFilter == cat;
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: _buildFilterPill(
-                          label: cat,
-                          isSelected: isSelected,
-                          onTap: () {
-                            setState(() {
-                              _selectedCategoryFilter = isSelected ? null : cat;
-                              if (!isSelected) {
-                                _showFavoritesOnly = false;
-                              }
-                            });
-                          },
-                          palette: palette,
-                          isDark: isDark,
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── Dedicated Folders Section (Only in main library when not searching) ──
-            if (activeFolder == null && _searchQuery.trim().isEmpty)
+            // ── Category Filter Pills (Only in Documents tab, at root, not searching) ──
+            if (_currentTab == LibraryTab.documents &&
+                activeFolder == null &&
+                _searchQuery.trim().isEmpty)
               SliverToBoxAdapter(
-                child: _buildFoldersSection(allDocs, palette, isDark),
+                child: SizedBox(
+                  height: 38,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 2),
+                    children: [
+                      _buildFilterPill(
+                        label: 'الكل',
+                        isSelected: _selectedCategoryFilter == null,
+                        onTap: () {
+                          setState(() {
+                            _selectedCategoryFilter = null;
+                          });
+                        },
+                        palette: palette,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(width: 8),
+                      ...['هوية وبطاقات', 'فواتير وإيصالات', 'عقود ووثائق', 'شهادات رسمية']
+                          .map((cat) {
+                        final isSelected = _selectedCategoryFilter == cat;
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _buildFilterPill(
+                            label: cat,
+                            isSelected: isSelected,
+                            onTap: () {
+                              setState(() {
+                                _selectedCategoryFilter =
+                                    isSelected ? null : cat;
+                              });
+                            },
+                            palette: palette,
+                            isDark: isDark,
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
               ),
 
             // ── Active Folder Header Banner (When browsing inside a folder) ──
             if (activeFolder != null)
               SliverToBoxAdapter(
-                child: _buildActiveFolderBanner(activeFolder, visibleDocs.length, palette, isDark),
+                child: _buildActiveFolderBanner(
+                    activeFolder, visibleDocs.length, palette, isDark),
               ),
 
-            // ── Documents Header ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        activeFolder != null
-                            ? 'مستندات "${activeFolder.name}" (${visibleDocs.length})'
-                            : (_searchQuery.trim().isNotEmpty
-                                ? 'نتائج البحث (${visibleDocs.length})'
-                                : (_showFavoritesOnly
-                                    ? 'المفضلة (${visibleDocs.length})'
-                                    : (_selectedCategoryFilter != null
-                                        ? '$_selectedCategoryFilter (${visibleDocs.length})'
-                                        : 'المستندات (${visibleDocs.length})'))),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
+            // ── Section Content Header ──
+            if (_currentTab == LibraryTab.folders && activeFolder == null)
+              SliverToBoxAdapter(
+                child: _buildFoldersHeader(palette, isDark),
+              )
+            else
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          activeFolder != null
+                              ? 'مستندات "${activeFolder.name}" (${visibleDocs.length})'
+                              : (_searchQuery.trim().isNotEmpty
+                                  ? 'نتائج البحث (${visibleDocs.length})'
+                                  : (_currentTab == LibraryTab.favorites
+                                      ? 'المستندات المفضلة (${visibleDocs.length})'
+                                      : (_selectedCategoryFilter != null
+                                          ? '$_selectedCategoryFilter (${visibleDocs.length})'
+                                          : 'المستندات (${visibleDocs.length})'))),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                  ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (visibleDocs.isNotEmpty)
-                      Text(
-                        'اسحب المستند لنقله لمجلد',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                      if (visibleDocs.isNotEmpty && activeFolder == null)
+                        Text(
+                          'اسحب المستند لمجلد',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant
+                                .withValues(alpha: 0.7),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // ── Empty State or Grid/List of Documents ──
-            if (visibleDocs.isEmpty)
+            // ── Main Content Area ──
+            if (_currentTab == LibraryTab.folders && activeFolder == null)
+              _buildDedicatedFoldersSliver(allDocs, palette, isDark)
+            else if (visibleDocs.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: _buildEmptyState(
@@ -2016,11 +2059,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
                 sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 0.75,
+                    childAspectRatio: 0.77,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => _buildDocumentGridCard(
@@ -2050,7 +2094,135 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
   }
 
+  Widget _buildAppleSegmentedControl({
+    required bool isDark,
+    required AppThemePalette palette,
+    required int documentsCount,
+    required int foldersCount,
+    required int favoritesCount,
+  }) {
+    return Container(
+      height: 38,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _buildSegmentItem(
+            tab: LibraryTab.documents,
+            label: 'المستندات',
+            count: documentsCount,
+            isSelected: _currentTab == LibraryTab.documents && _activeFolderId == null,
+            isDark: isDark,
+          ),
+          _buildSegmentItem(
+            tab: LibraryTab.folders,
+            label: 'المجلدات',
+            count: foldersCount,
+            isSelected: _currentTab == LibraryTab.folders && _activeFolderId == null,
+            isDark: isDark,
+          ),
+          _buildSegmentItem(
+            tab: LibraryTab.favorites,
+            label: 'المفضلة',
+            count: favoritesCount,
+            isSelected: _currentTab == LibraryTab.favorites && _activeFolderId == null,
+            isDark: isDark,
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildSegmentItem({
+    required LibraryTab tab,
+    required String label,
+    required int count,
+    required bool isSelected,
+    required bool isDark,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() {
+            _currentTab = tab;
+            _activeFolderId = null;
+            if (tab == LibraryTab.favorites) {
+              _showFavoritesOnly = true;
+            } else {
+              _showFavoritesOnly = false;
+            }
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? const Color(0xFF2C2C2E) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1.5),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected
+                      ? (isDark ? Colors.white : Colors.black)
+                      : const Color(0xFF8E8E93),
+                ),
+              ),
+              if (count > 0) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? (isDark
+                            ? Colors.white.withValues(alpha: 0.15)
+                            : Colors.black.withValues(alpha: 0.07))
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? (isDark ? Colors.white : Colors.black)
+                          : const Color(0xFF8E8E93),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildFilterPill({
     required String label,
@@ -2126,297 +2298,270 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
   }
 
-  Widget _buildFoldersSection(
+  Widget _buildFoldersHeader(AppThemePalette palette, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+      child: Row(
+        children: [
+          Text(
+            'المجلدات (${_folders.length})',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+          ),
+          const Spacer(),
+          InkWell(
+            onTap: _createFolderDialog,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+              decoration: BoxDecoration(
+                color: palette.accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 15, color: palette.accent),
+                  const SizedBox(width: 4),
+                  Text(
+                    'مجلد جديد',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: palette.accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDedicatedFoldersSliver(
     List<PendingUpload> allDocs,
     AppThemePalette palette,
     bool isDark,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.folder_copy_rounded,
-                      color: palette.warning,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    const Flexible(
-                      child: Text(
-                        'المجلدات',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: palette.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${_folders.length}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
-                          color: isDark ? Colors.amber.shade300 : Colors.amber.shade900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: _createFolderDialog,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    if (_folders.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 160),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    color: palette.accent.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: palette.accent.withValues(alpha: 0.25),
+                    color: Colors.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: const Icon(
+                    Icons.folder_open_rounded,
+                    size: 40,
+                    color: Colors.amber,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'لا توجد مجلدات بعد',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'نظّم مستنداتك وعقودك داخل مجلدات مخصصة لتسهيل الوصول إليها.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF8E8E93)),
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: _createFolderDialog,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: palette.accent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  icon: const Icon(Icons.create_new_folder_rounded, size: 18),
+                  label: const Text(
+                    'إنشاء أول مجلد',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.15,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final folder = _folders[index];
+            final count =
+                allDocs.where((d) => d.folderId == folder.id).length;
+            return _buildDedicatedFolderCard(
+              folder: folder,
+              docCount: count,
+              palette: palette,
+              isDark: isDark,
+            );
+          },
+          childCount: _folders.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDedicatedFolderCard({
+    required DocumentFolder folder,
+    required int docCount,
+    required AppThemePalette palette,
+    required bool isDark,
+  }) {
+    return DragTarget<Object>(
+      onWillAcceptWithDetails: (details) {
+        final data = details.data;
+        if (data is PendingUpload) {
+          return data.folderId != folder.id;
+        }
+        return false;
+      },
+      onAcceptWithDetails: (details) {
+        final data = details.data;
+        if (data is PendingUpload) {
+          _moveDocToFolder(data, folder);
+        }
+      },
+      builder: (context, candidates, _) {
+        final isHovered = candidates.isNotEmpty;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _activeFolderId = folder.id;
+                _showFavoritesOnly = false;
+                _selectedCategoryFilter = null;
+              });
+            },
+            onLongPress: () => _showFolderOptions(folder),
+            borderRadius: BorderRadius.circular(18),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isHovered
+                    ? palette.warning.withValues(alpha: 0.18)
+                    : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isHovered
+                      ? palette.warning
+                      : (isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06)),
+                  width: isHovered ? 1.8 : 0.6,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black
+                        .withValues(alpha: isDark ? 0.22 : 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.add_rounded, size: 15, color: palette.accent),
-                      const SizedBox(width: 3),
-                      Text(
-                        'مجلد جديد',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: palette.accent,
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.folder_rounded,
+                          color: Colors.amber,
+                          size: 26,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => _showFolderOptions(folder),
+                        borderRadius: BorderRadius.circular(12),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.more_horiz_rounded,
+                            size: 19,
+                            color: Color(0xFF8E8E93),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (_folders.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: InkWell(
-              onTap: _createFolderDialog,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E22) : const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .outlineVariant
-                        .withValues(alpha: 0.4),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        folder.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        docCount == 0
+                            ? 'فارغ'
+                            : (docCount == 1
+                                ? 'مستند واحد'
+                                : (docCount == 2
+                                    ? 'مستندان'
+                                    : '$docCount مستندات')),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF8E8E93),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: palette.warning.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: Icon(
-                        Icons.create_new_folder_outlined,
-                        color: palette.warning,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'نظّم مستنداتك داخل مجلدات',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            'اضغط هنا لإنشاء أول مجلد (عقود، فواتير...)',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      Icons.add_circle_outline_rounded,
-                      color: palette.accent,
-                      size: 18,
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
-          )
-        else
-          SizedBox(
-            height: 86,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-              itemCount: _folders.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final folder = _folders[index];
-                final count = allDocs.where((d) => d.folderId == folder.id).length;
-                return DragTarget<Object>(
-                  onWillAcceptWithDetails: (details) {
-                    final data = details.data;
-                    if (data is PendingUpload) {
-                      return data.folderId != folder.id;
-                    }
-                    return false;
-                  },
-                  onAcceptWithDetails: (details) {
-                    final data = details.data;
-                    if (data is PendingUpload) {
-                      _moveDocToFolder(data, folder);
-                    }
-                  },
-                  builder: (context, candidates, _) {
-                    final isHovered = candidates.isNotEmpty;
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          _activeFolderId = folder.id;
-                          _showFavoritesOnly = false;
-                          _selectedCategoryFilter = null;
-                        });
-                      },
-                      onLongPress: () => _showFolderOptions(folder),
-                      borderRadius: BorderRadius.circular(16),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 144,
-                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                        decoration: BoxDecoration(
-                          color: isHovered
-                              ? palette.warning.withValues(alpha: 0.25)
-                              : (isDark
-                                  ? const Color(0xFF1E1E24)
-                                  : Colors.white),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isHovered
-                                ? palette.warning
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .outlineVariant
-                                    .withValues(alpha: 0.5),
-                            width: isHovered ? 2 : 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.2 : 0.04,
-                              ),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Icon(
-                                  Icons.folder_rounded,
-                                  color: palette.warning,
-                                  size: 25,
-                                ),
-                                InkWell(
-                                  onTap: () => _showFolderOptions(folder),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(2),
-                                    child: Icon(
-                                      Icons.more_vert_rounded,
-                                      size: 16,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant
-                                          .withValues(alpha: 0.8),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  folder.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  count == 0
-                                      ? 'فارغ'
-                                      : (count == 1
-                                          ? 'مستند واحد'
-                                          : (count == 2
-                                              ? 'مستندان'
-                                              : '$count مستندات')),
-                                  style: TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w500,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
           ),
-      ],
+        );
+      },
     );
   }
 
@@ -2438,14 +2583,23 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             decoration: BoxDecoration(
               color: isHover
                   ? palette.accent.withValues(alpha: 0.18)
-                  : palette.warning.withValues(alpha: 0.1),
+                  : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isHover
                     ? palette.accent
-                    : palette.warning.withValues(alpha: 0.4),
-                width: isHover ? 1.8 : 1,
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06)),
+                width: isHover ? 1.8 : 0.6,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -2453,10 +2607,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: palette.warning.withValues(alpha: 0.2),
+                    color: Colors.amber.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.folder_open_rounded, color: palette.warning, size: 22),
+                  child: const Icon(
+                    Icons.folder_open_rounded,
+                    color: Colors.amber,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -2479,7 +2637,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           Icon(
                             Icons.chevron_left_rounded,
                             size: 14,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: const Color(0xFF8E8E93),
                           ),
                           Flexible(
                             child: Text(
@@ -2503,8 +2661,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           fontSize: 11,
                           color: isHover
                               ? palette.accent
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: isHover ? FontWeight.w700 : FontWeight.normal,
+                              : const Color(0xFF8E8E93),
+                          fontWeight:
+                              isHover ? FontWeight.w700 : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -2512,7 +2671,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
                 IconButton(
                   tooltip: 'خيارات المجلد',
-                  icon: const Icon(Icons.more_vert_rounded, size: 20),
+                  icon: const Icon(Icons.more_horiz_rounded, size: 20),
                   onPressed: () => _showFolderOptions(activeFolder),
                 ),
                 IconButton(
@@ -2529,82 +2688,185 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   void _showFolderOptions(DocumentFolder folder) {
+    final palette = context.appThemePalette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showModalBottomSheet<void>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        final pal = ctx.appThemePalette;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4.5,
+                    margin: const EdgeInsets.only(bottom: 14),
                     decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.folder_rounded, color: Colors.amber),
-                  ),
-                  title: Text(
-                    folder.name,
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                  ),
-                ),
-                const Divider(),
-                if (_activeFolderId != folder.id)
-                  ListTile(
-                    leading: const Icon(Icons.folder_open_rounded),
-                    title: const Text('فتح المجلد'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      setState(() {
-                        _activeFolderId = folder.id;
-                        _showFavoritesOnly = false;
-                        _selectedCategoryFilter = null;
-                      });
-                    },
-                  ),
-                ListTile(
-                  leading: const Icon(Icons.edit_rounded),
-                  title: const Text('إعادة تسمية المجلد'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _renameFolderDialog(folder);
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.delete_outline_rounded,
-                    color: pal.danger,
-                  ),
-                  title: Text(
-                    'حذف المجلد',
-                    style: TextStyle(
-                      color: pal.danger,
-                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF8E8E93).withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(99),
                     ),
                   ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _deleteFolderDialog(folder);
-                  },
-                ),
-              ],
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.folder_rounded,
+                            color: Colors.amber,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            folder.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        if (_activeFolderId != folder.id) ...[
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: palette.accent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.folder_open_rounded,
+                                color: palette.accent,
+                                size: 18,
+                              ),
+                            ),
+                            title: const Text(
+                              'فتح وتصفح المجلد',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              setState(() {
+                                _activeFolderId = folder.id;
+                                _showFavoritesOnly = false;
+                                _selectedCategoryFilter = null;
+                              });
+                            },
+                          ),
+                          Divider(
+                            height: 1,
+                            thickness: 0.5,
+                            indent: 52,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
+                          ),
+                        ],
+                        ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF007AFF)
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.edit_rounded,
+                              color: Color(0xFF007AFF),
+                              size: 18,
+                            ),
+                          ),
+                          title: const Text(
+                            'إعادة تسمية المجلد',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _renameFolderDialog(folder);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          indent: 52,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.06),
+                        ),
+                        ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: palette.danger.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.delete_outline_rounded,
+                              color: palette.danger,
+                              size: 18,
+                            ),
+                          ),
+                          title: Text(
+                            'حذف المجلد',
+                            style: TextStyle(
+                              color: palette.danger,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _deleteFolderDialog(folder);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -2681,27 +2943,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isSelected
               ? palette.accent
-              : Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.6),
-          width: isSelected ? 2 : 1,
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06)),
+          width: isSelected ? 2 : 0.6,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.04),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Draggable area (thumbnail + title)
+          // Draggable area (thumbnail + page count + favorite star)
           Expanded(
             child: LongPressDraggable<PendingUpload>(
               data: doc,
@@ -2709,7 +2971,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               feedback: Material(
                 color: Colors.transparent,
                 child: Container(
-                  width: 150,
+                  width: 160,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF26262B) : Colors.white,
@@ -2741,7 +3003,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               ),
               child: InkWell(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
+                  top: Radius.circular(18),
                 ),
                 onTap: () {
                   if (_isMultiSelectMode) {
@@ -2760,222 +3022,192 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ),
                   );
                 },
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            _buildDocumentThumbnail(
-                              doc,
-                              width: double.infinity,
-                              height: double.infinity,
-                              palette: palette,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: _buildDocumentThumbnail(
+                          doc,
+                          width: double.infinity,
+                          height: double.infinity,
+                          palette: palette,
+                        ),
+                      ),
+                    ),
+                    // Frosted page count pill (top-right)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2.5,
                             ),
-                            Positioned(
-                              top: 6,
-                              right: 6,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.72),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  formatPageCount(doc.pageCount),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
+                            color: Colors.black.withValues(alpha: 0.55),
+                            child: Text(
+                              formatPageCount(doc.pageCount),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                            Positioned(
-                              top: 6,
-                              left: 6,
-                              child: isSelected
-                                  ? CircleAvatar(
-                                      radius: 13,
-                                      backgroundColor: palette.accent,
-                                      child: const Icon(
-                                        Icons.check_rounded,
-                                        size: 16,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : InkWell(
-                                      onTap: () {
-                                        ref
-                                            .read(
-                                                pendingUploadsControllerProvider
-                                                    .notifier)
-                                            .toggleFavorite(doc.id);
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black
-                                              .withValues(alpha: 0.65),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          doc.isFavorite
-                                              ? Icons.star_rounded
-                                              : Icons.star_border_rounded,
-                                          size: 16,
-                                          color: doc.isFavorite
-                                              ? Colors.amber
-                                              : Colors.white70,
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        doc.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${formatFileSize(doc.fileSizeBytes)} • ${formatDate(doc.createdAt)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 3),
-                        child: Wrap(
-                          spacing: 4,
-                          runSpacing: 2,
-                          children: [
-                            if (doc.category != null &&
-                                doc.category!.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 5, vertical: 1.5),
-                                decoration: BoxDecoration(
-                                  color: palette.accent.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  doc.category!,
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: palette.accent,
-                                  ),
-                                ),
+                    ),
+                    // Frosted Favorite star or selection circle (top-left)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: isSelected
+                          ? CircleAvatar(
+                              radius: 12,
+                              backgroundColor: palette.accent,
+                              child: const Icon(
+                                Icons.check_rounded,
+                                size: 15,
+                                color: Colors.white,
                               ),
-                            if (doc.isExifClean)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 4, vertical: 1.5),
-                                decoration: BoxDecoration(
-                                  color: palette.success.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.shield_rounded,
-                                        size: 9, color: palette.success),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      'نظيف',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        color: palette.success,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      if (_activeFolderId == null && doc.folderId != null) ...[
-                        Builder(
-                          builder: (context) {
-                            final folder = _findFolderById(doc.folderId);
-                            if (folder == null) return const SizedBox.shrink();
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.folder_rounded,
-                                    size: 11,
-                                    color: palette.warning,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: Text(
-                                      folder.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: palette.warning,
-                                      ),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                child: InkWell(
+                                  onTap: () {
+                                    ref
+                                        .read(pendingUploadsControllerProvider
+                                            .notifier)
+                                        .toggleFavorite(doc.id);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4.5),
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                    child: Icon(
+                                      doc.isFavorite
+                                          ? Icons.star_rounded
+                                          : Icons.star_border_rounded,
+                                      size: 15,
+                                      color: doc.isFavorite
+                                          ? Colors.amber
+                                          : Colors.white70,
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                            );
-                          },
-                        ),
-                      ],
-                    ],
-                  ),
+                            ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
 
-          // Bottom action strip with format badges + separate `...` button OUTSIDE LongPressDraggable
+          // Metadata area
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 10, 6),
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  doc.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatDate(doc.createdAt)} • ${formatFileSize(doc.fileSizeBytes)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: Color(0xFF8E8E93),
+                  ),
+                ),
+                if (_activeFolderId == null && doc.folderId != null) ...[
+                  Builder(
+                    builder: (context) {
+                      final folder = _findFolderById(doc.folderId);
+                      if (folder == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.folder_rounded,
+                              size: 11,
+                              color: Colors.amber,
+                            ),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                folder.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Bottom action strip with format badges + Share & More buttons
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
             child: Row(
               children: [
-                _FormatMiniPill(label: 'PDF', color: const Color(0xFFE53935)),
+                const _FormatMiniPill(
+                  label: 'PDF',
+                  color: Color(0xFFE53935),
+                ),
                 if (doc.docxPath != null) ...[
                   const SizedBox(width: 4),
-                  _FormatMiniPill(label: 'W', color: const Color(0xFF2B579A)),
+                  const _FormatMiniPill(
+                    label: 'Word',
+                    color: Color(0xFF2B579A),
+                  ),
                 ],
                 if (doc.xlsxPath != null) ...[
                   const SizedBox(width: 4),
-                  _FormatMiniPill(label: 'X', color: const Color(0xFF217346)),
+                  const _FormatMiniPill(
+                    label: 'Excel',
+                    color: Color(0xFF217346),
+                  ),
                 ],
                 const Spacer(),
                 InkWell(
                   onTap: () => _exportDocumentSheet(doc),
                   borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
                     child: Icon(
                       Icons.ios_share_rounded,
-                      size: 17,
-                      color: palette.accent,
+                      size: 16,
+                      color: Color(0xFF8E8E93),
                     ),
                   ),
                 ),
@@ -2983,12 +3215,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 InkWell(
                   onTap: () => _showDocumentOptionsMenu(doc),
                   borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
                     child: Icon(
                       Icons.more_horiz_rounded,
-                      size: 19,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 18,
+                      color: Color(0xFF8E8E93),
                     ),
                   ),
                 ),
@@ -3008,18 +3240,25 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final isSelected = _selectedDocIds.contains(doc.id);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isSelected
               ? palette.accent
-              : Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.6),
-          width: isSelected ? 2 : 1,
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06)),
+          width: isSelected ? 2 : 0.6,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -3046,7 +3285,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
               ),
               child: InkWell(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 onTap: () {
                   if (_isMultiSelectMode) {
                     setState(() {
@@ -3068,11 +3307,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   padding: const EdgeInsets.all(10),
                   child: Row(
                     children: [
-                      _buildDocumentThumbnail(
-                        doc,
-                        width: 64,
-                        height: 82,
-                        palette: palette,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: _buildDocumentThumbnail(
+                          doc,
+                          width: 56,
+                          height: 72,
+                          palette: palette,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -3084,18 +3326,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                                letterSpacing: -0.2,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Text(
                               '${formatPageCount(doc.pageCount)} • ${formatFileSize(doc.fileSizeBytes)}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: Color(0xFF8E8E93),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -3106,38 +3347,37 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               children: [
                                 Text(
                                   formatDate(doc.createdAt),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    color: Color(0xFF8E8E93),
                                   ),
                                 ),
-                                if (_activeFolderId == null && doc.folderId != null)
+                                if (_activeFolderId == null &&
+                                    doc.folderId != null)
                                   Builder(
                                     builder: (context) {
-                                      final folder = _findFolderById(doc.folderId);
-                                      if (folder == null) return const SizedBox.shrink();
+                                      final folder =
+                                          _findFolderById(doc.folderId);
+                                      if (folder == null) {
+                                        return const SizedBox.shrink();
+                                      }
                                       return Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.folder_rounded,
-                                            size: 12,
-                                            color: palette.warning,
+                                            size: 11,
+                                            color: Colors.amber,
                                           ),
                                           const SizedBox(width: 3),
-                                          ConstrainedBox(
-                                            constraints: const BoxConstraints(maxWidth: 80),
-                                            child: Text(
-                                              folder.name,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 10.5,
-                                                fontWeight: FontWeight.w700,
-                                                color: palette.warning,
-                                              ),
+                                          Text(
+                                            folder.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.amber,
                                             ),
                                           ),
                                         ],
@@ -3155,16 +3395,23 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               ),
             ),
           ),
-          // Separate buttons OUTSIDE LongPressDraggable
           IconButton(
             tooltip: 'تصدير PDF / Word / Excel',
             onPressed: () => _exportDocumentSheet(doc),
-            icon: Icon(Icons.ios_share_rounded, color: palette.accent, size: 20),
+            icon: const Icon(
+              Icons.ios_share_rounded,
+              size: 18,
+              color: Color(0xFF8E8E93),
+            ),
           ),
           IconButton(
-            tooltip: 'المزيد من الخيارات',
+            tooltip: 'المزيد',
             onPressed: () => _showDocumentOptionsMenu(doc),
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const Icon(
+              Icons.more_horiz_rounded,
+              size: 20,
+              color: Color(0xFF8E8E93),
+            ),
           ),
         ],
       ),
@@ -3176,76 +3423,89 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     bool isDark, {
     bool hasTotalDocs = false,
   }) {
+    final isSearching = _searchQuery.isNotEmpty;
+    final isInsideFolder = _activeFolderId != null;
+    final isFavoritesTab = _currentTab == LibraryTab.favorites;
+
+    final IconData emptyIcon = isSearching
+        ? Icons.search_off_rounded
+        : (isInsideFolder
+            ? Icons.folder_open_rounded
+            : (isFavoritesTab
+                ? Icons.star_border_rounded
+                : Icons.document_scanner_rounded));
+
+    final String emptyTitle = isSearching
+        ? 'لا توجد نتائج'
+        : (isInsideFolder
+            ? 'المجلد فارغ'
+            : (isFavoritesTab
+                ? 'لا توجد مستندات بالمفضلة'
+                : 'لا توجد مستندات بعد'));
+
+    final String emptySubtitle = isSearching
+        ? 'جرّب البحث بكلمات أخرى أو تحقق من الإملاء.'
+        : (isInsideFolder
+            ? 'اضغط على زر الكاميرا لمسح مستند وإضافته لهذا المجلد.'
+            : (isFavoritesTab
+                ? 'اضغط على رمز النجمة في أي مستند لإضافته هنا.'
+                : 'اضغط على زر الكاميرا للبدء بمسح المستندات.'));
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 16, 28, 160),
+        padding: const EdgeInsets.fromLTRB(28, 20, 28, 160),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 112,
-              height: 112,
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: palette.accent.withValues(alpha: 0.12),
-                border: Border.all(
-                  color: palette.accent.withValues(alpha: 0.28),
-                  width: 1.5,
-                ),
+                color: palette.accent.withValues(alpha: 0.10),
               ),
               child: Icon(
-                Icons.document_scanner_rounded,
-                size: 52,
+                emptyIcon,
+                size: 42,
                 color: palette.accent,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             Text(
-              _searchQuery.isNotEmpty
-                  ? 'لا توجد نتائج'
-                  : (_activeFolderId != null
-                        ? 'المجلد فارغ'
-                        : (hasTotalDocs && _folders.isNotEmpty
-                            ? 'المستندات منظمة داخل المجلدات'
-                            : 'لا توجد مستندات بعد')),
+              emptyTitle,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 16.5,
-              ),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16.5,
+                  ),
             ),
             const SizedBox(height: 6),
             Text(
-              _searchQuery.isNotEmpty
-                  ? 'جرّب البحث بكلمات أخرى.'
-                  : (_activeFolderId != null
-                        ? 'اضغط على زر الكاميرا لمسح مستند في هذا المجلد.'
-                        : (hasTotalDocs && _folders.isNotEmpty
-                            ? 'افتح أي مجلد أعلاه لتصفح مستنداته.'
-                            : 'اضغط على زر الكاميرا للبدء بالمسح الضوئي.')),
+              emptySubtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12.5,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: Color(0xFF8E8E93),
               ),
             ),
             const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: _startNewScanSession,
-              style: FilledButton.styleFrom(
-                backgroundColor: palette.accent,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(190, 46),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            if (!isSearching && !isFavoritesTab)
+              FilledButton.icon(
+                onPressed: _startNewScanSession,
+                style: FilledButton.styleFrom(
+                  backgroundColor: palette.accent,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(180, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                label: const Text(
+                  'مسح ضوئي جديد',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
                 ),
               ),
-              icon: const Icon(Icons.camera_alt_rounded, size: 19),
-              label: const Text(
-                'مسح ضوئي جديد',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-              ),
-            ),
           ],
         ),
       ),

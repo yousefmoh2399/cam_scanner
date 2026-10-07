@@ -226,7 +226,14 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
     final sentCount = _allFiles.where((f) => f.isSent).length;
 
     return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor:
+            isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           tooltip: 'رجوع',
@@ -237,50 +244,106 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'الملفات المنقولة (Web Drop)',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+              'الملفات المنقولة',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                letterSpacing: -0.3,
+              ),
             ),
             Text(
-              'منفصلة عن المستندات • حفظ ومشاركة فورية',
-              style: TextStyle(
-                fontSize: 10.5,
+              '${_allFiles.length} ملف • Web Drop أوفلاين',
+              style: const TextStyle(
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white60 : Colors.black54,
+                color: Color(0xFF8E8E93),
               ),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'فتح سيرفر المشاركة',
-            icon: const Icon(Icons.wifi_tethering_rounded,
-                color: Color(0xFF007AFF)),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WebDropScreen()),
-              );
-            },
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WebDropScreen()),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF1C1C1E)
+                      : const Color(0xFFE5E5EA),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                    width: 0.5,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.wifi_tethering_rounded,
+                  size: 18,
+                  color: Color(0xFF007AFF),
+                ),
+              ),
+            ),
           ),
           if (_allFiles.isNotEmpty)
-            IconButton(
-              tooltip: 'مسح الكل',
-              icon: const Icon(Icons.delete_sweep_rounded, color: Colors.red),
-              onPressed: _clearAll,
+            Padding(
+              padding: const EdgeInsets.only(left: 12, right: 4),
+              child: InkWell(
+                onTap: _clearAll,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF1C1C1E)
+                        : const Color(0xFFE5E5EA),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.delete_sweep_rounded,
+                    size: 18,
+                    color: Colors.redAccent,
+                  ),
+                ),
+              ),
             ),
         ],
       ),
       body: Column(
         children: [
-          // Filter Tabs (Segmented bar)
+          // ── Apple Inset Segmented Tabs ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
             child: Container(
-              padding: const EdgeInsets.all(4),
+              height: 36,
+              padding: const EdgeInsets.all(2.5),
               decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0xFF1E1E22)
+                    ? const Color(0xFF1C1C1E)
                     : const Color(0xFFE5E5EA),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.04),
+                  width: 0.5,
+                ),
               ),
               child: Row(
                 children: [
@@ -304,39 +367,78 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
             ),
           ),
 
-          // Search Bar
+          // ── Apple Inset Search Bar ──
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) => setState(() => _searchQuery = val),
-              decoration: InputDecoration(
-                hintText: 'بحث في الملفات المنقولة...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: isDark
-                    ? const Color(0xFF1C1C1E)
-                    : const Color(0xFFF2F2F7),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+            child: SizedBox(
+              height: 40,
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) => setState(() => _searchQuery = val),
+                textAlignVertical: TextAlignVertical.center,
+                style: const TextStyle(fontSize: 13.5),
+                decoration: InputDecoration(
+                  hintText: 'البحث في الملفات المنقولة...',
+                  hintStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF8E8E93),
+                    fontWeight: FontWeight.w400,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFF8E8E93),
+                    size: 18,
+                  ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.cancel_rounded,
+                            color: Color(0xFF8E8E93),
+                            size: 16,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: isDark
+                      ? const Color(0xFF1C1C1E)
+                      : const Color(0xFFE5E5EA),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 0,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
+                      width: 0.5,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
+                      width: 0.5,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF007AFF),
+                      width: 1.2,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-
-          const SizedBox(height: 6),
 
           // File List
           Expanded(
@@ -350,8 +452,8 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Container(
-                                width: 72,
-                                height: 72,
+                                width: 68,
+                                height: 68,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF007AFF)
                                       .withValues(alpha: 0.12),
@@ -360,7 +462,7 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                                 child: const Icon(
                                   Icons.folder_open_rounded,
                                   color: Color(0xFF007AFF),
-                                  size: 36,
+                                  size: 32,
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -370,13 +472,12 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                                     fontWeight: FontWeight.w800, fontSize: 16),
                               ),
                               const SizedBox(height: 6),
-                              Text(
+                              const Text(
                                 'أي ملف ترسله للكمبيوتر أو تستقبله منه سيظهر هنا في صفحة مخصصة دون أن يختلط بالمستندات.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color:
-                                      isDark ? Colors.white60 : Colors.black54,
+                                  color: Color(0xFF8E8E93),
                                 ),
                               ),
                               const SizedBox(height: 20),
@@ -387,7 +488,13 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
                                         builder: (_) => const WebDropScreen()),
                                   );
                                 },
-                                icon: const Icon(Icons.wifi_tethering_rounded),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF007AFF),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.wifi_tethering_rounded, size: 18),
                                 label: const Text('فتح سيرفر المشاركة الآن'),
                               ),
                             ],
@@ -430,17 +537,17 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected
                 ? (isDark ? const Color(0xFF2C2C2E) : Colors.white)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 4,
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 3,
                       offset: const Offset(0, 1),
                     )
                   ]
@@ -451,14 +558,217 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected
-                  ? const Color(0xFF007AFF)
-                  : (isDark ? Colors.white60 : Colors.black54),
+                  ? (isDark ? Colors.white : const Color(0xFF1C1C1E))
+                  : const Color(0xFF8E8E93),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  void _showFileOptionsSheet(TransferredFile file) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final icon = _getFileIcon(file.name);
+    final iconColor = _getFileColor(file.name);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Top Drag Handle
+                  Container(
+                    width: 36,
+                    height: 4.5,
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8E8E93).withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+
+                  // Header Info Card
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: iconColor.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(icon, color: iconColor, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                file.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14.5,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${file.formattedSize} • ${file.isReceived ? "مستلم من الكمبيوتر" : "مُرسل من الهاتف"}',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: Color(0xFF8E8E93),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Actions Group
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.visibility_rounded,
+                              color: Color(0xFF007AFF)),
+                          title: const Text('معاينة وفتح الملف',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            OpenFilex.open(file.filePath);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          indent: 52,
+                          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.download_rounded,
+                              color: Color(0xFF34C759)),
+                          title: const Text('حفظ نسخة في مجلد التنزيلات',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _saveToDownloads(file);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          indent: 52,
+                          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.ios_share_rounded,
+                              color: Color(0xFF007AFF)),
+                          title: const Text('مشاركة عبر التطبيقات',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            Share.shareXFiles([XFile(file.filePath)],
+                                subject: file.name);
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          indent: 52,
+                          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.wifi_tethering_rounded,
+                              color: Color(0xFFFF9500)),
+                          title: const Text('إعادة بث إلى الكمبيوتر (Web Drop)',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _shareViaWebDrop(file);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Destructive Group
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(Icons.delete_outline_rounded,
+                          color: Colors.redAccent),
+                      title: const Text(
+                        'حذف الملف من السجل',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _deleteFile(file);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -469,240 +779,193 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.07),
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Header: File Icon + Info + Quick Actions
-            Row(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            OpenFilex.open(item.filePath);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // File Type Squircle Icon Box
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.13),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: iconColor.withValues(alpha: 0.25),
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(icon, color: iconColor, size: 26),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // File Name & Direction Metadata
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Squircle Icon Box
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 5),
-                      Row(
+                      child: Icon(icon, color: iconColor, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // File metadata
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2.5),
-                            decoration: BoxDecoration(
-                              color: item.isReceived
-                                  ? const Color(0xFF34C759)
-                                      .withValues(alpha: 0.12)
-                                  : const Color(0xFF007AFF)
-                                      .withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
+                          Text(
+                            item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  item.isReceived
-                                      ? Icons.arrow_downward_rounded
-                                      : Icons.arrow_upward_rounded,
-                                  size: 11,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
                                   color: item.isReceived
                                       ? const Color(0xFF34C759)
-                                      : const Color(0xFF007AFF),
+                                          .withValues(alpha: 0.12)
+                                      : const Color(0xFF007AFF)
+                                          .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(5),
                                 ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  item.isReceived
-                                      ? 'مستلم من الكمبيوتر'
-                                      : 'مُرسل من هاتفك',
+                                child: Text(
+                                  item.isReceived ? 'مستلم 📥' : 'مُرسل 📤',
                                   style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
                                     color: item.isReceived
                                         ? const Color(0xFF34C759)
                                         : const Color(0xFF007AFF),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            item.formattedSize,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white60 : Colors.black54,
-                            ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                item.formattedSize,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF8E8E93),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-
-                // Top Trailing Actions (Re-broadcast & Delete)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'إعادة بث للكمبيوتر عبر Wi-Fi',
-                      icon: const Icon(Icons.offline_bolt_rounded,
-                          size: 20, color: Color(0xFF007AFF)),
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(6),
-                      onPressed: () => _shareViaWebDrop(item),
                     ),
-                    const SizedBox(width: 2),
+
+                    // Trailing more options button
                     IconButton(
-                      tooltip: 'حذف الملف',
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          size: 20, color: Colors.redAccent),
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(6),
-                      onPressed: () => _deleteFile(item),
+                      icon: const Icon(
+                        Icons.more_horiz_rounded,
+                        color: Color(0xFF8E8E93),
+                        size: 20,
+                      ),
+                      tooltip: 'خيارات الملف',
+                      onPressed: () => _showFileOptionsSheet(item),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Divider(
+                  height: 1,
+                  thickness: 0.5,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.04),
+                ),
+                const SizedBox(height: 8),
+
+                // Balanced Equal 2-Button Action Row (Height: 38px, Radius: 10px)
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 38,
+                        child: FilledButton.tonalIcon(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            OpenFilex.open(item.filePath);
+                          },
+                          icon: const Icon(Icons.visibility_rounded, size: 15),
+                          label: const Text(
+                            'معاينة الملف',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SizedBox(
+                        height: 38,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            _showFileOptionsSheet(item);
+                          },
+                          icon: const Icon(Icons.more_vert_rounded, size: 15),
+                          label: const Text(
+                            'المزيد من الخيارات',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            side: BorderSide(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.12)
+                                  : Colors.black.withValues(alpha: 0.08),
+                              width: 0.8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-
-            const SizedBox(height: 12),
-            Divider(
-              height: 1,
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.06),
-            ),
-            const SizedBox(height: 10),
-
-            // Symmetrical 3-Button Action Row (Equal Flex: 1, Height: 40px, Radius: 12px)
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 40,
-                    child: FilledButton.tonalIcon(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        OpenFilex.open(item.filePath);
-                      },
-                      icon: const Icon(Icons.visibility_rounded, size: 16),
-                      label: const Text(
-                        'معاينة',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 40,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _saveToDownloads(item),
-                      icon: const Icon(Icons.download_rounded, size: 16),
-                      label: const Text(
-                        'حفظ بالهاتف',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        side: BorderSide(
-                          color: isDark ? Colors.white24 : Colors.black26,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 40,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        Share.shareXFiles([XFile(item.filePath)],
-                            subject: item.name);
-                      },
-                      icon: const Icon(Icons.ios_share_rounded, size: 16),
-                      label: const Text(
-                        'مشاركة',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        side: BorderSide(
-                          color: isDark ? Colors.white24 : Colors.black26,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

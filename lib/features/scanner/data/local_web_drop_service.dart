@@ -465,15 +465,14 @@ class LocalWebDropService {
             }
           }
 
-          int expectedBytes = contentLength > 0 ? contentLength : 0;
-          if (clientFileSizeHeader != null) {
-            final parsed = int.tryParse(clientFileSizeHeader);
-            if (parsed != null && parsed > 0) {
-              expectedBytes = parsed;
-            }
-          }
+          int expectedBytes = contentLength > 0
+              ? contentLength
+              : (clientFileSizeHeader != null
+                  ? (int.tryParse(clientFileSizeHeader) ?? 0)
+                  : 0);
 
           int receivedBytes = 0;
+          int lastUpdateMs = 0;
           _updateProgress(DropTransferProgress(
             id: transferId,
             fileName: incomingDisplayName,
@@ -488,17 +487,24 @@ class LocalWebDropService {
               handleData: (chunk, sink) {
                 receivedBytes += chunk.length;
                 sink.add(chunk);
-                final effectiveTransferred = (expectedBytes > 0 && receivedBytes > expectedBytes)
-                    ? expectedBytes
-                    : receivedBytes;
-                _updateProgress(DropTransferProgress(
-                  id: transferId,
-                  fileName: incomingDisplayName,
-                  direction: DropTransferDirection.receivingFromPc,
-                  transferredBytes: effectiveTransferred,
-                  totalBytes: expectedBytes > 0 ? expectedBytes : receivedBytes,
-                  isCompleted: false,
-                ));
+                final nowMs = DateTime.now().millisecondsSinceEpoch;
+                if (nowMs - lastUpdateMs >= 60 ||
+                    (expectedBytes > 0 && receivedBytes >= expectedBytes)) {
+                  lastUpdateMs = nowMs;
+                  final effectiveTransferred =
+                      (expectedBytes > 0 && receivedBytes > expectedBytes)
+                          ? expectedBytes
+                          : receivedBytes;
+                  _updateProgress(DropTransferProgress(
+                    id: transferId,
+                    fileName: incomingDisplayName,
+                    direction: DropTransferDirection.receivingFromPc,
+                    transferredBytes: effectiveTransferred,
+                    totalBytes:
+                        expectedBytes > 0 ? expectedBytes : receivedBytes,
+                    isCompleted: false,
+                  ));
+                }
               },
             ),
           );
