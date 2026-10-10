@@ -492,18 +492,9 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
             tooltip: 'رجوع',
             onPressed: () => Navigator.of(context).pop(),
           ),
-          title: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'الحجب الأمني وتسويد البيانات',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-              ),
-              Text(
-                'حرق نهائي داخل البكسلات لمنع استرجاع المعلومات',
-                style: TextStyle(fontSize: 10.5, color: Color(0xFF8E8E93)),
-              ),
-            ],
+          title: const Text(
+            'الحجب الأمني وتسويد البيانات',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
           actions: [
             IconButton(
@@ -517,7 +508,7 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
           children: [
             // ── Top Toolbar (Detection, Undo, Clear) ──
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                 border: Border(
@@ -532,34 +523,43 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
               child: Row(
                 children: [
                   // Auto Detect Button
-                  OutlinedButton.icon(
-                    onPressed: _selectedImagePath != null && !_isDetecting
-                        ? _triggerAutoDetection
-                        : null,
-                    icon: _isDetecting
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.auto_awesome_rounded, size: 15, color: Color(0xFF007AFF)),
-                    label: const Text(
-                      'كشف ذكي تلقائي',
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      visualDensity: VisualDensity.compact,
-                      side: BorderSide(
-                        color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+                  Flexible(
+                    child: OutlinedButton.icon(
+                      onPressed: _selectedImagePath != null && !_isDetecting
+                          ? _triggerAutoDetection
+                          : null,
+                      icon: _isDetecting
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.auto_awesome_rounded, size: 15, color: Color(0xFF007AFF)),
+                      label: const Text(
+                        'كشف ذكي',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                       ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        visualDensity: VisualDensity.compact,
+                        side: BorderSide(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
 
                   // Mode Toggle Button (Draw vs View)
                   IconButton(
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.all(6),
+                      minimumSize: const Size(32, 32),
+                    ),
                     tooltip: _isManualDrawing ? 'وضع التحديد اليدوي نشط' : 'وضع المعاينة (التحديد معطل)',
                     icon: Icon(
                       _isManualDrawing ? Icons.draw_rounded : Icons.pan_tool_outlined,
@@ -576,13 +576,24 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
 
                   // Undo Button
                   IconButton(
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.all(6),
+                      minimumSize: const Size(32, 32),
+                    ),
                     tooltip: 'تراجع',
                     icon: const Icon(Icons.undo_rounded, size: 20),
                     onPressed: _redactions.isNotEmpty ? _undoRedaction : null,
                   ),
+                  const SizedBox(width: 4),
 
                   // Clear All Button
                   IconButton(
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.all(6),
+                      minimumSize: const Size(32, 32),
+                    ),
                     tooltip: 'مسح الكل',
                     icon: const Icon(Icons.delete_sweep_rounded, size: 20, color: Colors.redAccent),
                     onPressed: _redactions.isNotEmpty ? _clearAllRedactions : null,
@@ -597,44 +608,49 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
                 color: isDark ? const Color(0xFF121214) : const Color(0xFFE5E5EA),
                 child: Center(
                   child: _selectedImagePath == null
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(18),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                              ),
-                              child: const Icon(
-                                Icons.security_rounded,
-                                size: 48,
-                                color: Color(0xFF007AFF),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            const Text(
-                              'لا توجد وثيقة محددة حالياً',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'اختر وثيقة أو التقط صورة بالكاميرا للبدء بالتسويد',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
-                            ),
-                            const SizedBox(height: 18),
-                            SizedBox(
-                              height: 44,
-                              child: FilledButton.icon(
-                                icon: const Icon(Icons.add_a_photo_rounded, size: 18),
-                                label: const Text(
-                                  'اختيار وثيقة الآن',
-                                  style: TextStyle(fontWeight: FontWeight.w700),
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF007AFF).withValues(alpha: 0.12),
                                 ),
-                                onPressed: _showSourcePickerSheet,
+                                child: const Icon(
+                                  Icons.security_rounded,
+                                  size: 48,
+                                  color: Color(0xFF007AFF),
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 14),
+                              const Text(
+                                'لا توجد وثيقة محددة حالياً',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'اختر وثيقة أو التقط صورة بالكاميرا للبدء بالتسويد',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                              ),
+                              const SizedBox(height: 18),
+                              SizedBox(
+                                height: 44,
+                                child: FilledButton.icon(
+                                  icon: const Icon(Icons.add_a_photo_rounded, size: 18),
+                                  label: const Text(
+                                    'اختيار وثيقة الآن',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                  onPressed: _showSourcePickerSheet,
+                                ),
+                              ),
+                            ],
+                          ),
                         )
                       : LayoutBuilder(
                           builder: (context, constraints) {
@@ -765,24 +781,16 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
                 children: [
                   // Section Header & Counter
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.security_update_warning_rounded,
-                              size: 16, color: Colors.redAccent),
-                          const SizedBox(width: 6),
-                          Text(
-                            'المربعات المحجوبة (${_redactions.length})',
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'اسحب بإصبعك لتحديد أي جزء ترغب بتسويده',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+                      const Icon(Icons.security_update_warning_rounded,
+                          size: 16, color: Colors.redAccent),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'المربعات المحجوبة (${_redactions.length})',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
                         ),
                       ),
                     ],
@@ -840,18 +848,14 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
                       Expanded(
                         child: SizedBox(
                           height: 50,
-                          child: OutlinedButton.icon(
+                          child: OutlinedButton(
                             onPressed: _selectedImagePath != null &&
                                     _redactions.isNotEmpty &&
                                     !_isSaving
                                 ? () => _saveRedactedDocument(shareImmediately: true)
                                 : null,
-                            icon: const Icon(Icons.ios_share_rounded, size: 18),
-                            label: const Text(
-                              'مشاركة مباشرة',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                            ),
                             style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
                               side: BorderSide(
                                 color: isDark
                                     ? Colors.white.withValues(alpha: 0.12)
@@ -861,35 +865,63 @@ class _AutoRedactionScreenState extends ConsumerState<AutoRedactionScreen> {
                               foregroundColor: isDark ? Colors.white : const Color(0xFF1C1C1E),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.ios_share_rounded, size: 17),
+                                SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    'مشاركة مباشرة',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: SizedBox(
                           height: 50,
-                          child: FilledButton.icon(
+                          child: FilledButton(
                             onPressed: _selectedImagePath != null &&
                                     _redactions.isNotEmpty &&
                                     !_isSaving
                                 ? () => _saveRedactedDocument(shareImmediately: false)
                                 : null,
-                            icon: _isSaving
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.lock_rounded, size: 18),
-                            label: Text(
-                              _isSaving ? 'جارٍ الحرق...' : 'حفظ المستند المحجوب',
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                            ),
                             style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
                               backgroundColor: const Color(0xFF1C1C1E),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                               elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _isSaving
+                                    ? const SizedBox(
+                                        width: 15,
+                                        height: 15,
+                                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.lock_rounded, size: 17),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    _isSaving ? 'جارٍ الحرق...' : 'حفظ المستند',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
