@@ -3,12 +3,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
+import '../data/native_scanner_bridge.dart';
 import '../data/watermark_service.dart';
 
 class WatermarkStudioScreen extends ConsumerStatefulWidget {
@@ -122,6 +124,27 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
         _selectedDoc = null;
       });
       await _generatePreview();
+    }
+  }
+
+  Future<void> _scanFromCamera() async {
+    HapticFeedback.lightImpact();
+    try {
+      final tmpDir = await getTemporaryDirectory();
+      final res = await NativeScannerBridge.startSingleScan(destDir: tmpDir.path);
+      if (res != null && mounted) {
+        setState(() {
+          _selectedImagePath = res.path;
+          _selectedDoc = null;
+        });
+        await _generatePreview();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تشغيل الكاميرا: $e')),
+        );
+      }
     }
   }
 
@@ -351,26 +374,21 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // ── Document Selection Row ──
-              // ── Document Selection Row: Apple Dual Tactile Cards ──
+              // ── Document Selection Row: Apple Triple Tactile Cards ──
               Row(
                 children: [
                   Expanded(
                     child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        _selectDocumentFromLibrary();
-                      },
+                      onTap: _scanFromCamera,
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                         decoration: BoxDecoration(
                           color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: _selectedDoc != null
-                                ? const Color(0xFF007AFF)
-                                : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
-                            width: _selectedDoc != null ? 1.5 : 0.8,
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                            width: 0.8,
                           ),
                           boxShadow: [
                             BoxShadow(
@@ -380,36 +398,28 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
                             ),
                           ],
                         ),
-                        child: Row(
+                        child: Column(
                           children: [
                             Container(
-                              width: 38,
-                              height: 38,
+                              width: 36,
+                              height: 36,
                               decoration: BoxDecoration(
                                 color: const Color(0xFF007AFF).withValues(alpha: 0.14),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.folder_open_rounded, color: Color(0xFF007AFF), size: 20),
+                              child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF007AFF), size: 19),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'من المكتبة',
-                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
-                                  ),
-                                  Text(
-                                    _selectedDoc != null ? _selectedDoc!.title : 'مستندات التطبيق',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 8),
+                            const Text(
+                              'الكاميرا',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              'مسح وثيقة',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
                               ),
                             ),
                           ],
@@ -417,7 +427,7 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: InkWell(
                       onTap: () {
@@ -426,7 +436,7 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
                       },
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                         decoration: BoxDecoration(
                           color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -444,36 +454,86 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
                             ),
                           ],
                         ),
-                        child: Row(
+                        child: Column(
                           children: [
                             Container(
-                              width: 38,
-                              height: 38,
+                              width: 36,
+                              height: 36,
                               decoration: BoxDecoration(
                                 color: const Color(0xFF5856D6).withValues(alpha: 0.14),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.photo_library_rounded, color: Color(0xFF5856D6), size: 20),
+                              child: const Icon(Icons.photo_library_rounded, color: Color(0xFF5856D6), size: 19),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'من الهاتف',
-                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
-                                  ),
-                                  Text(
-                                    _selectedImagePath != null && _selectedDoc == null ? 'صورة خارجية' : 'معرض الصور',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 8),
+                            const Text(
+                              'معرض الصور',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              'من الهاتف',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _selectDocumentFromLibrary();
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _selectedDoc != null
+                                ? const Color(0xFF34C759)
+                                : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
+                            width: _selectedDoc != null ? 1.5 : 0.8,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF34C759).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.folder_open_rounded, color: Color(0xFF34C759), size: 19),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'المكتبة',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              _selectedDoc != null ? _selectedDoc!.title : 'المستندات',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
                               ),
                             ),
                           ],
@@ -777,39 +837,67 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
 
               const SizedBox(height: 20),
 
-              // ── Save Button ──
-              SizedBox(
-                height: 52,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _colorTheme.color,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              // ── Action Buttons ──
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _colorTheme.color,
+                          side: BorderSide(color: _colorTheme.color.withValues(alpha: 0.5), width: 1.2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.share_rounded, size: 19),
+                        label: const Text(
+                          'مشاركة فورية',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                        ),
+                        onPressed: _selectedImagePath != null && !_isSaving
+                            ? () {
+                                HapticFeedback.lightImpact();
+                                _shareDirectly();
+                              }
+                            : null,
+                      ),
+                    ),
                   ),
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.shield_rounded, size: 20),
-                  label: Text(
-                    _isSaving
-                        ? 'جاري تطبيق الحماية الأمنية...'
-                        : 'حفظ المستند المحمي في المكتبة',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _colorTheme.color,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.shield_rounded, size: 20),
+                        label: Text(
+                          _isSaving ? 'جاري الحفظ...' : 'حفظ بالمكتبة',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                        ),
+                        onPressed: _selectedImagePath != null && !_isSaving
+                            ? () {
+                                HapticFeedback.mediumImpact();
+                                _saveProtectedDocument();
+                              }
+                            : null,
+                      ),
+                    ),
                   ),
-                  onPressed: _selectedImagePath != null && !_isSaving
-                      ? () {
-                          HapticFeedback.mediumImpact();
-                          _saveProtectedDocument();
-                        }
-                      : null,
-                ),
+                ],
               ),
 
               const SizedBox(height: 24),

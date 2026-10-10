@@ -55,6 +55,7 @@ class _SmartContractStudioScreenState
 
   bool _isGenerating = false;
   String? _tafqeetPreview;
+  int _currentStep = 0; // 0: Parties, 1: Details & Clauses, 2: Paper & Export
 
   @override
   void initState() {
@@ -535,385 +536,732 @@ class _SmartContractStudioScreenState
           ],
         ),
       ),
-      body: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
+      body: Column(
+        children: [
+          // ── Apple 3-Step Wizard Indicator ──
+          _buildStepIndicator(isDark),
+
+          // ── Active Step Body ──
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: _buildCurrentStepView(isDark),
+              ),
+            ),
+          ),
+
+          // ── Bottom Step Navigation Bar ──
+          _buildBottomStepBar(isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator(bool isDark) {
+    final steps = [
+      (0, 'أطراف العقد', Icons.group_rounded),
+      (1, 'البيانات والبنود', Icons.description_rounded),
+      (2, 'الورق والمعاينة', Icons.picture_as_pdf_rounded),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
+            width: 0.6,
+          ),
         ),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Contract Type Selector Segmented Carousel ──
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Text(
-                'نوع العقد أو النموذج القانوني',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: Color(0xFF8E8E93),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            SizedBox(
-              height: 44,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: ContractType.values.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (ctx, idx) {
-                  final t = ContractType.values[idx];
-                  final isSelected = t == _selectedType;
-                  final icon = _getContractIcon(t);
+      ),
+      child: Row(
+        children: steps.map((item) {
+          final idx = item.$1;
+          final title = item.$2;
+          final icon = item.$3;
+          final isActive = _currentStep == idx;
+          final isPast = _currentStep > idx;
 
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          _selectedType = t;
-                          _updateRoleDefaults();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF007AFF)
-                              : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFF007AFF)
+          return Expanded(
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _currentStep = idx);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? const Color(0xFF007AFF).withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isActive
+                            ? const Color(0xFF007AFF)
+                            : (isPast
+                                ? const Color(0xFF34C759)
                                 : (isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : Colors.black.withValues(alpha: 0.06)),
-                            width: 0.5,
-                          ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(0xFF007AFF).withValues(alpha: 0.25),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              icon,
-                              size: 15,
-                              color: isSelected ? Colors.white : const Color(0xFF007AFF),
-                            ),
-                            const SizedBox(width: 7),
-                            Text(
-                              t.titleAr,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                color: isSelected
+                                    ? Colors.white.withValues(alpha: 0.12)
+                                    : Colors.black.withValues(alpha: 0.08))),
+                      ),
+                      child: Center(
+                        child: isPast
+                            ? const Icon(Icons.check, size: 14, color: Colors.white)
+                            : Icon(
+                                icon,
+                                size: 13,
+                                color: isActive
                                     ? Colors.white
-                                    : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                                    : (isDark ? Colors.white70 : Colors.black54),
                               ),
-                            ),
-                          ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight:
+                              isActive ? FontWeight.w800 : FontWeight.w600,
+                          color: isActive
+                              ? const Color(0xFF007AFF)
+                              : (isDark ? Colors.white70 : Colors.black87),
                         ),
                       ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
             ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
-            const SizedBox(height: 12),
+  Widget _buildCurrentStepView(bool isDark) {
+    switch (_currentStep) {
+      case 0:
+        return KeyedSubtree(
+          key: const ValueKey('step_0_parties'),
+          child: _buildStepParties(isDark),
+        );
+      case 1:
+        return KeyedSubtree(
+          key: const ValueKey('step_1_details'),
+          child: _buildStepDetailsAndClauses(isDark),
+        );
+      case 2:
+      default:
+        return KeyedSubtree(
+          key: const ValueKey('step_2_export'),
+          child: _buildStepPaperAndPreview(isDark),
+        );
+    }
+  }
 
-            // ── Selected Contract Description Inset Card ──
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.06),
-                  width: 0.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
+  Widget _buildStepParties(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Contract Type Selector Segmented Carousel ──
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Text(
+            'نوع العقد أو النموذج القانوني',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: Color(0xFF8E8E93),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 44,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: ContractType.values.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (ctx, idx) {
+              final t = ContractType.values[idx];
+              final isSelected = t == _selectedType;
+              final icon = _getContractIcon(t);
+
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _selectedType = t;
+                      _updateRoleDefaults();
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF007AFF).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.gavel_rounded, color: Color(0xFF007AFF), size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _selectedType.titleAr,
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _selectedType.subtitleAr,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Party A Section ──
-            _buildSectionCard(
-              title: _selectedType == ContractType.residentialLease
-                  ? 'بيانات المؤجر (الطرف الأول)'
-                  : (_selectedType == ContractType.promissoryNote
-                      ? 'بيانات المستلم (المقر بما فيه)'
-                      : 'بيانات الطرف الأول (البائع / العميل)'),
-              icon: Icons.person_rounded,
-              color: const Color(0xFF007AFF),
-              children: [
-                _buildTextField(controller: _partyAName, label: 'الاسم بالكامل رباعي', icon: Icons.badge_outlined),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField(controller: _partyAId, label: 'الرقم القومي (14 رقم)', icon: Icons.credit_card_rounded, keyboardType: TextInputType.number)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _buildTextField(controller: _partyAPhone, label: 'رقم الهاتف', icon: Icons.phone_android_rounded, keyboardType: TextInputType.phone)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _buildTextField(controller: _partyAAddress, label: 'محل الإقامة / العنوان بالتفصيل', icon: Icons.home_work_outlined),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            // ── Party B Section ──
-            _buildSectionCard(
-              title: _selectedType == ContractType.residentialLease
-                  ? 'بيانات المستأجر (الطرف الثاني)'
-                  : (_selectedType == ContractType.promissoryNote
-                      ? 'بيانات المسلِّم (الدائن)'
-                      : 'بيانات الطرف الثاني (المشتري / مقدم الخدمة)'),
-              icon: Icons.person_outline_rounded,
-              color: const Color(0xFF007AFF),
-              children: [
-                _buildTextField(controller: _partyBName, label: 'الاسم بالكامل رباعي', icon: Icons.badge_outlined),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField(controller: _partyBId, label: 'الرقم القومي', icon: Icons.credit_card_rounded, keyboardType: TextInputType.number)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _buildTextField(controller: _partyBPhone, label: 'رقم الهاتف', icon: Icons.phone_android_rounded, keyboardType: TextInputType.phone)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _buildTextField(controller: _partyBAddress, label: 'محل الإقامة / العنوان بالتفصيل', icon: Icons.home_work_outlined),
-              ],
-            ),
-
-            // ── Party C (If Promissory Note) ──
-            if (_selectedType == ContractType.promissoryNote) ...[
-              const SizedBox(height: 14),
-              _buildSectionCard(
-                title: 'الطرف الثالث (المستلم إليه النهائي)',
-                icon: Icons.account_circle_outlined,
-                color: const Color(0xFF007AFF),
-                children: [
-                  _buildTextField(
-                    controller: _partyCName,
-                    label: 'اسم المستلم إليه (لتسليمه للسيد/ ...)',
-                    icon: Icons.person_add_alt_rounded,
-                  ),
-                ],
-              ),
-            ],
-
-            const SizedBox(height: 14),
-
-            // ── Contract Details & Financials ──
-            _buildSectionCard(
-              title: 'البيانات المالية وموضوع الاتفاق',
-              icon: Icons.payments_rounded,
-              color: const Color(0xFF007AFF),
-              children: [
-                _buildTextField(
-                  controller: _descriptionController,
-                  label: 'وصف العين / المبيع / نطاق العمل بالتفصيل',
-                  icon: Icons.description_outlined,
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: _buildTextField(
-                        controller: _amountController,
-                        label: 'المبلغ المالي (بالأرقام)',
-                        icon: Icons.attach_money_rounded,
-                        keyboardType: TextInputType.number,
+                      color: isSelected
+                          ? const Color(0xFF007AFF)
+                          : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFF007AFF)
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06)),
+                        width: 0.5,
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _durationController,
-                        label: 'المدة',
-                        icon: Icons.timelapse_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-                // Auto Tafqeet Preview Badge
-                if (_tafqeetPreview != null && _tafqeetPreview!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFB45309).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFB45309).withValues(alpha: 0.25)),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.verified_outlined, size: 16, color: Color(0xFFB45309)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'تفقيد المبلغ: ${_tafqeetPreview!}',
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFFB45309),
-                            ),
+                        Icon(
+                          icon,
+                          size: 15,
+                          color: isSelected ? Colors.white : const Color(0xFF007AFF),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          t.titleAr,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-                const SizedBox(height: 10),
-                _buildTextField(
-                  controller: _cityController,
-                  label: 'المدينة / المحافظة',
-                  icon: Icons.location_city_rounded,
                 ),
-                const SizedBox(height: 10),
-                _buildTextField(
-                  controller: _extraClausesController,
-                  label: 'شروط أو بنود إضافية خاصة (اختياري)',
-                  icon: Icons.edit_note_rounded,
-                  maxLines: 2,
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Selected Contract Description Inset Card ──
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF007AFF).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: const Icon(Icons.gavel_rounded, color: Color(0xFF007AFF), size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _selectedType.titleAr,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _selectedType.subtitleAr,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Party A Section ──
+        _buildSectionCard(
+          title: _selectedType == ContractType.residentialLease
+              ? 'بيانات المؤجر (الطرف الأول)'
+              : (_selectedType == ContractType.promissoryNote
+                  ? 'بيانات المستلم (المقر بما فيه)'
+                  : 'بيانات الطرف الأول (البائع / العميل)'),
+          icon: Icons.person_rounded,
+          color: const Color(0xFF007AFF),
+          children: [
+            _buildTextField(controller: _partyAName, label: 'الاسم بالكامل رباعي', icon: Icons.badge_outlined),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: _buildTextField(controller: _partyAId, label: 'الرقم القومي (14 رقم)', icon: Icons.credit_card_rounded, keyboardType: TextInputType.number)),
+                const SizedBox(width: 10),
+                Expanded(child: _buildTextField(controller: _partyAPhone, label: 'رقم الهاتف', icon: Icons.phone_android_rounded, keyboardType: TextInputType.phone)),
               ],
             ),
+            const SizedBox(height: 10),
+            _buildTextField(controller: _partyAAddress, label: 'محل الإقامة / العنوان بالتفصيل', icon: Icons.home_work_outlined),
+          ],
+        ),
 
-            const SizedBox(height: 14),
+        const SizedBox(height: 14),
 
-            // ── Paper Background Color Selector ──
-            _buildPaperColorSelector(),
+        // ── Party B Section ──
+        _buildSectionCard(
+          title: _selectedType == ContractType.residentialLease
+              ? 'بيانات المستأجر (الطرف الثاني)'
+              : (_selectedType == ContractType.promissoryNote
+                  ? 'بيانات المسلِّم (الدائن)'
+                  : 'بيانات الطرف الثاني (المشتري / مقدم الخدمة)'),
+          icon: Icons.person_outline_rounded,
+          color: const Color(0xFF007AFF),
+          children: [
+            _buildTextField(controller: _partyBName, label: 'الاسم بالكامل رباعي', icon: Icons.badge_outlined),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: _buildTextField(controller: _partyBId, label: 'الرقم القومي', icon: Icons.credit_card_rounded, keyboardType: TextInputType.number)),
+                const SizedBox(width: 10),
+                Expanded(child: _buildTextField(controller: _partyBPhone, label: 'رقم الهاتف', icon: Icons.phone_android_rounded, keyboardType: TextInputType.phone)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildTextField(controller: _partyBAddress, label: 'محل الإقامة / العنوان بالتفصيل', icon: Icons.home_work_outlined),
+          ],
+        ),
 
-            const SizedBox(height: 14),
+        // ── Party C (If Promissory Note) ──
+        if (_selectedType == ContractType.promissoryNote) ...[
+          const SizedBox(height: 14),
+          _buildSectionCard(
+            title: 'الطرف الثالث (المستلم إليه النهائي)',
+            icon: Icons.account_circle_outlined,
+            color: const Color(0xFF007AFF),
+            children: [
+              _buildTextField(
+                controller: _partyCName,
+                label: 'اسم المستلم إليه (لتسليمه للسيد/ ...)',
+                icon: Icons.person_add_alt_rounded,
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
 
-            // ── Editable Clauses Editor ──
-            _buildClausesEditor(),
-
-            const SizedBox(height: 24),
-
-            // ── Action Buttons: Perfectly Balanced Equal Sizes ──
+  Widget _buildStepDetailsAndClauses(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Contract Details & Financials ──
+        _buildSectionCard(
+          title: 'البيانات المالية وموضوع الاتفاق',
+          icon: Icons.payments_rounded,
+          color: const Color(0xFF007AFF),
+          children: [
+            _buildTextField(
+              controller: _descriptionController,
+              label: 'وصف العين / المبيع / نطاق العمل بالتفصيل',
+              icon: Icons.description_outlined,
+              maxLines: 2,
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: _isGenerating ? null : _previewContractPdf,
-                      icon: const Icon(Icons.visibility_rounded, size: 18),
-                      label: const Text(
-                        'معاينة العقد',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : Colors.black.withValues(alpha: 0.08),
-                          width: 0.8,
-                        ),
-                        foregroundColor: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
+                  flex: 2,
+                  child: _buildTextField(
+                    controller: _amountController,
+                    label: 'المبلغ المالي (بالأرقام)',
+                    icon: Icons.attach_money_rounded,
+                    keyboardType: TextInputType.number,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: SizedBox(
-                    height: 50,
-                    child: FilledButton.icon(
-                      onPressed: _isGenerating
-                          ? null
-                          : () => _generateAndExportContract(saveToLibrary: true),
-                      icon: _isGenerating
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                      label: Text(
-                        _isGenerating ? 'جارٍ التوليد...' : 'تصدير العقد (PDF)',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF007AFF),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 0,
-                      ),
-                    ),
+                  child: _buildTextField(
+                    controller: _durationController,
+                    label: 'المدة',
+                    icon: Icons.timelapse_rounded,
                   ),
                 ),
               ],
+            ),
+            // Auto Tafqeet Preview Badge
+            if (_tafqeetPreview != null && _tafqeetPreview!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB45309).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFB45309).withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.verified_outlined, size: 16, color: Color(0xFFB45309)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'تفقيد المبلغ: ${_tafqeetPreview!}',
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            _buildTextField(
+              controller: _cityController,
+              label: 'المدينة / المحافظة',
+              icon: Icons.location_city_rounded,
+            ),
+            const SizedBox(height: 10),
+            _buildTextField(
+              controller: _extraClausesController,
+              label: 'شروط أو بنود إضافية خاصة (اختياري)',
+              icon: Icons.edit_note_rounded,
+              maxLines: 2,
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+
+        // ── Editable Clauses Editor ──
+        _buildClausesEditor(),
+      ],
+    );
+  }
+
+  Widget _buildStepPaperAndPreview(bool isDark) {
+    final amt = double.tryParse(_amountController.text.trim()) ?? 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Paper Background Color Selector ──
+        _buildPaperColorSelector(),
+
+        const SizedBox(height: 14),
+
+        // ── Quick Contract Summary Card ──
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(Icons.fact_check_rounded,
+                        size: 17, color: Color(0xFF34C759)),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'ملخص العقد الجاهز للتصدير',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 13.5),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _buildSummaryRow('نوع النموذج:', _selectedType.titleAr),
+              _buildSummaryRow(
+                'الطرف الأول:',
+                _partyAName.text.trim().isEmpty
+                    ? 'لم يتم التحديد'
+                    : _partyAName.text.trim(),
+              ),
+              _buildSummaryRow(
+                'الطرف الثاني:',
+                _partyBName.text.trim().isEmpty
+                    ? 'لم يتم التحديد'
+                    : _partyBName.text.trim(),
+              ),
+              if (_selectedType == ContractType.promissoryNote &&
+                  _partyCName.text.trim().isNotEmpty)
+                _buildSummaryRow('المستفيد النهائي:', _partyCName.text.trim()),
+              _buildSummaryRow(
+                'القيمة المالية:',
+                amt > 0 ? '$amt ج.م (${_tafqeetPreview ?? ""})' : 'غير محدد',
+              ),
+              _buildSummaryRow('عدد البنود القانونية:',
+                  '${_clauseControllers.length} بنداً معتمداً'),
+              _buildSummaryRow('خلفية الورقة:', _selectedPaperColor.label),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // ── Direct Actions Card ──
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _isGenerating ? null : _previewContractPdf,
+                  icon: const Icon(Icons.visibility_rounded, size: 18),
+                  label: const Text(
+                    'معاينة العقد',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.08),
+                      width: 0.8,
+                    ),
+                    foregroundColor: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                    backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _isGenerating
+                      ? null
+                      : () => _generateAndExportContract(saveToLibrary: true),
+                  icon: _isGenerating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                  label: Text(
+                    _isGenerating ? 'جارٍ التوليد...' : 'تصدير PDF وحفظ',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF007AFF),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8E8E93),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomStepBar(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
+            width: 0.6,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            if (_currentStep > 0) ...[
+              Expanded(
+                child: SizedBox(
+                  height: 50,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      setState(() => _currentStep--);
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text(
+                      'السابق',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.08),
+                        width: 0.8,
+                      ),
+                      foregroundColor: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              flex: _currentStep == 0 ? 1 : 1,
+              child: SizedBox(
+                height: 50,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    if (_currentStep < 2) {
+                      setState(() => _currentStep++);
+                    } else {
+                      _generateAndExportContract(saveToLibrary: true);
+                    }
+                  },
+                  icon: Icon(
+                    _currentStep < 2
+                        ? Icons.arrow_forward_rounded
+                        : Icons.picture_as_pdf_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _currentStep == 0
+                        ? 'متابعة إلى البيانات والبنود'
+                        : (_currentStep == 1
+                            ? 'متابعة إلى المعاينة والورق'
+                            : (_isGenerating ? 'جارٍ التوليد...' : 'تصدير العقد (PDF)')),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF007AFF),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

@@ -694,62 +694,77 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── 1. Type Selector Horizontal Pills ──
+            // ── 1. Apple Squircle Type Selector Carousel ──
             SizedBox(
-              height: 42,
+              height: 48,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
                 itemCount: QrStudioType.values.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (ctx, idx) {
                   final t = QrStudioType.values[idx];
                   final isSel = t == _selectedType;
-                  return InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _selectedType = t);
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: isSel
-                            ? const Color(0xFF007AFF)
-                            : (isDark
-                                ? const Color(0xFF1C1C1E)
-                                : Colors.white),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _selectedType = t);
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
                           color: isSel
                               ? const Color(0xFF007AFF)
-                              : (isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.08)),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            t.icon,
-                            size: 16,
+                              : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
                             color: isSel
-                                ? Colors.white
-                                : (isDark ? Colors.white70 : Colors.black87),
+                                ? const Color(0xFF007AFF)
+                                : (isDark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.black.withValues(alpha: 0.06)),
+                            width: 0.5,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            t.label,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: isSel
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
-                              color: isSel
-                                  ? Colors.white
-                                  : (isDark ? Colors.white70 : Colors.black87),
+                          boxShadow: isSel
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              t.icon,
+                              size: 16,
+                              color: isSel ? Colors.white : const Color(0xFF007AFF),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 7),
+                            Text(
+                              t.label,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                                color: isSel
+                                    ? Colors.white
+                                    : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -759,125 +774,175 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
 
             const SizedBox(height: 16),
 
-            // ── 2. Live QR Preview Hero Card ──
+            // ── 2. Apple Studio Live QR Hero Card ──
             Center(
-              child: RepaintBoundary(
-                key: _qrBoundaryKey,
-                child: Container(
-                  width: 250,
-                  height: 250,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _lightColor,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 18,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                    border: Border.all(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      width: 1,
-                    ),
+              child: Container(
+                width: 290,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06),
+                    width: 0.8,
                   ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // QR Matrix
-                      SizedBox(
-                        width: 218,
-                        height: 218,
-                        child: CustomPaint(
-                          painter: _StudioQrPainter(
-                            data: payload.isEmpty ? 'LAQTA' : payload,
-                            darkColor: _darkColor,
-                            lightColor: _lightColor,
-                            includeLogoBadge: _includeLogo,
-                          ),
-                        ),
-                      ),
-
-                      // Center Logo Cutout Badge
-                      if (_includeLogo)
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: _lightColor,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 6,
-                              ),
-                            ],
-                            border: Border.all(
-                              color: _darkColor.withValues(alpha: 0.15),
-                              width: 1.5,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header Badge inside Preview Card
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(_selectedType.icon, size: 15, color: const Color(0xFF007AFF)),
+                            const SizedBox(width: 6),
+                            Text(
+                              _selectedType.label,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
                             ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Center(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.asset(
-                                'assets/images/app_icon.png',
-                                width: 34,
-                                height: 34,
-                                errorBuilder: (_, __, ___) => Icon(
-                                  _selectedType.icon,
-                                  color: _darkColor,
-                                  size: 24,
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(radius: 3, backgroundColor: Color(0xFF34C759)),
+                              SizedBox(width: 5),
+                              Text(
+                                'جاهز للمسح',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF34C759),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+                      ],
+                    ),
 
-            const SizedBox(height: 14),
+                    const SizedBox(height: 14),
 
-            // Quick Action Buttons Under Preview (Save PNG, Share, Print, Copy)
-            // Quick Action Buttons Under Preview (Save PNG, Print, Copy)
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 46,
-                    child: InkWell(
-                      onTap: _isExporting
-                          ? null
-                          : () {
-                              HapticFeedback.lightImpact();
-                              _exportAsPng();
-                            },
-                      borderRadius: BorderRadius.circular(14),
+                    // Live QR Matrix View
+                    RepaintBoundary(
+                      key: _qrBoundaryKey,
                       child: Container(
+                        width: 220,
+                        height: 220,
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF007AFF)
-                              .withValues(alpha: isDark ? 0.18 : 0.12),
-                          borderRadius: BorderRadius.circular(14),
+                          color: _lightColor,
+                          borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color:
-                                const Color(0xFF007AFF).withValues(alpha: 0.3),
+                            color: Colors.black.withValues(alpha: 0.06),
                             width: 0.8,
                           ),
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            Icon(Icons.file_download_outlined,
-                                size: 17, color: Color(0xFF007AFF)),
-                            SizedBox(width: 6),
-                            Text(
-                              'حفظ PNG',
+                            SizedBox(
+                              width: 196,
+                              height: 196,
+                              child: CustomPaint(
+                                painter: _StudioQrPainter(
+                                  data: payload.isEmpty ? 'LAQTA' : payload,
+                                  darkColor: _darkColor,
+                                  lightColor: _lightColor,
+                                  includeLogoBadge: _includeLogo,
+                                ),
+                              ),
+                            ),
+
+                            // Center Logo Cutout Badge
+                            if (_includeLogo)
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: _lightColor,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.15),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                  border: Border.all(
+                                    color: _darkColor.withValues(alpha: 0.2),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Image.asset(
+                                      'assets/images/app_icon.png',
+                                      width: 30,
+                                      height: 30,
+                                      errorBuilder: (_, __, ___) => Icon(
+                                        _selectedType.icon,
+                                        color: _darkColor,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Inset Payload Summary & Copy Bar
+                    InkWell(
+                      onTap: _copyPayload,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.copy_rounded, size: 14, color: Color(0xFF007AFF)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                payload.isEmpty ? 'لا توجد بيانات بعد' : payload,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF8E8E93),
+                                ),
+                              ),
+                            ),
+                            const Text(
+                              'نسخ',
                               style: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF007AFF),
                               ),
@@ -886,87 +951,62 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 8),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Primary Action Buttons: Balanced 50% / 50% ──
+            Row(
+              children: [
                 Expanded(
                   child: SizedBox(
-                    height: 46,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        _printOrExportPdf();
-                      },
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF34C759)
-                              .withValues(alpha: isDark ? 0.18 : 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color:
-                                const Color(0xFF34C759).withValues(alpha: 0.3),
-                            width: 0.8,
-                          ),
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: _isExporting ? null : _exportAsPng,
+                      icon: _isExporting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.file_download_outlined, size: 18),
+                      label: const Text(
+                        'حفظ صورة (PNG)',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.08),
+                          width: 0.8,
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.print_outlined,
-                                size: 17, color: Color(0xFF34C759)),
-                            SizedBox(width: 6),
-                            Text(
-                              'طباعة PDF',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF34C759),
-                              ),
-                            ),
-                          ],
-                        ),
+                        foregroundColor: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: SizedBox(
-                    height: 46,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        _copyPayload();
-                      },
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: (isDark
-                              ? const Color(0xFF2C2C2E)
-                              : const Color(0xFFE5E5EA)),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isDark ? Colors.white12 : Colors.black12,
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.copy_rounded,
-                                size: 16,
-                                color: isDark ? Colors.white : Colors.black87),
-                            const SizedBox(width: 6),
-                            Text(
-                              'نسخ الكود',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
+                    height: 50,
+                    child: FilledButton.icon(
+                      onPressed: _printOrExportPdf,
+                      icon: const Icon(Icons.print_rounded, size: 18),
+                      label: const Text(
+                        'طباعة ومشاركة (PDF)',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF007AFF),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
                       ),
                     ),
                   ),
