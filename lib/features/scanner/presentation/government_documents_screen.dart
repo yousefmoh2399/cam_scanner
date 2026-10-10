@@ -1398,6 +1398,34 @@ class _GovernmentDocumentsScreenState
                 },
                 onClear: () => setState(() => _passportImagePath = null),
               ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                    width: 0.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.qr_code_scanner_rounded, size: 16, color: Color(0xFF5856D6)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'دليل ICAO: تأكد من ظهور سطري الرموز <<<<<<<< MRZ بالأسفل',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1596,48 +1624,76 @@ class _GovernmentDocumentsScreenState
 
         const SizedBox(height: 16),
 
-        // Size format selection pills
-        Text(
-          'اختر المعيار والمقاس المطلوب:',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        Column(
+        // Visa format selection header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildPhotoFormatOption(
+            Text(
+              'اختر معيار ومقاس التأشيرة المطلوب:',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'مقاسات معتمدة 100%',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF34C759),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Apple 2x2 Grid of Visa Formats
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.22,
+          children: [
+            _buildVisaGridCard(
               type: GovDocType.personalPhoto35x45,
-              title: '35 × 45 مم (8 صور)',
-              subtitle: 'تأشيرات شنغن الأوروبية، بريطانيا، كندا، وأستراليا',
-              isSelected: _selectedPhotoType == GovDocType.personalPhoto35x45,
+              flag: '🇪🇺',
+              title: 'شنغن وأوروبا',
+              dimensions: '35 × 45 مم',
+              badge: '8 صور',
               isDark: isDark,
             ),
-            const SizedBox(height: 8),
-            _buildPhotoFormatOption(
+            _buildVisaGridCard(
               type: GovDocType.personalPhoto2x2,
-              title: '2 × 2 بوصة / 5 × 5 سم (6 صور)',
-              subtitle: 'تأشيرات الولايات المتحدة الأمريكية (US Visa) والجرين كارد والهند',
-              isSelected: _selectedPhotoType == GovDocType.personalPhoto2x2,
+              flag: '🇺🇸',
+              title: 'أمريكا DS-160',
+              dimensions: '2 × 2 بوصة (5×5)',
+              badge: '6 صور',
               isDark: isDark,
             ),
-            const SizedBox(height: 8),
-            _buildPhotoFormatOption(
+            _buildVisaGridCard(
               type: GovDocType.personalPhoto4x6,
-              title: '4 × 6 سم (4 صور)',
-              subtitle: 'جوازات السفر العربية، آسيا، وأغلب استمارات التقديم',
-              isSelected: _selectedPhotoType == GovDocType.personalPhoto4x6,
+              flag: '🌍',
+              title: 'جوازات عربية',
+              dimensions: '4 × 6 سم',
+              badge: '4 صور',
               isDark: isDark,
             ),
-            const SizedBox(height: 8),
-            _buildPhotoFormatOption(
+            _buildVisaGridCard(
               type: GovDocType.personalPhoto3x4,
-              title: '3 × 4 سم (8 صور)',
-              subtitle: 'بطاقات الهوية الوطنية، رخص القيادة، والكارنيهات',
-              isSelected: _selectedPhotoType == GovDocType.personalPhoto3x4,
+              flag: '🪪',
+              title: 'بطاقات وكارنيهات',
+              dimensions: '3 × 4 سم',
+              badge: '8 صور',
               isDark: isDark,
             ),
           ],
@@ -1666,70 +1722,102 @@ class _GovernmentDocumentsScreenState
     );
   }
 
-  Widget _buildPhotoFormatOption({
+  Widget _buildVisaGridCard({
     required GovDocType type,
+    required String flag,
     required String title,
-    required String subtitle,
-    required bool isSelected,
+    required String dimensions,
+    required String badge,
     required bool isDark,
   }) {
-    return InkWell(
-      onTap: () => setState(() => _selectedPhotoType = type),
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF34C759).withValues(alpha: 0.12)
-              : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF34C759)
-                : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
-            width: isSelected ? 1.8 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
+    final isSelected = _selectedPhotoType == type;
+
+    return Material(
+      color: isSelected
+          ? const Color(0xFF34C759).withValues(alpha: 0.12)
+          : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _selectedPhotoType = type);
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
               color: isSelected
                   ? const Color(0xFF34C759)
-                  : (isDark ? Colors.white30 : Colors.black26),
-              size: 20,
+                  : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
+              width: isSelected ? 1.8 : 1.0,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(flag, style: const TextStyle(fontSize: 20)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFF34C759)
+                          : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      badge,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected
+                            ? Colors.white
+                            : (isDark ? Colors.white70 : Colors.black87),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
                     style: TextStyle(
-                      fontWeight:
-                          isSelected ? FontWeight.w800 : FontWeight.w700,
-                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
                       color: isSelected
                           ? const Color(0xFF34C759)
                           : (isDark ? Colors.white : Colors.black87),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    subtitle,
+                    dimensions,
                     style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.white54 : Colors.black54,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white54 : Colors.black45,
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1869,91 +1957,185 @@ class _GovernmentDocumentsScreenState
 
         const SizedBox(height: 18),
 
-        Text(
-          'اختر الحد الأقصى المطلوب للموقع:',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
+        // Presets Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'الحد الأقصى لحجم الملف المستهدف:',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF2D55).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '< $_selectedTargetKb KB',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFFF2D55),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
 
-        // Universal Preset Selector
-        Column(
-          children: GovernmentPresetService.portalPresets.map((preset) {
-            final isSelected = _selectedTargetKb == preset.kb;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: InkWell(
-                onTap: () => setState(() => _selectedTargetKb = preset.kb),
-                borderRadius: BorderRadius.circular(14),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFFFF2D55).withValues(alpha: 0.1)
-                        : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected
-                          ? const Color(0xFFFF2D55)
-                          : (isDark
-                              ? Colors.white12
-                              : Colors.black.withValues(alpha: 0.08)),
-                      width: isSelected ? 1.8 : 1,
+        // Apple Preset Chips Row
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [100, 200, 500, 1024, 2048].map((kb) {
+              final isSel = _selectedTargetKb == kb;
+              final label = kb >= 1024 ? '< ${kb ~/ 1024} MB' : '< $kb KB';
+              return Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Material(
+                  color: isSel
+                      ? const Color(0xFFFF2D55)
+                      : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _selectedTargetKb = kb);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSel
+                              ? const Color(0xFFFF2D55)
+                              : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
+                          width: isSel ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: isSel
+                              ? Colors.white
+                              : (isDark ? Colors.white70 : Colors.black87),
+                        ),
+                      ),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: isSelected
-                            ? const Color(0xFFFF2D55)
-                            : (isDark ? Colors.white12 : Colors.black12),
-                        foregroundColor: isSelected
-                            ? Colors.white
-                            : (isDark ? Colors.white70 : Colors.black54),
-                        child: Icon(preset.icon, size: 17),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Real-Time Compression Reduction Gauge Card
+        if (hasImage) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.tune_rounded, size: 16, color: Color(0xFFFF2D55)),
+                        SizedBox(width: 6),
+                        Text(
+                          'مؤشر التقليص والضغط المتوقع',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                        ),
+                      ],
+                    ),
+                    if (originalSize > _selectedTargetKb * 1024)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                         child: Text(
-                          preset.label,
+                          'توفير مساحة ~${(((originalSize - _selectedTargetKb * 1024) / originalSize) * 100).clamp(0, 95).toInt()}%',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF34C759),
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'مطابق للسقف بالفعل',
                           style: TextStyle(
-                            fontWeight: isSelected
-                                ? FontWeight.w800
-                                : FontWeight.w600,
-                            fontSize: 13,
-                            color: isSelected
-                                ? const Color(0xFFFF2D55)
-                                : (isDark ? Colors.white : Colors.black87),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF34C759),
                           ),
                         ),
                       ),
-                      Text(
-                        '< ${preset.kb} KB',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12.5,
-                          color: isSelected
-                              ? const Color(0xFFFF2D55)
-                              : (isDark ? Colors.white54 : Colors.black45),
-                        ),
-                      ),
-                    ],
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: (_selectedTargetKb * 1024 / (originalSize > 0 ? originalSize : 1))
+                        .clamp(0.05, 1.0),
+                    minHeight: 8,
+                    backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF2D55)),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
-        ),
-
-        const SizedBox(height: 22),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'الحجم الأصلي: ${formatFileSize(originalSize)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                    Text(
+                      'الحد المستهدف: < $_selectedTargetKb KB',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFFF2D55),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
 
         FilledButton.icon(
           style: FilledButton.styleFrom(

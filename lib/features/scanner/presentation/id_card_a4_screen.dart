@@ -544,25 +544,17 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
               _buildDimensionsNotice(isDark),
               const SizedBox(height: 14),
 
-              // Dual Capture Slots
+              // Dual Capture Slots (Compact Side-by-Side 50% / 50%)
               _buildSlotsCard(isDark),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Layout Selector
+              // Layout Selector (3-Segment Apple Selector)
               _buildLayoutSelector(isDark),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Color & Quality Filter
-              _buildFilterSelector(isDark),
-              const SizedBox(height: 16),
-
-              // Anti-Fraud Watermark
-              _buildWatermarkSelector(isDark),
-              const SizedBox(height: 16),
-
-              // Settings toggles (Ruler, crop marks, header)
-              _buildTogglesCard(isDark),
-              const SizedBox(height: 16),
+              // Collapsible Advanced Settings (Filters, Watermark, Extra Margins, Title)
+              _buildAdvancedOptionsCard(isDark),
+              const SizedBox(height: 14),
 
               // Visual Live Sheet Preview
               _buildLiveSheetPreview(isDark),
@@ -652,267 +644,224 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
 
   Widget _buildSlotsCard(bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // Front Slot
-          _buildSingleSlot(
-            isFront: true,
-            imagePath: _frontPath,
-            label: 'الوجه الأمامي للبطاقة (Front)',
-            isDark: isDark,
-          ),
-          const SizedBox(height: 12),
-          // Divider with swap button
           Row(
             children: [
               Expanded(
-                child: Divider(
-                  color: isDark ? Colors.white12 : Colors.black12,
-                  height: 1,
+                child: _buildCompactSlot(
+                  isFront: true,
+                  imagePath: _frontPath,
+                  label: 'الوجه الأمامي',
+                  subtitle: 'Front Side',
+                  isDark: isDark,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: InkWell(
-                  onTap: (_frontPath != null && _backPath != null) ? _swapSlots : null,
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.swap_vert_rounded, size: 16),
-                        SizedBox(width: 4),
-                        Text(
-                          'تبديل الوجهين',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Divider(
-                  color: isDark ? Colors.white12 : Colors.black12,
-                  height: 1,
+                child: _buildCompactSlot(
+                  isFront: false,
+                  imagePath: _backPath,
+                  label: 'الوجه الخلفي',
+                  subtitle: 'Back Side',
+                  isDark: isDark,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Back Slot
-          _buildSingleSlot(
-            isFront: false,
-            imagePath: _backPath,
-            label: 'الوجه الخلفي للبطاقة (Back)',
-            isDark: isDark,
-          ),
+          if (_frontPath != null || _backPath != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                  onPressed: (_frontPath != null && _backPath != null) ? _swapSlots : null,
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                  label: const Text(
+                    'تبديل الوجهين',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _frontPath = null;
+                      _backPath = null;
+                    });
+                  },
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 18),
+                  label: const Text(
+                    'مسح الوجهين',
+                    style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSingleSlot({
+  Widget _buildCompactSlot({
     required bool isFront,
     required String? imagePath,
     required String label,
+    required String subtitle,
     required bool isDark,
   }) {
     final hasImage = imagePath != null && File(imagePath).existsSync();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+    return AspectRatio(
+      aspectRatio: 85.6 / 54.0,
+      child: Material(
+        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: () => _pickImage(isFront),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hasImage
+                    ? const Color(0xFF007AFF)
+                    : (isDark ? Colors.white12 : Colors.black12),
+                width: hasImage ? 1.5 : 1.0,
               ),
             ),
-            if (hasImage)
-              Row(
-                children: [
-                  InkWell(
-                    onTap: () async {
-                      final currentPath = isFront ? _frontPath : _backPath;
-                      if (currentPath == null) return;
-                      final updated = await openScanReviewScreen(
-                        context,
-                        rawImagePath: currentPath,
-                      );
-                      if (updated != null && mounted) {
-                        setState(() {
-                          if (isFront) {
-                            _frontPath = updated;
-                          } else {
-                            _backPath = updated;
-                          }
-                        });
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.auto_fix_high_rounded,
-                        size: 17,
-                        color: Color(0xFF007AFF),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  InkWell(
-                    onTap: () => _rotateSlot(isFront),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.rotate_right_rounded, size: 17),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  InkWell(
-                    onTap: () => setState(() {
-                      if (isFront) {
-                        _frontPath = null;
-                      } else {
-                        _backPath = null;
-                      }
-                    }),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.delete_outline_rounded, size: 17, color: Colors.red),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        AspectRatio(
-          aspectRatio: 85.6 / 54.0,
-          child: InkWell(
-            onTap: () => _pickImage(isFront),
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: hasImage
-                      ? const Color(0xFF007AFF)
-                      : (isDark ? Colors.white12 : Colors.black12),
-                  width: hasImage ? 1.5 : 1.0,
-                ),
-              ),
-              child: hasImage
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.file(File(imagePath), cacheWidth: 600, fit: BoxFit.cover),
-                          Positioned(
-                            bottom: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.7),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.edit_rounded, color: Colors.white, size: 12),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'تغيير',
-                                    style: TextStyle(color: Colors.white, fontSize: 11),
-                                  ),
-                                ],
+            child: hasImage
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.file(File(imagePath), cacheWidth: 500, fit: BoxFit.cover),
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              label,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF007AFF).withValues(alpha: 0.25),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                        ),
+                        Positioned(
+                          bottom: 6,
+                          left: 6,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: () => _rotateSlot(isFront),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.65),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(
+                                    Icons.rotate_right_rounded,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              GestureDetector(
+                                onTap: () => setState(() {
+                                  if (isFront) {
+                                    _frontPath = null;
+                                  } else {
+                                    _backPath = null;
+                                  }
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ],
-                          ),
-                          child: const Icon(
-                            Icons.add_a_photo_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          isFront ? 'التقاط الوجه الأمامي (Front)' : 'التقاط الوجه الخلفي (Back)',
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'مسح بالكاميرا، اختيار من الصور أو المكتبة',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? Colors.white60 : const Color(0xFF8E8E93),
                           ),
                         ),
                       ],
                     ),
-            ),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.add_a_photo_rounded,
+                          color: Color(0xFF007AFF),
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        label,
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                      ),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          color: isDark ? Colors.white54 : Colors.black45,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -925,335 +874,274 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
         border: Border.all(
           color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'تخطيط وضع البطاقة في ورقة A4',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-          ),
-          const SizedBox(height: 10),
-          for (final layout in IdCardA4Layout.values) ...[
-            InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedLayout = layout);
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: _selectedLayout == layout
-                      ? const Color(0xFF007AFF).withValues(alpha: 0.1)
-                      : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02)),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _selectedLayout == layout
-                        ? const Color(0xFF007AFF)
-                        : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
-                    width: _selectedLayout == layout ? 1.5 : 1.0,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _selectedLayout == layout
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_off_rounded,
-                      color: _selectedLayout == layout ? const Color(0xFF007AFF) : Colors.grey,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            layout.label,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: _selectedLayout == layout ? const Color(0xFF007AFF) : null,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            layout.description,
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterSelector(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'فلتر تحسين وضوح بيانات الهوية',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: IdCardColorFilter.values.map((f) {
-              final isSel = _selectedColorFilter == f;
-              return ChoiceChip(
-                label: Text(f.label),
-                selected: isSel,
-                onSelected: (val) {
-                  if (val) setState(() => _selectedColorFilter = f);
-                },
-                selectedColor: const Color(0xFF007AFF).withValues(alpha: 0.18),
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
-                  color: isSel ? const Color(0xFF007AFF) : null,
-                ),
-              );
-            }).toList(),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildWatermarkSelector(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
-        ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.security_rounded, color: Colors.red, size: 18),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'علامة مائية أمنية لحماية الهوية من التزوير',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-                    ),
-                    Text(
-                      'طباعة ختم حماية مائل عبر البطاقة لمنع استغلالها إلكترونياً',
-                      style: TextStyle(fontSize: 10.5, color: Colors.grey),
-                    ),
-                  ],
-                ),
+              Icon(Icons.dashboard_customize_rounded, size: 18, color: Color(0xFF007AFF)),
+              SizedBox(width: 8),
+              Text(
+                'تخطيط وضع البطاقة في ورقة A4',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: IdSecurityWatermarkPreset.values.map((w) {
-              final isSel = _selectedWatermark == w;
-              return ChoiceChip(
-                label: Text(w.label),
-                selected: isSel,
-                onSelected: (val) {
-                  if (val) setState(() => _selectedWatermark = w);
-                },
-                selectedColor: Colors.red.withValues(alpha: 0.18),
-                labelStyle: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
-                  color: isSel ? Colors.red.shade700 : null,
+          const SizedBox(height: 10),
+          Row(
+            children: IdCardA4Layout.values.map((layout) {
+              final isSel = _selectedLayout == layout;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Material(
+                    color: isSel
+                        ? const Color(0xFF007AFF)
+                        : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7)),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _selectedLayout = layout);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                        alignment: Alignment.center,
+                        child: Text(
+                          layout.label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isSel
+                                ? Colors.white
+                                : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               );
             }).toList(),
           ),
-          if (_selectedWatermark == IdSecurityWatermarkPreset.custom) ...[
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _customWatermarkController,
-              decoration: InputDecoration(
-                labelText: 'اكتب نص الختم الأمني',
-                hintText: 'مثلاً: مخصص لمعاملة بيع سيارة فقط',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                isDense: true,
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildTogglesCard(bool isDark) {
-    return Material(
-      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
-          ),
+  Widget _buildAdvancedOptionsCard(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          leading: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.tune_rounded, color: Color(0xFF007AFF), size: 18),
+          ),
+          title: const Text(
+            'خيارات متقدمة، فلاتر، وعلامة مائية',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+          ),
+          subtitle: const Text(
+            'تخصيص الفلتر، الختم الأمني، والمسطرة وعنوان الوثيقة',
+            style: TextStyle(fontSize: 10.5, color: Colors.grey),
+          ),
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF007AFF).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.tune_rounded, color: Color(0xFF007AFF), size: 18),
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'عناصر وهوامش الورقة الإضافية',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+
+                  // Title Field
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      labelText: 'عنوان المستند الرسمي',
+                      isDense: true,
+                      prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
-                      Text(
-                        'مغلقة افتراضياً لتوفير طباعة نقية ونظيفة للصور فقط بدون نصوص',
-                        style: TextStyle(fontSize: 10.5, color: Colors.grey),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 14),
+
+                  // Filter selector
+                  const Text(
+                    'فلتر تحسين الوضوح:',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: IdCardColorFilter.values.map((f) {
+                      final isSel = _selectedColorFilter == f;
+                      return ChoiceChip(
+                        label: Text(f.label, style: const TextStyle(fontSize: 11)),
+                        selected: isSel,
+                        onSelected: (val) {
+                          if (val) setState(() => _selectedColorFilter = f);
+                        },
+                        selectedColor: const Color(0xFF007AFF).withValues(alpha: 0.18),
+                        labelStyle: TextStyle(
+                          fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                          color: isSel ? const Color(0xFF007AFF) : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Watermark selector
+                  const Text(
+                    'العلامة المائية والختم الأمني:',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: IdSecurityWatermarkPreset.values.map((w) {
+                      final isSel = _selectedWatermark == w;
+                      return ChoiceChip(
+                        label: Text(w.label, style: const TextStyle(fontSize: 11)),
+                        selected: isSel,
+                        onSelected: (val) {
+                          if (val) setState(() => _selectedWatermark = w);
+                        },
+                        selectedColor: Colors.red.withValues(alpha: 0.16),
+                        labelStyle: TextStyle(
+                          fontWeight: isSel ? FontWeight.w800 : FontWeight.w500,
+                          color: isSel ? Colors.red.shade700 : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  if (_selectedWatermark == IdSecurityWatermarkPreset.custom) ...[
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _customWatermarkController,
+                      decoration: InputDecoration(
+                        labelText: 'نص الختم الأمني المخصص',
+                        hintText: 'مثلاً: مخصص لمعاملة بنكية فقط',
+                        isDense: true,
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+
+                  // Toggles
+                  SwitchListTile.adaptive(
+                    value: _includeLabels,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'تسمية الوجهين والمقاسات (85.6 × 54 مم)',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                    activeThumbColor: const Color(0xFF007AFF),
+                    onChanged: (val) => setState(() => _includeLabels = val),
+                  ),
+                  SwitchListTile.adaptive(
+                    value: _includeCutGuidelines,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'خط القص القياسي المنقّط (✂)',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                    activeThumbColor: const Color(0xFF007AFF),
+                    onChanged: (val) => setState(() => _includeCutGuidelines = val),
+                  ),
+                  SwitchListTile.adaptive(
+                    value: _includeRuler,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'مسطرة التحقق من المقاس 1:1 في الأسفل (5 سم)',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                    activeThumbColor: const Color(0xFF007AFF),
+                    onChanged: (val) => setState(() => _includeRuler = val),
+                  ),
+                  SwitchListTile.adaptive(
+                    value: _includeCropMarks,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'علامات أركان القص الزاوية (Crop Marks)',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                    activeThumbColor: const Color(0xFF007AFF),
+                    onChanged: (val) => setState(() => _includeCropMarks = val),
+                  ),
+                  SwitchListTile.adaptive(
+                    value: _includeHeader,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'ترويسة رسمية وتاريخ الإصدار في الأعلى',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                    activeThumbColor: const Color(0xFF007AFF),
+                    onChanged: (val) => setState(() => _includeHeader = val),
+                  ),
+                  if (_selectedLayout == IdCardA4Layout.sideBySideTop) ...[
+                    SwitchListTile.adaptive(
+                      value: _includeSignaturesBox,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'صندوق الأختام والتوقيعات الرسمية',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                      ),
+                      activeThumbColor: const Color(0xFF007AFF),
+                      onChanged: (val) => setState(() => _includeSignaturesBox = val),
+                    ),
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            SwitchListTile.adaptive(
-              value: _includeLabels,
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'تسمية الوجهين والمقاسات (الوجه الأمامي / الخلفي)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              subtitle: const Text(
-                'كتابة نصوص وأبعاد (85.6 × 54 مم) فوق كل صورة',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-              activeThumbColor: const Color(0xFF007AFF),
-              onChanged: (val) => setState(() => _includeLabels = val),
-            ),
-            const Divider(height: 1),
-            SwitchListTile.adaptive(
-              value: _includeCutGuidelines,
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'خط القص القياسي المنقّط (✂)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              subtitle: const Text(
-                'خط فاصل بمنتصف الورقة لتسهيل القص الدقيق',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-              activeThumbColor: const Color(0xFF007AFF),
-              onChanged: (val) => setState(() => _includeCutGuidelines = val),
-            ),
-            const Divider(height: 1),
-            SwitchListTile.adaptive(
-              value: _includeRuler,
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'مسطرة التحقق من المقاس 1:1 في الأسفل (5 سم)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              subtitle: const Text(
-                'شريط أسفل الورقة للتأكد من عدم تصغير الطابعة للمستند',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-              activeThumbColor: const Color(0xFF007AFF),
-              onChanged: (val) => setState(() => _includeRuler = val),
-            ),
-            const Divider(height: 1),
-            SwitchListTile.adaptive(
-              value: _includeCropMarks,
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'علامات أركان القص الزاوية (Crop Marks)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              subtitle: const Text(
-                'تحديد زوايا البطاقة الأربعة للمساعدة في القص بمقص يدوي',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-              activeThumbColor: const Color(0xFF007AFF),
-              onChanged: (val) => setState(() => _includeCropMarks = val),
-            ),
-            const Divider(height: 1),
-            SwitchListTile.adaptive(
-              value: _includeHeader,
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'ترويسة رسمية وتاريخ الإصدار في الأعلى',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              subtitle: const Text(
-                'تضمين عنوان الوثيقة وتاريخ استخراجها في أعلى الورقة',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-              activeThumbColor: const Color(0xFF007AFF),
-              onChanged: (val) => setState(() => _includeHeader = val),
-            ),
-            if (_selectedLayout == IdCardA4Layout.sideBySideTop) ...[
-              const Divider(height: 1),
-              SwitchListTile.adaptive(
-                value: _includeSignaturesBox,
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'صندوق الأختام والتوقيعات الرسمية',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text(
-                  'مساحة سفلية لتوقيع العميل وختم الجهة الحكومية أو البنك',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-                activeThumbColor: const Color(0xFF007AFF),
-                onChanged: (val) => setState(() => _includeSignaturesBox = val),
-              ),
-            ],
           ],
         ),
       ),
