@@ -13,6 +13,7 @@ import '../../../shared/models/document_paper_size.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
+import '../../../shared/services/audio_feedback_service.dart';
 import '../../../shared/services/permission_request_coordinator.dart';
 import '../../../shared/widgets/shimmer_skeleton.dart';
 import '../data/native_scanner_bridge.dart';
@@ -239,6 +240,8 @@ class _ScannerSessionScreenState extends ConsumerState<ScannerSessionScreen> {
     }
 
     if (!mounted || scanResults.isEmpty) return;
+
+    ref.read(audioFeedbackServiceProvider).playShutter();
 
     var saveAllRemaining = false;
     for (var i = 0; i < scanResults.length; i++) {

@@ -18,11 +18,13 @@ class BackupRestoreResult {
     required this.restoredDocuments,
     required this.restoredFolders,
     required this.skippedDuplicates,
+    this.restoredVaultDocuments = 0,
   });
 
   final int restoredDocuments;
   final int restoredFolders;
   final int skippedDuplicates;
+  final int restoredVaultDocuments;
 }
 
 /// Phase 3.4: 100% Offline Full Library Backup & Restore (.zip)
@@ -41,10 +43,11 @@ class BackupRestoreService {
   final DocumentSearchService _searchService;
 
   /// Creates a portable `.zip` backup file containing all documents, folders, media files,
-  /// and OCR search index. If [password] is provided, the payload is encrypted with AES-256-GCM.
+  /// vault documents, and OCR search index. If [password] is provided, the payload is encrypted with AES-256-GCM (Zero-Knowledge).
   Future<String> createBackupZip({
     required List<PendingUpload> documents,
     required List<DocumentFolder> folders,
+    List<PendingUpload>? vaultDocuments,
     String? password,
     ValueChanged<String>? onProgress,
   }) async {
@@ -54,6 +57,7 @@ class BackupRestoreService {
     // Map local absolute paths to relative archive paths
     final mediaFilesToPack = <String, String>{}; // archiveRelPath -> localAbsPath
     final serializedDocs = <Map<String, dynamic>>[];
+    final serializedVaultDocs = <Map<String, dynamic>>[];
 
     String? registerMediaFile(String? absPath, String docId, String role) {
       if (absPath == null || absPath.isEmpty) return null;
@@ -90,13 +94,43 @@ class BackupRestoreService {
       serializedDocs.add(docJson);
     }
 
+    if (vaultDocuments != null && vaultDocuments.isNotEmpty) {
+      for (final doc in vaultDocuments) {
+        final docJson = doc.toJson();
+        docJson['file_path'] =
+            registerMediaFile(doc.filePath, 'vault_${doc.id}', 'pdf') ?? '';
+        docJson['thumbnail_path'] =
+            registerMediaFile(doc.thumbnailPath, 'vault_${doc.id}', 'thumb');
+        docJson['docx_path'] =
+            registerMediaFile(doc.docxPath, 'vault_${doc.id}', 'docx');
+        docJson['xlsx_path'] =
+            registerMediaFile(doc.xlsxPath, 'vault_${doc.id}', 'xlsx');
+
+        final pagesJson = <Map<String, dynamic>>[];
+        for (var i = 0; i < doc.pages.length; i++) {
+          final pg = doc.pages[i];
+          final pgJson = pg.toJson();
+          pgJson['image_path'] =
+              registerMediaFile(pg.imagePath, 'vault_${doc.id}', 'p$i') ?? '';
+          pgJson['original_image_path'] =
+              registerMediaFile(pg.originalImagePath, 'vault_${doc.id}', 'orig$i') ??
+                  pgJson['image_path'];
+          pagesJson.add(pgJson);
+        }
+        docJson['pages'] = pagesJson;
+        serializedVaultDocs.add(docJson);
+      }
+    }
+
     final manifest = <String, dynamic>{
-      'version': 2,
+      'version': 3,
       'created_at': DateTime.now().toIso8601String(),
       'documents_count': serializedDocs.length,
       'folders_count': folders.length,
+      'vault_documents_count': serializedVaultDocs.length,
       'documents': serializedDocs,
       'folders': folders.map((f) => f.toJson()).toList(),
+      'vault_documents': serializedVaultDocs,
       'ocr_records': ocrRecords,
     };
 
@@ -167,6 +201,7 @@ class BackupRestoreService {
   Future<({
     List<PendingUpload> mergedDocuments,
     List<DocumentFolder> mergedFolders,
+    List<PendingUpload> restoredVaultDocuments,
     BackupRestoreResult stats,
   })> restoreFromBackupFile({
     required String zipFilePath,
@@ -302,7 +337,43 @@ class BackupRestoreService {
       restoredDocsCount++;
     }
 
-    // 3. Restore SQLite FTS4 OCR records
+    // 3. Restore Vault Documents
+    final restoredVaultDocs = <PendingUpload>[];
+    final rawVaultDocs = manifest['vault_documents'] as List<dynamic>? ?? const [];
+    for (var i = 0; i < rawVaultDocs.length; i++) {
+      final raw = rawVaultDocs[i];
+      if (raw is! Map<String, dynamic>) continue;
+      final docCopy = Map<String, dynamic>.from(raw);
+      docCopy['file_path'] =
+          await unpackMediaFile(raw['file_path'] as String?, docsDir) ?? '';
+      docCopy['thumbnail_path'] =
+          await unpackMediaFile(raw['thumbnail_path'] as String?, pagesDir);
+      docCopy['docx_path'] =
+          await unpackMediaFile(raw['docx_path'] as String?, exportsDir);
+      docCopy['xlsx_path'] =
+          await unpackMediaFile(raw['xlsx_path'] as String?, exportsDir);
+
+      final rawPages = raw['pages'] as List<dynamic>? ?? const [];
+      final unpackedPages = <Map<String, dynamic>>[];
+      for (final pgRaw in rawPages.whereType<Map<String, dynamic>>()) {
+        final pgCopy = Map<String, dynamic>.from(pgRaw);
+        final imgPath =
+            await unpackMediaFile(pgRaw['image_path'] as String?, pagesDir) ??
+                '';
+        final origPath = await unpackMediaFile(
+              pgRaw['original_image_path'] as String?,
+              pagesDir,
+            ) ??
+            imgPath;
+        pgCopy['image_path'] = imgPath;
+        pgCopy['original_image_path'] = origPath;
+        unpackedPages.add(pgCopy);
+      }
+      docCopy['pages'] = unpackedPages;
+      restoredVaultDocs.add(PendingUpload.fromJson(docCopy));
+    }
+
+    // 4. Restore SQLite FTS4 OCR records
     final rawOcrRecords = manifest['ocr_records'] as List<dynamic>? ?? const [];
     if (rawOcrRecords.isNotEmpty) {
       await _searchService.importRecords(
@@ -313,10 +384,12 @@ class BackupRestoreService {
     return (
       mergedDocuments: mergedDocuments,
       mergedFolders: mergedFolders,
+      restoredVaultDocuments: restoredVaultDocs,
       stats: BackupRestoreResult(
         restoredDocuments: restoredDocsCount,
         restoredFolders: restoredFoldersCount,
         skippedDuplicates: skippedDuplicatesCount,
+        restoredVaultDocuments: restoredVaultDocs.length,
       ),
     );
   }

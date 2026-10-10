@@ -28,6 +28,7 @@ import 'widgets/apple_bottom_nav_bar.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 import 'widgets/theme_selection_sheet.dart';
+import 'widgets/cloud_backup_sheet.dart';
 import '../data/batch_zip_service.dart';
 import '../data/native_scanner_bridge.dart';
 import 'id_card_a4_screen.dart';
@@ -2007,6 +2008,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               builder: (_) => const TrashScreen(),
                             ),
                           );
+                        } else if (val == 'cloud_backup') {
+                          CloudBackupSheet.show(context);
                         } else if (val == 'dark_mode') {
                           ref
                               .read(userPreferencesControllerProvider.notifier)
@@ -2022,6 +2025,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         }
                       },
                       itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                          value: 'cloud_backup',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.cloud_sync_rounded,
+                                size: 18,
+                                color: Color(0xFF007AFF),
+                              ),
+                              SizedBox(width: 10),
+                              Text('النسخ الاحتياطي السحابي (Zero-Knowledge)'),
+                            ],
+                          ),
+                        ),
                         const PopupMenuItem(
                           value: 'web_drop',
                           child: Row(
@@ -3564,6 +3581,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     },
                   ),
                 ],
+                if (_searchQuery.trim().isNotEmpty &&
+                    _ocrSearchHits.containsKey(doc.id)) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'مطابقة: "${_ocrSearchHits[doc.id]!.snippet}"',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      color: palette.accent,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -3780,6 +3811,47 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                   ),
                               ],
                             ),
+                            if (_searchQuery.trim().isNotEmpty &&
+                                _ocrSearchHits.containsKey(doc.id)) ...[
+                              const SizedBox(height: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: palette.accent.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: palette.accent.withValues(alpha: 0.25),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.manage_search_rounded,
+                                      size: 13,
+                                      color: palette.accent,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        'مطابقة داخل النص: "${_ocrSearchHits[doc.id]!.snippet}"',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: palette.accent,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

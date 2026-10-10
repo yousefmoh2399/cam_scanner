@@ -12,6 +12,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
+import '../../../shared/services/audio_feedback_service.dart';
 import '../data/native_scanner_bridge.dart';
 import '../data/stamp_storage_service.dart';
 import 'scan_review_screen.dart';
@@ -508,7 +509,7 @@ class _StampStudioScreenState extends ConsumerState<StampStudioScreen> {
   }
 
   Future<void> _selectStamp(DigitalStamp stamp) async {
-    HapticFeedback.lightImpact();
+    ref.read(audioFeedbackServiceProvider).playStamp();
     final bytes = await File(stamp.imagePath).readAsBytes();
     if (widget.targetPageImagePath != null) {
       if (mounted) {

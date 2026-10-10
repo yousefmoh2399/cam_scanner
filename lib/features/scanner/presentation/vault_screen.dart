@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
+import '../../../shared/services/audio_feedback_service.dart';
 import '../data/vault_security_service.dart';
 import 'widgets/apple_bottom_nav_bar.dart';
+import 'widgets/cloud_backup_sheet.dart';
 
 /// Phase 3.3: Secret Vault (AES-256-GCM On-Disk Encryption) & App Lock Settings Screen.
 /// Redesigned with authentic Apple iOS Passcode lock experience, tactile numeric dial pad,
@@ -78,6 +80,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
   }
 
   Future<void> _unlockAndLoadDocs() async {
+    ref.read(audioFeedbackServiceProvider).playVaultUnlock();
     final docs = await _securityService.loadVaultDocuments();
     if (!mounted) return;
     setState(() {
@@ -1044,6 +1047,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
         ),
         actions: [
           IconButton(
+            tooltip: 'النسخ الاحتياطي السحابي المشفر',
+            icon: const Icon(Icons.cloud_sync_rounded, color: Color(0xFF007AFF)),
+            onPressed: () => CloudBackupSheet.show(context),
+          ),
+          IconButton(
             tooltip: 'إعدادات الأمان',
             icon: const Icon(Icons.settings_outlined),
             onPressed: _showSecuritySettingsSheet,
@@ -1052,7 +1060,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
             tooltip: 'قفل الخزنة فوراً',
             icon: const Icon(Icons.lock_rounded, color: Colors.amber),
             onPressed: () {
-              HapticFeedback.lightImpact();
+              ref.read(audioFeedbackServiceProvider).playVaultLock();
               setState(() {
                 _isUnlocked = false;
                 _enteredPin = '';

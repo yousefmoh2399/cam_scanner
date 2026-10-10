@@ -314,7 +314,7 @@ class VaultSecurityService {
     }
   }
 
-  Future<void> _saveVaultDocuments(List<PendingUpload> docs) async {
+  Future<void> saveVaultDocuments(List<PendingUpload> docs) async {
     final indexFile = await _vaultIndexFile();
     final rawJson = utf8.encode(
       jsonEncode(docs.map((d) => d.toJson()).toList()),
@@ -395,7 +395,7 @@ class VaultSecurityService {
       vaultDoc,
       ...current.where((d) => d.id != document.id),
     ];
-    await _saveVaultDocuments(updated);
+    await saveVaultDocuments(updated);
 
     // Remove from SQLite Full-Text Search Index so it cannot be discovered via search
     await DocumentSearchService().removeDocument(document.id);
@@ -462,7 +462,7 @@ class VaultSecurityService {
     );
 
     final remaining = current.where((d) => d.id != documentId).toList();
-    await _saveVaultDocuments(remaining);
+    await saveVaultDocuments(remaining);
 
     return restored;
   }
@@ -496,6 +496,6 @@ class VaultSecurityService {
       }
     }
     final remaining = current.where((d) => d.id != documentId).toList();
-    await _saveVaultDocuments(remaining);
+    await saveVaultDocuments(remaining);
   }
 }

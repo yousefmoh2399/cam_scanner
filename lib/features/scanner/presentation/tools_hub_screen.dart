@@ -26,6 +26,7 @@ import 'vault_screen.dart';
 import 'watermark_studio_screen.dart';
 import 'auto_redaction_screen.dart';
 import 'widgets/apple_bottom_nav_bar.dart';
+import 'widgets/cloud_backup_sheet.dart';
 import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 import 'document_diff_screen.dart';
@@ -440,13 +441,13 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'sec_backup_zip',
-      title: 'النسخ الاحتياطي (.ZIP)',
-      subtitle: 'تصدير واستعادة مكتبتك بالكامل بدون إنترنت',
+      title: 'النسخ الاحتياطي السحابي المشفر',
+      subtitle: 'مزامنة Google Drive و iCloud بتشفير Zero-Knowledge عسكري بدون إنترنت',
       category: ToolCategory.security,
-      icon: Icons.folder_zip_rounded,
-      badge: 'نسخ محلي',
-      accentColor: Color(0xFF9333EA),
-      keywords: ['نسخ', 'احتياطي', 'استعادة', 'zip', 'أرشيف', 'تصدير'],
+      icon: Icons.cloud_sync_rounded,
+      badge: 'Zero-Knowledge 🔒',
+      accentColor: Color(0xFF007AFF),
+      keywords: ['نسخ', 'احتياطي', 'استعادة', 'سحابي', 'drive', 'icloud', 'zero-knowledge', 'تشفير', 'google', 'apple', 'أرشيف', 'تصدير'],
     ),
     ToolItem(
       id: 'sec_digital_stamp',
@@ -625,7 +626,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         break;
 
       case 'sec_backup_zip':
-        _showBackupRestoreLauncher();
+        CloudBackupSheet.show(context);
         break;
 
       case 'ai_magic_clean':
@@ -2137,130 +2138,6 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
-  }
-
-  Future<void> _showBackupRestoreLauncher() async {
-    final docs = ref.read(pendingUploadsControllerProvider).valueOrNull ?? [];
-    final folders =
-        await ref.read(documentFolderServiceProvider).loadFolders();
-    final pwdCtrl = TextEditingController();
-
-    if (!mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetCtx) {
-        final bottomInset = MediaQuery.of(sheetCtx).viewInsets.bottom;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'النسخ الاحتياطي والاستعادة الشاملة (.ZIP)',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'تصدير كل المستندات والمجلدات وفهرس البحث في ملف .zip محلي أو استعادتها بدون تكرار.',
-                style: TextStyle(fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: pwdCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText:
-                      'كلمة مرور لتشفير النسخة الاحتياطية (اختياري AES-256)',
-                  prefixIcon: Icon(Icons.lock_outline_rounded),
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () async {
-                  final pwd = pwdCtrl.text.trim();
-                  Navigator.of(sheetCtx).pop();
-                  try {
-                    final backupSvc = ref.read(backupRestoreServiceProvider);
-                    final zipPath = await backupSvc.createBackupZip(
-                      documents: docs,
-                      folders: folders,
-                      password: pwd.isEmpty ? null : pwd,
-                    );
-                    if (mounted) {
-                      await Share.shareXFiles(
-                        [XFile(zipPath)],
-                        subject: 'نسخة احتياطية للمستندات',
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('فشل إنشاء النسخة: $e')),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.archive_rounded),
-                label: Text('تصدير ومشاركة نسخة احتياطية (${docs.length} مستند)'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final pwd = pwdCtrl.text.trim();
-                  Navigator.of(sheetCtx).pop();
-                  final picked = await FilePicker.platform.pickFiles(
-                    type: FileType.custom,
-                    allowedExtensions: const ['zip'],
-                  );
-                  final path = picked?.files.firstOrNull?.path;
-                  if (path == null) return;
-
-                  try {
-                    final backupSvc = ref.read(backupRestoreServiceProvider);
-                    final res = await backupSvc.restoreFromBackupFile(
-                      zipFilePath: path,
-                      currentDocuments: docs,
-                      currentFolders: folders,
-                      password: pwd.isEmpty ? null : pwd,
-                    );
-                    await ref
-                        .read(documentFolderServiceProvider)
-                        .saveFolders(res.mergedFolders);
-                    await ref
-                        .read(pendingUploadsControllerProvider.notifier)
-                        .replaceAllDocuments(res.mergedDocuments);
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'تمت الاستعادة بنجاح! (${res.stats.restoredDocuments} مستند، ${res.stats.restoredFolders} مجلد)',
-                          ),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('فشل الاستعادة: $e')),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.unarchive_rounded),
-                label: const Text('استعادة من ملف .ZIP'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   // ── UI Build ──

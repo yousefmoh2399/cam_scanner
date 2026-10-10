@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/models/pending_upload.dart';
+import 'document_search_service.dart';
 import 'native_scanner_bridge.dart';
 
 /// Supported OCR language modes selectable by user or auto-selected.
@@ -564,6 +565,13 @@ class OcrService {
         await cacheFile.writeAsString(
           jsonEncode(docResult.toJson()),
           flush: true,
+        );
+        // Automatically populate local offline full-text search index
+        await DocumentSearchService().indexDocumentOcr(
+          documentId: effectiveDocId,
+          title: document?.title ?? effectiveDocId,
+          fullText: docResult.fullText,
+          smartTitle: docResult.suggestedTitle,
         );
       } catch (e) {
         debugPrint('[OcrService] Warning: could not write OCR cache: $e');
