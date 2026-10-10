@@ -48,6 +48,10 @@ import '../data/qr_scanner_service.dart';
 import 'anti_moire_whiteboard_screen.dart';
 import 'qr_studio_screen.dart';
 import 'privacy_scrubber_screen.dart';
+import 'interactive_table_editor_screen.dart';
+import 'booklet_and_binding_screen.dart';
+import 'legal_audit_studio_screen.dart';
+import 'lanyard_id_badge_screen.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -193,8 +197,28 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       accentColor: Color(0xFF007AFF),
       keywords: ['بطاقة', 'بلاستيك', 'pvc', 'cr80', 'محفظة', 'id', 'رخصة', 'كارنيه', 'طباعة'],
     ),
+    ToolItem(
+      id: 'gov_lanyard_badge',
+      title: 'كارنيهات العمل والزوار (54×86 ملم)',
+      subtitle: 'إنشاء وطباعة شارات الموظفين بمقياس 1:1 مع باركود وحامل التعليق',
+      category: ToolCategory.government,
+      icon: Icons.contact_page_rounded,
+      badge: 'شارة معتمدة',
+      accentColor: Color(0xFF0284C7),
+      keywords: ['كارنيه', 'شارة', 'موظف', 'زائر', 'lanyard', 'badge', 'طباعة', '1:1', 'فعالية'],
+    ),
 
     // ── Intelligence & Extraction Category ──
+    ToolItem(
+      id: 'ai_interactive_table',
+      title: 'مستخرج ومحرر الجداول التفاعلي',
+      subtitle: 'كشف الجداول وتعديل الخلايا والجمع التلقائي وتصدير Excel و PDF',
+      category: ToolCategory.intelligence,
+      icon: Icons.table_view_rounded,
+      badge: 'محرر حي ∑',
+      accentColor: Color(0xFF059669),
+      keywords: ['جدول', 'جداول', 'محرر', 'تعديل', 'جمع', 'sum', 'excel', 'xlsx', 'درجات', 'فاتورة'],
+    ),
     ToolItem(
       id: 'ai_excel_converter',
       title: 'تحويل الجداول إلى Excel',
@@ -377,8 +401,38 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       accentColor: Color(0xFF0D9488),
       keywords: ['ملفات', 'منقولة', 'مستلمة', 'مرسلة', 'كمبيوتر', 'web drop', 'تنزيلات', 'transferred'],
     ),
+    ToolItem(
+      id: 'pdf_booklet_imposition',
+      title: 'صانع الكتيبات والملازم المطوية (A5)',
+      subtitle: 'ترتيب الصفحات هندسياً للطباعة المزدوجة والطي من المنتصف',
+      category: ToolCategory.pdf,
+      icon: Icons.auto_stories_rounded,
+      badge: 'كتيب مطوي',
+      accentColor: Color(0xFF7C3AED),
+      keywords: ['كتيب', 'ملزمة', 'booklet', 'طي', 'دوبلكس', 'كتاب', 'طباعة'],
+    ),
+    ToolItem(
+      id: 'pdf_gutter_margin',
+      title: 'هامش التخريم والتجليد السلكي',
+      subtitle: 'إزاحة النصوص لحماية المحتوى من ثقوب الخرامة والسلك الحلزوني',
+      category: ToolCategory.pdf,
+      icon: Icons.margin_rounded,
+      badge: 'تجليد آمن',
+      accentColor: Color(0xFFEA580C),
+      keywords: ['هامش', 'تجليد', 'خرامة', 'ثقوب', 'سلك', 'حلزوني', 'gutter', 'تخريم'],
+    ),
 
     // ── Security, Privacy & Maintenance Category ──
+    ToolItem(
+      id: 'legal_audit_studio',
+      title: 'استوديو التدقيق والتوثيق القانوني',
+      subtitle: 'مدقق الشيكات والتفقيط المالي، كاشف الصفحات المفقودة، وترقيم Bates',
+      category: ToolCategory.security,
+      icon: Icons.gavel_rounded,
+      badge: 'تدقيق قانوني ⚖️',
+      accentColor: Color(0xFFB45309),
+      keywords: ['شيك', 'تفقيط', 'أرقام', 'عقد', 'صفحة مفقودة', 'bates', 'قضية', 'محكمة', 'تدقيق'],
+    ),
     ToolItem(
       id: 'sec_vault',
       title: 'الخزنة السرية المشفرة',
@@ -554,6 +608,46 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             builder: (_) => const GovernmentDocumentsScreen(
               initialMode: OfficialDocMode.compress,
             ),
+          ),
+        );
+        break;
+
+      case 'gov_lanyard_badge':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const LanyardIdBadgeScreen(),
+          ),
+        );
+        break;
+
+      case 'ai_interactive_table':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const InteractiveTableEditorScreen(),
+          ),
+        );
+        break;
+
+      case 'pdf_booklet_imposition':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const BookletAndBindingScreen(initialTabIndex: 0),
+          ),
+        );
+        break;
+
+      case 'pdf_gutter_margin':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const BookletAndBindingScreen(initialTabIndex: 1),
+          ),
+        );
+        break;
+
+      case 'legal_audit_studio':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const LegalAuditStudioScreen(),
           ),
         );
         break;

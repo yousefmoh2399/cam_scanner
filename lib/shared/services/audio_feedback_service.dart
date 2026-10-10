@@ -11,7 +11,7 @@ final audioFeedbackServiceProvider = Provider<AudioFeedbackService>((ref) {
 });
 
 /// خدمة التفاعلات الصوتية الخفيفة (Audio Cues & Haptic Sensory Feedback)
-/// - توليد نغمات ونقرات ميكانيكية دقيقة في الذاكرة بدون الحاجة لتحميل ملفات خارجية (100% Offline)
+/// - توليد نغمات ونقرات ميكانيكية دقيقة في الذاكرة بدون الحاجة لتحميل ملفات خارجية وبسرعة فائقة
 /// - مدمجة بتناغم مع الاهتزازات الحسية (Apple Haptics) لشعور واقعي ممتع
 class AudioFeedbackService {
   AudioFeedbackService() {
