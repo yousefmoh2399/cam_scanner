@@ -1,11 +1,8 @@
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_filex/open_filex.dart';
-
+import 'package:path_provider/path_provider.dart';
+import '../data/native_scanner_bridge.dart';
+import '../../../shared/providers/providers.dart';
+import '../../../shared/models/pending_upload.dart';
+import '../../../core/utils/formatters.dart';
 import '../data/object_counter_service.dart';
 
 /// Screen for counting objects, pipes, pills, boxes, sheets in images offline
@@ -73,13 +70,185 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
 
   Future<void> _pickImage() async {
     HapticFeedback.lightImpact();
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final docs = ref.read(pendingUploadsControllerProvider).valueOrNull ?? [];
+
+    final source = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Text(
+                'اختيار صورة للبدء في عدّ العناصر',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildModalActionCard(
+                      ctx: ctx,
+                      icon: Icons.camera_alt_rounded,
+                      title: 'تصوير بالكاميرا',
+                      subtitle: 'التقاط فوري الآن',
+                      color: const Color(0xFFFF9500),
+                      isDark: isDark,
+                      onTap: () => Navigator.pop(ctx, 'camera'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModalActionCard(
+                      ctx: ctx,
+                      icon: Icons.photo_library_rounded,
+                      title: 'معرض الصور',
+                      subtitle: 'من ذاكرة الهاتف',
+                      color: const Color(0xFF007AFF),
+                      isDark: isDark,
+                      onTap: () => Navigator.pop(ctx, 'gallery'),
+                    ),
+                  ),
+                ],
+              ),
+              if (docs.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  tileColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  leading: const Icon(Icons.folder_special_rounded, color: Color(0xFF34C759)),
+                  title: const Text('من مستندات المكتبة', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                  subtitle: Text('اختيار صفحة ممسوحة مسبقاً (${docs.length} مستند)', style: const TextStyle(fontSize: 11)),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  onTap: () => Navigator.pop(ctx, 'library'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
-    if (result != null && result.files.single.path != null) {
-      await _loadImage(result.files.single.path!);
+
+    if (source == null || !mounted) return;
+
+    if (source == 'camera') {
+      try {
+        final tmpDir = await getTemporaryDirectory();
+        final res = await NativeScannerBridge.startSingleScan(destDir: tmpDir.path);
+        if (res != null && mounted) {
+          await _loadImage(res.path);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر فتح الكاميرا: $e')),
+          );
+        }
+      }
+    } else if (source == 'gallery') {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+      if (result != null && result.files.single.path != null) {
+        await _loadImage(result.files.single.path!);
+      }
+    } else if (source == 'library') {
+      final chosen = await showModalBottomSheet<PendingUpload>(
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: docs.length,
+            itemBuilder: (_, idx) {
+              final d = docs[idx];
+              final pth = d.previewImagePath ?? '';
+              return ListTile(
+                leading: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF9500)),
+                title: Text(stripFileExtension(d.fileName), style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(formatPageCount(d.effectivePageCount)),
+                onTap: () => Navigator.pop(ctx, d),
+              );
+            },
+          ),
+        ),
+      );
+      if (chosen != null) {
+        final pth = chosen.previewImagePath;
+        if (pth != null && File(pth).existsSync()) {
+          await _loadImage(pth);
+        }
+      }
     }
+  }
+
+  Widget _buildModalActionCard({
+    required BuildContext ctx,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withValues(alpha: 0.25),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(height: 10),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text(subtitle, style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _runDetection() async {
@@ -398,26 +567,66 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              height: 52,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF9500),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF9500),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.camera_alt_rounded, size: 20),
+                      label: const Text(
+                        'تصوير بالكاميرا',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                      ),
+                      onPressed: () async {
+                        HapticFeedback.lightImpact();
+                        try {
+                          final tmpDir = await getTemporaryDirectory();
+                          final res = await NativeScannerBridge.startSingleScan(destDir: tmpDir.path);
+                          if (res != null && mounted) {
+                            await _loadImage(res.path);
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('تعذر فتح الكاميرا: $e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ),
                 ),
-                icon: const Icon(Icons.camera_alt_rounded, size: 20),
-                label: const Text(
-                  'اختيار صورة للبدء بالعدّ',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+                        foregroundColor: isDark ? Colors.white : Colors.black87,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.photo_library_rounded, size: 20),
+                      label: const Text(
+                        'من المعرض',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                      ),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        _pickImage();
+                      },
+                    ),
+                  ),
                 ),
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  _pickImage();
-                },
-              ),
+              ],
             ),
           ],
         ),

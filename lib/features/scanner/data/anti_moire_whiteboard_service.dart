@@ -95,8 +95,18 @@ class AntiMoireWhiteboardService {
 
     final mode = AntiGlareFilterMode.values[modeIdx];
 
-    final original = img.decodeImage(rawBytes);
+    img.Image? original = img.decodeImage(rawBytes);
     if (original == null) return rawBytes;
+
+    // Constrain resolution to max 1400px for sub-second offline response
+    if (original.width > 1400 || original.height > 1400) {
+      original = img.copyResize(
+        original,
+        width: original.width >= original.height ? 1400 : null,
+        height: original.height > original.width ? 1400 : null,
+        interpolation: img.Interpolation.linear,
+      );
+    }
 
     final result = img.Image.from(original);
 
@@ -129,7 +139,7 @@ class AntiMoireWhiteboardService {
         break;
     }
 
-    return Uint8List.fromList(img.encodePng(result));
+    return Uint8List.fromList(img.encodeJpg(result, quality: 92));
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -147,23 +157,29 @@ class AntiMoireWhiteboardService {
     final w = original.width;
     final h = original.height;
 
-    final radius = (strength * 2.5).round().clamp(1, 4);
+    final radius = (strength * 2.0).round().clamp(1, 2);
 
     // 1. Chromatic Fringe Suppression (removes rainbow ripple colors)
     for (int y = radius; y < h - radius; y++) {
       for (int x = radius; x < w - radius; x++) {
         final p = original.getPixel(x, y);
 
-        // Calculate local chromatic average over small window
-        int sumR = 0, sumG = 0, sumB = 0, count = 0;
-        for (int dy = -radius; dy <= radius; dy++) {
-          for (int dx = -radius; dx <= radius; dx++) {
-            final neighbor = original.getPixel(x + dx, y + dy);
-            sumR += neighbor.r.toInt();
-            sumG += neighbor.g.toInt();
-            sumB += neighbor.b.toInt();
-            count++;
-          }
+        // Fast 8-point cross and diagonal chromatic sample
+        int sumR = p.r.toInt();
+        int sumG = p.g.toInt();
+        int sumB = p.b.toInt();
+        int count = 1;
+
+        for (final offset in [-radius, radius]) {
+          final pX = original.getPixel(x + offset, y);
+          final pY = original.getPixel(x, y + offset);
+          final pD1 = original.getPixel(x + offset, y + offset);
+          final pD2 = original.getPixel(x + offset, y - offset);
+
+          sumR += pX.r.toInt() + pY.r.toInt() + pD1.r.toInt() + pD2.r.toInt();
+          sumG += pX.g.toInt() + pY.g.toInt() + pD1.g.toInt() + pD2.g.toInt();
+          sumB += pX.b.toInt() + pY.b.toInt() + pD1.b.toInt() + pD2.b.toInt();
+          count += 4;
         }
 
         final avgR = (sumR / count).round();

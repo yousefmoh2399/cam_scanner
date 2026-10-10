@@ -105,8 +105,18 @@ class NotebookLinesRemoverService {
 
     final paperType = NotebookPaperType.values[paperTypeIdx];
 
-    final original = img.decodeImage(rawBytes);
+    img.Image? original = img.decodeImage(rawBytes);
     if (original == null) return rawBytes;
+
+    // Constrain resolution to max 1400px for sub-second offline response
+    if (original.width > 1400 || original.height > 1400) {
+      original = img.copyResize(
+        original,
+        width: original.width >= original.height ? 1400 : null,
+        height: original.height > original.width ? 1400 : null,
+        interpolation: img.Interpolation.linear,
+      );
+    }
 
     // Work on full image or create processed copy
     final result = img.Image.from(original);
@@ -159,7 +169,7 @@ class NotebookLinesRemoverService {
       );
     }
 
-    return Uint8List.fromList(img.encodePng(result));
+    return Uint8List.fromList(img.encodeJpg(result, quality: 92));
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -240,21 +250,23 @@ class NotebookLinesRemoverService {
         // The background above and below the line should be brighter
         final isNarrowVertically = (topLum - pLum > 10) && (btmLum - pLum > 10);
 
-        // Check horizontal continuity: check pixels to the left and right
-        int horizCount = 0;
-        final checkSpan = math.min(10, horizontalSpan);
-        for (int dx = -checkSpan; dx <= checkSpan; dx += 2) {
-          final curX = (x + dx).clamp(0, w - 1);
-          final neighbor = original.getPixel(curX, y);
-          final nLum = (0.299 * neighbor.r + 0.587 * neighbor.g + 0.114 * neighbor.b).round();
-          if ((bgColor.lum - nLum).abs() > 8) {
-            horizCount++;
+        bool isLine = isNarrowVertically;
+        if (!isLine) {
+          // Check horizontal continuity only if vertical test wasn't conclusive
+          int horizCount = 0;
+          final checkSpan = math.min(8, horizontalSpan);
+          for (int dx = -checkSpan; dx <= checkSpan; dx += 2) {
+            final curX = (x + dx).clamp(0, w - 1);
+            final neighbor = original.getPixel(curX, y);
+            final nLum = (0.299 * neighbor.r + 0.587 * neighbor.g + 0.114 * neighbor.b).round();
+            if ((bgColor.lum - nLum).abs() > 8) {
+              horizCount++;
+            }
           }
+          isLine = horizCount >= (checkSpan * 0.7);
         }
 
-        final isContinuousHoriz = horizCount >= (checkSpan * 0.7);
-
-        if (isNarrowVertically || isContinuousHoriz) {
+        if (isLine) {
           // Check if this is an intersection with a genuine handwriting stroke:
           // Handwriting strokes are typically much darker (diff > 80) or colored (pen ink)
           final isHeavyInk = (bgColor.lum - pLum) > 95;

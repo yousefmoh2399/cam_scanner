@@ -315,8 +315,17 @@ class MagicCleanService {
 
   static Uint8List _autoLevelIsolate(Map<String, dynamic> params) {
     final rawBytes = params['bytes'] as Uint8List;
-    final image = img.decodeImage(rawBytes);
+    img.Image? image = img.decodeImage(rawBytes);
     if (image == null) return rawBytes;
+
+    if (image.width > 1400 || image.height > 1400) {
+      image = img.copyResize(
+        image,
+        width: image.width >= image.height ? 1400 : null,
+        height: image.height > image.width ? 1400 : null,
+        interpolation: img.Interpolation.linear,
+      );
+    }
 
     final w = image.width;
     final h = image.height;
@@ -361,8 +370,17 @@ class MagicCleanService {
 
   static Uint8List _shadowGlareIsolate(Map<String, dynamic> params) {
     final rawBytes = params['bytes'] as Uint8List;
-    final image = img.decodeImage(rawBytes);
+    img.Image? image = img.decodeImage(rawBytes);
     if (image == null) return rawBytes;
+
+    if (image.width > 1400 || image.height > 1400) {
+      image = img.copyResize(
+        image,
+        width: image.width >= image.height ? 1400 : null,
+        height: image.height > image.width ? 1400 : null,
+        interpolation: img.Interpolation.linear,
+      );
+    }
 
     final w = image.width;
     final h = image.height;
