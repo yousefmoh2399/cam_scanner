@@ -1,8 +1,16 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
-import '../data/native_scanner_bridge.dart';
-import '../../../shared/providers/providers.dart';
-import '../../../shared/models/pending_upload.dart';
+
 import '../../../core/utils/formatters.dart';
+import '../../../shared/models/pending_upload.dart';
+import '../../../shared/providers/providers.dart';
+import '../data/native_scanner_bridge.dart';
 import '../data/object_counter_service.dart';
 
 /// Screen for counting objects, pipes, pills, boxes, sheets in images offline
@@ -182,7 +190,6 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
             itemCount: docs.length,
             itemBuilder: (_, idx) {
               final d = docs[idx];
-              final pth = d.previewImagePath ?? '';
               return ListTile(
                 leading: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFFF9500)),
                 title: Text(stripFileExtension(d.fileName), style: const TextStyle(fontWeight: FontWeight.w700)),
