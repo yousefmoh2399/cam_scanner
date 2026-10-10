@@ -29,6 +29,9 @@ import 'widgets/export_format_sheet.dart';
 import 'widgets/smart_data_extraction_sheet.dart';
 import 'widgets/theme_selection_sheet.dart';
 import 'widgets/cloud_backup_sheet.dart';
+import 'widgets/onboarding_welcome_sheet.dart';
+import 'widgets/about_app_sheet.dart';
+import 'widgets/in_app_privacy_dialog.dart';
 import '../data/batch_zip_service.dart';
 import '../data/native_scanner_bridge.dart';
 import 'id_card_a4_screen.dart';
@@ -132,6 +135,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final settings = await sec.loadSettings();
     if (settings.appLockEnabled && settings.hasPinConfigured) {
       await _promptAppUnlock();
+    }
+    if (await OnboardingWelcomeSheet.shouldShow()) {
+      if (mounted) {
+        await OnboardingWelcomeSheet.show(context);
+      }
     }
     await _consumeSharedIncomingFiles();
     final initialAction = await NativeScannerBridge.getInitialQuickAction();
@@ -2022,6 +2030,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           setState(() => _sortOption = LibrarySortOption.size);
                         } else if (val == 'theme_palette') {
                           showThemeSelectionSheet(context, ref);
+                        } else if (val == 'about_app') {
+                          AboutAppSheet.show(context);
+                        } else if (val == 'privacy_policy') {
+                          InAppPrivacySheet.show(context);
                         }
                       },
                       itemBuilder: (ctx) => [
@@ -2168,6 +2180,35 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               ),
                               const SizedBox(width: 10),
                               Text(isDark ? 'الوضع النهاري' : 'الوضع الليلي'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'about_app',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline_rounded,
+                                size: 18,
+                                color: Color(0xFF007AFF),
+                              ),
+                              SizedBox(width: 10),
+                              Text('حول التطبيق'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'privacy_policy',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.verified_user_outlined,
+                                size: 18,
+                                color: Color(0xFF10B981),
+                              ),
+                              SizedBox(width: 10),
+                              Text('سياسة الخصوصية والأمان'),
                             ],
                           ),
                         ),

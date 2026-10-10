@@ -43,3 +43,12 @@
 -dontwarn androidx.biometric.**
 -keep class io.flutter.plugins.localauth.** { *; }
 
+# ─── Local Database (sqflite) & Audio & Cryptography ─────────────────────────
+-keep class com.tekartik.sqflite.** { *; }
+-dontwarn com.tekartik.sqflite.**
+-keep class xyz.luan.audioplayers.** { *; }
+-dontwarn xyz.luan.audioplayers.**
+-keep class com.it_nomads.fluttersecurestorage.** { *; }
+-dontwarn com.it_nomads.fluttersecurestorage.**
+
+
