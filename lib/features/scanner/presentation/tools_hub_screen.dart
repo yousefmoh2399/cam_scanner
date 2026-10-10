@@ -46,6 +46,7 @@ import 'package:path_provider/path_provider.dart';
 import '../data/qr_scanner_service.dart';
 import 'anti_moire_whiteboard_screen.dart';
 import 'qr_studio_screen.dart';
+import 'privacy_scrubber_screen.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -588,7 +589,11 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         break;
 
       case 'sec_exif_scrub':
-        _showExifScrubberAction();
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const PrivacyScrubberScreen(),
+          ),
+        );
         break;
 
       case 'sec_signatures':
@@ -2131,65 +2136,6 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
-    }
-  }
-
-  Future<void> _showExifScrubberAction() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    final path = result?.files.firstOrNull?.path;
-    if (path == null) return;
-
-    setState(() => _isProcessing = true);
-    try {
-      final scrubber = ref.read(exifScrubberServiceProvider);
-      final cleanPath = await scrubber.scrubFile(path);
-
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          icon: const Icon(
-            Icons.verified_user_rounded,
-            color: Color(0xFF10B981),
-            size: 40,
-          ),
-          title: const Text(
-            'تم تنظيف بيانات الخصوصية بنجاح!',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          content: const Text(
-            'تمت إزالة كافة بيانات الموقع الجغرافي (GPS) ومعلومات الكاميرا والجهاز والبيانات الوصفية (EXIF).\n\nملفك نظيف وخصوصيتك محفوظة 100%.',
-            textAlign: TextAlign.center,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('إغلاق'),
-            ),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Share.shareXFiles([XFile(cleanPath)],
-                    subject: 'صورة نظيفة بدون بيانات موقع');
-              },
-              icon: const Icon(Icons.share_rounded),
-              label: const Text('مشاركة الصورة النظيفة'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل تنظيف البيانات: $e')),
-        );
-      }
     }
   }
 

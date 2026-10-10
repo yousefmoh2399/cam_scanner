@@ -305,41 +305,16 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
           // Already have scanned pages from library
           allScannedPages.addAll(item.pages);
         } else if (item.isPdf) {
-          // Rasterize external PDF
+          // Rasterize external PDF directly to disk without slow re-decode
           final pdfBytes = await File(item.path).readAsBytes();
           var pIdx = 0;
           await for (final raster in Printing.raster(pdfBytes, dpi: 150)) {
             final pngBytes = await raster.toPng();
-            final decoded = img.decodePng(pngBytes);
-            if (decoded != null) {
-              final jpgBytes = img.encodeJpg(decoded, quality: 88);
-              final pagePath = p.join(
-                pagesDir.path,
-                'mrg_${now.millisecondsSinceEpoch}_p${i}_$pIdx.jpg',
-              );
-              await File(pagePath).writeAsBytes(jpgBytes, flush: true);
-              allScannedPages.add(
-                ScannedPage(
-                  imagePath: pagePath,
-                  originalImagePath: pagePath,
-                  filterName: 'original',
-                  paperSize: DocumentPaperSize.a4,
-                ),
-              );
-              pIdx++;
-            }
-          }
-        } else {
-          // Standalone external image
-          final rawBytes = await File(item.path).readAsBytes();
-          final decoded = img.decodeImage(rawBytes);
-          if (decoded != null) {
-            final jpgBytes = img.encodeJpg(decoded, quality: 88);
             final pagePath = p.join(
               pagesDir.path,
-              'mrg_${now.millisecondsSinceEpoch}_img_$i.jpg',
+              'mrg_${now.millisecondsSinceEpoch}_p${i}_$pIdx.png',
             );
-            await File(pagePath).writeAsBytes(jpgBytes, flush: true);
+            await File(pagePath).writeAsBytes(pngBytes, flush: true);
             allScannedPages.add(
               ScannedPage(
                 imagePath: pagePath,
@@ -348,7 +323,18 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
                 paperSize: DocumentPaperSize.a4,
               ),
             );
+            pIdx++;
           }
+        } else {
+          // Standalone external image - use path directly
+          allScannedPages.add(
+            ScannedPage(
+              imagePath: item.path,
+              originalImagePath: item.path,
+              filterName: 'original',
+              paperSize: DocumentPaperSize.a4,
+            ),
+          );
         }
       }
 
@@ -1368,38 +1354,125 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
             },
             itemBuilder: (_, idx) {
               final it = _mergeItems[idx];
-              return Card(
+              return Container(
                 key: ValueKey(it.id),
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF9333EA).withValues(alpha: 0.12),
-                    child: Text(
-                      '${idx + 1}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF9333EA),
-                      ),
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06),
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                  title: Text(
-                    it.title,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: Text(
-                    '${it.isPdf ? "ملف PDF" : "صورة"} • ${formatFileSize(it.sizeBytes)}',
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.red),
-                        onPressed: () => setState(() => _mergeItems.removeAt(idx)),
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF9333EA).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${idx + 1}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: Color(0xFF9333EA),
+                          ),
+                        ),
                       ),
-                      const Icon(Icons.drag_handle_rounded, color: Colors.grey),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              it.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: (it.isPdf
+                                            ? const Color(0xFF9333EA)
+                                            : const Color(0xFF007AFF))
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    it.isPdf ? 'PDF' : 'صورة',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: it.isPdf
+                                          ? const Color(0xFF9333EA)
+                                          : const Color(0xFF007AFF),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  formatFileSize(it.sizeBytes),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? Colors.white60 : Colors.black54,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (it.pageCount != null && it.pageCount! > 0) ...[
+                                  Text(
+                                    ' • ${formatPageCount(it.pageCount!)}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? Colors.white60 : Colors.black54,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.red, size: 20),
+                        tooltip: 'حذف من الدمج',
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          setState(() => _mergeItems.removeAt(idx));
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.drag_handle_rounded,
+                        color: isDark ? Colors.white38 : Colors.black26,
+                        size: 22,
+                      ),
                     ],
                   ),
                 ),
@@ -1414,7 +1487,20 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
             decoration: InputDecoration(
               labelText: 'اسم ملف الـ PDF المدمج الناتج',
               prefixIcon: const Icon(Icons.edit_note_rounded),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -1425,7 +1511,20 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
             decoration: InputDecoration(
               labelText: 'ضغط حجم الملف المدمج',
               prefixIcon: const Icon(Icons.compress_rounded),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              filled: true,
+              fillColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                ),
+              ),
             ),
             items: PdfCompressionPreset.values
                 .map((p) => DropdownMenuItem(value: p, child: Text(p.labelAr)))
@@ -1436,19 +1535,24 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
           ),
           const SizedBox(height: 20),
 
-          // Merge Action Button
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              backgroundColor: const Color(0xFF9333EA),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          // Merge Action Button (52px Apple Squircle)
+          SizedBox(
+            height: 52,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF9333EA),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.call_merge_rounded, size: 20),
+              label: Text(
+                'دمج (${_mergeItems.length}) ملفات وتوليد PDF جديد',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+              ),
+              onPressed: _mergeItems.length >= 2 ? _executeMerge : null,
             ),
-            icon: const Icon(Icons.call_merge_rounded),
-            label: Text(
-              'دمج (${_mergeItems.length}) ملفات وتوليد PDF جديد',
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-            ),
-            onPressed: _mergeItems.length >= 2 ? _executeMerge : null,
           ),
         ],
       ],
