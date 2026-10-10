@@ -589,7 +589,7 @@ class _MagicCleanScreenState extends State<MagicCleanScreen> {
                           CircularProgressIndicator.adaptive(),
                           SizedBox(width: 16),
                           Text(
-                            'جاري التنظيف الذكي بدون إنترنت...',
+                            'جاري التنظيف الذكي بأعلى معايير الدقة...',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,

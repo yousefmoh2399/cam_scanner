@@ -89,7 +89,7 @@ class AboutAppSheet extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'الإصدار 1.0.0 (Build 1) • أوفلاين 100%',
+            'الإصدار 1.0.0 (Build 1) • معالجة فورية',
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
@@ -104,8 +104,8 @@ class AboutAppSheet extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildBadge(
-                icon: Icons.wifi_off_rounded,
-                label: '100% أوفلاين',
+                icon: Icons.shield_rounded,
+                label: 'خصوصية وأمان',
                 color: const Color(0xFF10B981),
                 isDark: isDark,
               ),
@@ -154,7 +154,7 @@ class AboutAppSheet extends StatelessWidget {
               HapticFeedback.lightImpact();
               Share.share(
                 'حمّل تطبيق "لقطة" (Laqta Scanner) - الماسح الضوئي الذكي الأقوى والأكثر أماناً:\n'
-                '• يعمل 100% بدون إنترنت وبخصوصية مطلقة\n'
+                '• معالجة آمنة فائقة السرعة وبخصوصية مطلقة\n'
                 '• مسح سريع وكشف تلقائي للحواف وفلاتر العقود والوثائق\n'
                 '• استخراج فوري للنصوص باللغة العربية (OCR)\n'
                 '• خزنة مشفرة عسكرية لحفظ مستنداتك وبطاقاتك بأمان',

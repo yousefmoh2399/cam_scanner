@@ -89,7 +89,7 @@ class InAppPrivacySheet extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'لقطة (Laqta Scanner) • 100% أوفلاين',
+                            'لقطة (Laqta Scanner) • حماية وخصوصية تامة',
                             style: TextStyle(
                               fontSize: 12,
                               color: textMuted,
@@ -196,7 +196,7 @@ class InAppPrivacySheet extends StatelessWidget {
                       iconColor: const Color(0xFF8B5CF6),
                       title: '2. التعرف الضوئي ومعالجة الصور (OCR)',
                       body:
-                          'يستخدم التطبيق محركات Tesseract LSTM و OpenCV و Apple Vision / ML Kit مدمجة كلياً للعمل بدون إنترنت.\n\nلا يتم إرسال أي صورة أو نص أو رقم بطاقة أو عقد إلى أي سحابة أو خدمة خارجية. المعالجة فورية وتتم بالكامل داخل معالج هاتفك.',
+                          'يستخدم التطبيق محركات Tesseract LSTM و OpenCV و Apple Vision / ML Kit مدمجة كلياً لمعالجة المستندات على جهازك.\n\nلا يتم إرسال أي صورة أو نص أو رقم بطاقة أو عقد إلى أي سحابة أو خدمة خارجية. المعالجة فورية وتتم بالكامل داخل معالج هاتفك.',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       textMuted: textMuted,
@@ -238,7 +238,7 @@ class InAppPrivacySheet extends StatelessWidget {
                       iconColor: const Color(0xFFEC4899),
                       title: '5. الصلاحيات المطلوبة وأسبابها',
                       body:
-                          '• الكاميرا: لمسح المستندات والبطاقات ضوئياً فقط.\n• معرض الصور: لاستيراد أو تصدير المستندات بناءً على اختيارك اليدوي.\n• البصمة / Face ID: لفتح الخزنة المشفرة وقفل التطبيق محلياً.\n• الشبكة المحلية (Wi-Fi): لميزة WebDrop لنقل المستندات إلى حاسوبك بدون إنترنت.\n\n*التطبيق لا يطلب: الموقع الجغرافي، الميكروفون، جهات الاتصال، أو معرف الإعلانات.*',
+                          '• الكاميرا: لمسح المستندات والبطاقات ضوئياً فقط.\n• معرض الصور: لاستيراد أو تصدير المستندات بناءً على اختيارك اليدوي.\n• البصمة / Face ID: لفتح الخزنة المشفرة وقفل التطبيق محلياً.\n• الشبكة المحلية (Wi-Fi): لميزة WebDrop لنقل المستندات إلى حاسوبك عبر الشبكة المحلية.\n\n*التطبيق لا يطلب: الموقع الجغرافي، الميكروفون، جهات الاتصال، أو معرف الإعلانات.*',
                       cardBg: cardBg,
                       borderColor: borderColor,
                       textMuted: textMuted,
@@ -270,7 +270,7 @@ class InAppPrivacySheet extends StatelessWidget {
                           HapticFeedback.lightImpact();
                           Share.share(
                             'سياسة الخصوصية لتطبيق "لقطة" (Laqta Scanner):\n'
-                            'تطبيق مسح ضوئي احترافي 100% أوفلاين بدون خوادم وبدون جمع أي بيانات.\n'
+                            'تطبيق مسح ضوئي احترافي فائق الأمان والخصوصية بدون خوادم وبدون جمع أي بيانات.\n'
                             'مستنداتك مشفرة ولا تغادر جهازك إطلاقاً.',
                             subject: 'سياسة الخصوصية - لقطة',
                           );

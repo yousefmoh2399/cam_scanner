@@ -32,7 +32,7 @@ enum OcrLanguageMode {
 /// Engine selection mode.
 enum OcrEnginePreference {
   auto('اختيار ذكي تلقائي (Tesseract للعربية / ML Kit للاتينية)'),
-  tesseract('Tesseract LSTM (عربي + إنجليزي Offline)'),
+  tesseract('Tesseract LSTM (عربي + إنجليزي فائق الدقة)'),
   mlKitLatin('Google ML Kit (لاتيني/إنجليزي فقط)');
 
   const OcrEnginePreference(this.label);

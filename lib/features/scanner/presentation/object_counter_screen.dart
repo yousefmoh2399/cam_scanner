@@ -563,7 +563,7 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'عداد الأشياء التلقائي أوفلاين 🔢',
+              'عداد الأشياء التلقائي الذكي 🔢',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
               textAlign: TextAlign.center,
             ),
@@ -792,7 +792,7 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
                       CircularProgressIndicator(color: Colors.white),
                       SizedBox(height: 12),
                       Text(
-                        'جارٍ كشف وحساب العناصر أوفلاين...',
+                        'جارٍ كشف وحساب العناصر بدقة عالية...',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,

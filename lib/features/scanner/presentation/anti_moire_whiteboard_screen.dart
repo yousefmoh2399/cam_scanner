@@ -364,7 +364,7 @@ class _AntiMoireWhiteboardScreenState
                       CircularProgressIndicator(color: Colors.white),
                       SizedBox(height: 12),
                       Text(
-                        'جارٍ إزالة التموجات واللمعان أوفلاين...',
+                        'جارٍ إزالة التموجات واللمعان بدقة فائقة...',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,

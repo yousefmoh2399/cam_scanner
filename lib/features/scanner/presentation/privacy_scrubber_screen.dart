@@ -472,7 +472,7 @@ class _PrivacyScrubberScreenState extends ConsumerState<PrivacyScrubberScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'حماية بياناتك الحساسة أوفلاين 100%',
+                        'حماية وتشفير بياناتك الحساسة 100%',
                         style: TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 13.5),
                       ),

@@ -325,7 +325,7 @@ class _WatermarkStudioScreenState extends ConsumerState<WatermarkStudioScreen> {
       setState(() => _isSaving = false);
       await Share.shareXFiles(
         [XFile(outPath)],
-        text: 'مستند محمي بالعلامة المائية الأمنية (100% Offline)',
+        text: 'مستند محمي بالعلامة المائية الأمنية',
       );
     } catch (e) {
       setState(() => _isSaving = false);

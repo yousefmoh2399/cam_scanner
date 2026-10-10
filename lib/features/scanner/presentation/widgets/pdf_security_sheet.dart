@@ -176,7 +176,7 @@ class _PdfSecuritySheetState extends State<PdfSecuritySheet> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'تشفير بدون إنترنت يمنع فتح الملف إلا بكلمة السر',
+                        'تشفير متقدم يمنع فتح الملف إلا بكلمة السر',
                         style: TextStyle(fontSize: 11.5, color: Colors.grey),
                       ),
                     ],

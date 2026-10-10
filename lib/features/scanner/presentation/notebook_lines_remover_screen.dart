@@ -368,7 +368,7 @@ class _NotebookLinesRemoverScreenState
                       CircularProgressIndicator(color: Colors.white),
                       SizedBox(height: 12),
                       Text(
-                        'جارٍ مسح خطوط التسطير بدقة أوفلاين...',
+                        'جارٍ مسح خطوط التسطير بدقة متناهية...',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,

@@ -487,7 +487,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              '• للوصول من الكمبيوتر، افتح متصفحك واكتب الرابط أعلاه.\n• لنقل الملفات إلى هاتفك، اسحبها وأفلتها في صفحة المتصفح.\n• لا يلزم توفر إنترنت إطلاقاً (أوفلاين 100%).',
+              '• للوصول من الكمبيوتر، افتح متصفحك واكتب الرابط أعلاه.\n• لنقل الملفات إلى هاتفك، اسحبها وأفلتها في صفحة المتصفح.\n• نقل مباشر فائق السرعة عبر الشبكة المحلية.',
               style: TextStyle(fontSize: 11.5, height: 1.5, color: Colors.grey),
             ),
           ],
@@ -1019,7 +1019,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
             ),
             Text(
               isRunning
-                  ? 'بث مباشر على الشبكة المحلية • أوفلاين 100%'
+                  ? 'بث مباشر على الشبكة المحلية • سرعة فائقة'
                   : 'السيرفر متوقف حالياً',
               style: TextStyle(
                 fontSize: 10.5,
@@ -1128,7 +1128,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
                             const SizedBox(height: 2),
                             Text(
                               isRunning
-                                  ? 'بث مباشر على Wi-Fi • أوفلاين 100%'
+                                  ? 'بث مباشر على Wi-Fi • سرعة فائقة'
                                   : 'اضغط على المفتاح لتشغيل البث',
                               style: TextStyle(
                                 fontSize: 11,

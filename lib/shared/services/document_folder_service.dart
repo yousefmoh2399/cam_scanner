@@ -34,15 +34,31 @@ class DocumentFoldersNotifier extends AsyncNotifier<List<DocumentFolder>> {
     String name, {
     String? parentId,
     int? colorValue,
+    String? iconKey,
   }) async {
     final service = ref.read(documentFolderServiceProvider);
     final folder = await service.createFolder(
       name,
       parentId: parentId,
       colorValue: colorValue,
+      iconKey: iconKey,
     );
     await reload();
     return folder;
+  }
+
+  Future<void> updateFolderVisuals(
+    String folderId, {
+    int? colorValue,
+    String? iconKey,
+  }) async {
+    final service = ref.read(documentFolderServiceProvider);
+    await service.updateFolderVisuals(
+      folderId,
+      colorValue: colorValue,
+      iconKey: iconKey,
+    );
+    await reload();
   }
 
   Future<void> renameFolder(String folderId, String newName) async {
@@ -126,6 +142,7 @@ class DocumentFolderService {
     String name, {
     String? parentId,
     int? colorValue,
+    String? iconKey,
   }) async {
     final folders = await loadFolders();
     final folder = DocumentFolder(
@@ -133,12 +150,28 @@ class DocumentFolderService {
       name: name.trim(),
       parentId: parentId,
       colorValue: colorValue,
+      iconKey: iconKey,
       documentIds: [],
       createdAt: DateTime.now(),
     );
     folders.add(folder);
     await _saveFolders(folders);
     return folder;
+  }
+
+  Future<void> updateFolderVisuals(
+    String folderId, {
+    int? colorValue,
+    String? iconKey,
+  }) async {
+    final folders = await loadFolders();
+    final idx = folders.indexWhere((f) => f.id == folderId);
+    if (idx == -1) return;
+    folders[idx] = folders[idx].copyWith(
+      colorValue: colorValue,
+      iconKey: iconKey,
+    );
+    await _saveFolders(folders);
   }
 
   Future<void> renameFolder(String folderId, String newName) async {

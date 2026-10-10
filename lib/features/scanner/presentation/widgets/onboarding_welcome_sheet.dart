@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'in_app_privacy_dialog.dart';
 
 /// نافذة ترحيبية وتعريفية تظهر لأول مرة عند تشغيل التطبيق (First-Run Onboarding)
-/// تركز على تعزيز الثقة بمبدأ الأوفلاين 100% وأهم مميزات التطبيق
+/// تركز على تعزيز الثقة بمبدأ الخصوصية والأمان الفائق وأهم مميزات التطبيق
 class OnboardingWelcomeSheet extends StatelessWidget {
   const OnboardingWelcomeSheet({super.key});
 
@@ -128,7 +128,7 @@ class OnboardingWelcomeSheet extends StatelessWidget {
             _buildPillarItem(
               icon: Icons.shield_rounded,
               iconColor: const Color(0xFF10B981),
-              title: 'خصوصية مطلقة 100% أوفلاين',
+              title: 'خصوصية مطلقة وأمان عالي',
               description:
                   'كل المستندات، واستخراج النصوص، ومعالجة الصور تتم محلياً بالكامل على هاتفك دون خوادم أو تتبع.',
               cardBg: cardBg,

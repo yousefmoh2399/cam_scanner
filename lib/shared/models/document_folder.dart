@@ -9,6 +9,7 @@ class DocumentFolder {
     required this.createdAt,
     this.parentId,
     this.colorValue,
+    this.iconKey,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class DocumentFolder {
 
   final String? parentId;
   final int? colorValue;
+  final String? iconKey;
 
   DocumentFolder copyWith({
     String? id,
@@ -28,8 +30,10 @@ class DocumentFolder {
     DateTime? createdAt,
     String? parentId,
     int? colorValue,
+    String? iconKey,
     bool clearParentId = false,
     bool clearColorValue = false,
+    bool clearIconKey = false,
   }) {
     return DocumentFolder(
       id: id ?? this.id,
@@ -38,6 +42,7 @@ class DocumentFolder {
       createdAt: createdAt ?? this.createdAt,
       parentId: clearParentId ? null : (parentId ?? this.parentId),
       colorValue: clearColorValue ? null : (colorValue ?? this.colorValue),
+      iconKey: clearIconKey ? null : (iconKey ?? this.iconKey),
     );
   }
 
@@ -48,6 +53,7 @@ class DocumentFolder {
         'createdAt': createdAt.toIso8601String(),
         if (parentId != null) 'parentId': parentId,
         if (colorValue != null) 'colorValue': colorValue,
+        if (iconKey != null) 'iconKey': iconKey,
       };
 
   factory DocumentFolder.fromJson(Map<String, dynamic> json) {
@@ -63,6 +69,7 @@ class DocumentFolder {
           : DateTime.now(),
       parentId: json['parentId'] as String?,
       colorValue: json['colorValue'] as int?,
+      iconKey: json['iconKey'] as String?,
     );
   }
 }

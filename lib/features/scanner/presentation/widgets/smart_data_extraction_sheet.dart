@@ -171,7 +171,7 @@ class _SmartDataExtractionSheetState
                           ),
                         ),
                         Text(
-                          'بيانات مستخرجة محلياً 100% بدون أي إنترنت',
+                          'بيانات مستخرجة بدقة فائقة وبخصوصية تامة',
                           style: TextStyle(fontSize: 11, color: Colors.grey),
                         ),
                       ],

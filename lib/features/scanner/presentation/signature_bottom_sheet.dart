@@ -65,10 +65,14 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
 
   static const List<Color> _inkColors = [
     Color(0xFF111827), // Deep Black
-    Color(0xFF1D4ED8), // Royal Blue Pen
+    Color(0xFF0A37A3), // Royal Blue
     Color(0xFF0F172A), // Navy Ink
+    Color(0xFFB91C1C), // Official Red
+    Color(0xFF047857), // Certified Green
   ];
   Color _selectedColor = const Color(0xFF111827);
+  PenType _selectedPenType = PenType.fountain;
+  double _selectedWidth = 3.8;
 
   @override
   void initState() {
@@ -437,83 +441,214 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
             const SizedBox(height: 10),
           ],
 
-          // ── Toolbar: Ink Color Picker + Undo + Clear ──
+          // ── Toolbar: Ink Color Picker + Pen Type + Undo + Clear ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(20, 2, 20, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'لون الحبر:',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                for (final color in _inkColors)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => _selectedColor = color);
-                        _signatureController.setInkColor(color);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _selectedColor == color
-                                ? palette.accent
-                                : Colors.transparent,
-                            width: 2.5,
-                          ),
-                          boxShadow: _selectedColor == color
-                              ? [
-                                  BoxShadow(
-                                    color: palette.accent.withValues(
-                                      alpha: 0.35,
-                                    ),
-                                    blurRadius: 6,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: _selectedColor == color
-                            ? const Icon(
-                                Icons.check_rounded,
-                                size: 14,
-                                color: Colors.white,
-                              )
-                            : null,
+                Row(
+                  children: [
+                    Text(
+                      'لون الحبر:',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  ),
-                const Spacer(),
-                if (_hasDrawingState) ...[
-                  TextButton.icon(
-                    onPressed: _undoStroke,
-                    icon: const Icon(Icons.undo_rounded, size: 16),
-                    label: const Text('تراجع'),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: _clearCanvas,
-                    icon: const Icon(Icons.delete_sweep_rounded, size: 16),
-                    label: const Text('مسح'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: palette.danger,
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    for (final color in _inkColors)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _selectedColor = color);
+                            _signatureController.setInkColor(color);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _selectedColor == color
+                                    ? palette.accent
+                                    : Colors.transparent,
+                                width: 2.5,
+                              ),
+                              boxShadow: _selectedColor == color
+                                  ? [
+                                      BoxShadow(
+                                        color: palette.accent.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                        blurRadius: 6,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: _selectedColor == color
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    size: 14,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    const Spacer(),
+                    if (_signatureController.isStylusActive)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.edit_rounded, size: 12, color: Color(0xFF10B981)),
+                            SizedBox(width: 4),
+                            Text(
+                              'قلم ذكي متصل',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Pen Types
+                    for (final pen in PenType.values)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _selectedPenType = pen);
+                            _signatureController.setPenType(pen);
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _selectedPenType == pen
+                                  ? palette.accent.withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _selectedPenType == pen
+                                    ? palette.accent
+                                    : Colors.grey.withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  pen.icon,
+                                  size: 13,
+                                  color: _selectedPenType == pen
+                                      ? palette.accent
+                                      : Colors.grey.shade600,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  pen.label,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: _selectedPenType == pen
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: _selectedPenType == pen
+                                        ? palette.accent
+                                        : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    for (final widthOpt in [(2.4, 'دقيق'), (3.8, 'متوازن'), (5.6, 'عريض')])
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _selectedWidth = widthOpt.$1);
+                            _signatureController.setBaseStrokeWidth(widthOpt.$1);
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: _selectedWidth == widthOpt.$1
+                                  ? palette.accent.withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _selectedWidth == widthOpt.$1
+                                    ? palette.accent
+                                    : Colors.grey.withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Text(
+                              widthOpt.$2,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: _selectedWidth == widthOpt.$1
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: _selectedWidth == widthOpt.$1
+                                    ? palette.accent
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    const Spacer(),
+                    if (_hasDrawingState) ...[
+                      TextButton.icon(
+                        onPressed: _undoStroke,
+                        icon: const Icon(Icons.undo_rounded, size: 15),
+                        label: const Text('تراجع', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _clearCanvas,
+                        icon: const Icon(Icons.delete_sweep_rounded, size: 15),
+                        label: const Text('مسح', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: palette.danger,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -664,26 +799,79 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Signature Controller (0-lag ChangeNotifier + tight bounding-box crop)
+// Dynamic Pressure-Sensitive & Velocity Adaptive Ink Engine
 // ─────────────────────────────────────────────────────────────────────────────
 
+enum PenType {
+  fountain('حبر سائل', Icons.edit_note_rounded),
+  ballpoint('حبر جاف', Icons.border_color_rounded),
+  marker('توقيع عريض', Icons.brush_rounded);
+
+  const PenType(this.label, this.icon);
+  final String label;
+  final IconData icon;
+}
+
+class InkPoint {
+  const InkPoint({
+    required this.point,
+    required this.pressure,
+    required this.timeMs,
+    required this.width,
+  });
+
+  final Offset point;
+  final double pressure;
+  final int timeMs;
+  final double width;
+}
+
+class InkStroke {
+  InkStroke({
+    required this.points,
+    required this.color,
+    required this.penType,
+    required this.baseWidth,
+  });
+
+  final List<InkPoint> points;
+  final Color color;
+  final PenType penType;
+  final double baseWidth;
+}
+
 class _SignatureController extends ChangeNotifier {
-  final List<List<Offset>> strokes = [];
-  List<Offset>? currentStroke;
+  final List<InkStroke> strokes = [];
+  List<InkPoint>? currentPoints;
   Color inkColor = const Color(0xFF111827);
+  PenType penType = PenType.fountain;
+  double baseStrokeWidth = 3.8;
+  bool isStylusActive = false;
+
+  final Stopwatch _stopwatch = Stopwatch()..start();
 
   bool get hasDrawing =>
       strokes.isNotEmpty ||
-      (currentStroke != null && currentStroke!.isNotEmpty);
+      (currentPoints != null && currentPoints!.isNotEmpty);
 
   void setInkColor(Color color) {
     inkColor = color;
     notifyListeners();
   }
 
+  void setPenType(PenType type) {
+    penType = type;
+    notifyListeners();
+  }
+
+  void setBaseStrokeWidth(double width) {
+    baseStrokeWidth = width;
+    notifyListeners();
+  }
+
   void clear() {
     strokes.clear();
-    currentStroke = null;
+    currentPoints = null;
     notifyListeners();
   }
 
@@ -694,26 +882,97 @@ class _SignatureController extends ChangeNotifier {
     }
   }
 
-  void startStroke(Offset point) {
-    currentStroke = [point];
+  void startStroke(Offset point, double rawPressure, {bool isStylus = false}) {
+    if (isStylus) isStylusActive = true;
+    final now = _stopwatch.elapsedMilliseconds;
+    final pressure = (rawPressure > 0.0 && rawPressure <= 1.0) ? rawPressure : 0.0;
+
+    final double initialWidth;
+    if (pressure > 0.05 && pressure < 0.99) {
+      isStylusActive = true;
+      initialWidth = baseStrokeWidth * (0.45 + 0.85 * pressure);
+    } else {
+      initialWidth = baseStrokeWidth * 0.7;
+    }
+
+    currentPoints = [
+      InkPoint(
+        point: point,
+        pressure: pressure,
+        timeMs: now,
+        width: initialWidth,
+      ),
+    ];
     notifyListeners();
   }
 
-  void updateStroke(Offset point) {
-    final active = currentStroke;
-    if (active == null) {
-      currentStroke = [point];
-    } else if (active.isEmpty || (active.last - point).distance > 0.8) {
-      active.add(point);
+  void updateStroke(Offset point, double rawPressure, {bool isStylus = false}) {
+    final active = currentPoints;
+    if (active == null || active.isEmpty) {
+      startStroke(point, rawPressure, isStylus: isStylus);
+      return;
     }
+
+    final prev = active.last;
+    final dist = (point - prev.point).distance;
+    if (dist < 0.6) return;
+
+    final now = _stopwatch.elapsedMilliseconds;
+    final dt = math.max(now - prev.timeMs, 1);
+    final velocity = dist / dt;
+    final pressure = (rawPressure > 0.0 && rawPressure <= 1.0) ? rawPressure : 0.0;
+
+    double targetWidth;
+    switch (penType) {
+      case PenType.fountain:
+        if (pressure > 0.05 && pressure < 0.99) {
+          isStylusActive = true;
+          targetWidth = baseStrokeWidth * (0.35 + 1.25 * pressure);
+        } else {
+          final velRatio = (velocity / 2.2).clamp(0.0, 1.0);
+          targetWidth = baseStrokeWidth * (1.35 - 0.75 * velRatio);
+        }
+        break;
+      case PenType.ballpoint:
+        if (pressure > 0.05 && pressure < 0.99) {
+          isStylusActive = true;
+          targetWidth = baseStrokeWidth * (0.6 + 0.6 * pressure);
+        } else {
+          final velRatio = (velocity / 2.8).clamp(0.0, 1.0);
+          targetWidth = baseStrokeWidth * (1.15 - 0.35 * velRatio);
+        }
+        break;
+      case PenType.marker:
+        targetWidth = baseStrokeWidth * 1.35;
+        break;
+    }
+
+    final smoothedWidth = prev.width * 0.45 + targetWidth * 0.55;
+
+    active.add(
+      InkPoint(
+        point: point,
+        pressure: pressure,
+        timeMs: now,
+        width: smoothedWidth,
+      ),
+    );
     notifyListeners();
   }
 
   void endStroke() {
-    if (currentStroke != null && currentStroke!.isNotEmpty) {
-      strokes.add(List.from(currentStroke!));
+    final active = currentPoints;
+    if (active != null && active.isNotEmpty) {
+      strokes.add(
+        InkStroke(
+          points: List<InkPoint>.from(active),
+          color: inkColor,
+          penType: penType,
+          baseWidth: baseStrokeWidth,
+        ),
+      );
     }
-    currentStroke = null;
+    currentPoints = null;
     notifyListeners();
   }
 
@@ -725,37 +984,42 @@ class _SignatureController extends ChangeNotifier {
     var hasPoints = false;
 
     for (final stroke in strokes) {
-      for (final pt in stroke) {
+      for (final pt in stroke.points) {
         hasPoints = true;
-        if (pt.dx < minX) minX = pt.dx;
-        if (pt.dy < minY) minY = pt.dy;
-        if (pt.dx > maxX) maxX = pt.dx;
-        if (pt.dy > maxY) maxY = pt.dy;
+        final r = pt.width;
+        if (pt.point.dx - r < minX) minX = pt.point.dx - r;
+        if (pt.point.dy - r < minY) minY = pt.point.dy - r;
+        if (pt.point.dx + r > maxX) maxX = pt.point.dx + r;
+        if (pt.point.dy + r > maxY) maxY = pt.point.dy + r;
       }
     }
     if (!hasPoints) return null;
     return Rect.fromLTRB(minX, minY, maxX, maxY);
   }
 
-  /// Renders the signature directly onto an offscreen canvas tightly cropped
-  /// around the actual ink strokes, so the placed signature box has no huge
-  /// empty margins around it.
   Future<Uint8List?> captureFromRepaintBoundary(
     GlobalKey repaintKey,
     double devicePixelRatio,
   ) async {
     if (!hasDrawing) return null;
 
-    if (currentStroke != null && currentStroke!.isNotEmpty) {
-      strokes.add(List.from(currentStroke!));
-      currentStroke = null;
+    if (currentPoints != null && currentPoints!.isNotEmpty) {
+      strokes.add(
+        InkStroke(
+          points: List<InkPoint>.from(currentPoints!),
+          color: inkColor,
+          penType: penType,
+          baseWidth: baseStrokeWidth,
+        ),
+      );
+      currentPoints = null;
       notifyListeners();
     }
 
     final bounds = getStrokeBounds();
     if (bounds == null) return null;
 
-    const padding = 14.0;
+    const padding = 16.0;
     final cropLeft = bounds.left - padding;
     final cropTop = bounds.top - padding;
     final cropWidth = math.max(bounds.width + padding * 2, 48.0);
@@ -767,11 +1031,13 @@ class _SignatureController extends ChangeNotifier {
     canvas.scale(scale, scale);
     canvas.translate(-cropLeft, -cropTop);
 
-    _SignaturePainter.paintStrokes(
+    _SignaturePainter.paintAllStrokes(
       canvas: canvas,
       strokes: strokes,
-      currentStroke: null,
-      inkColor: inkColor,
+      currentPoints: null,
+      currentStrokeColor: inkColor,
+      currentPenType: penType,
+      currentBaseWidth: baseStrokeWidth,
     );
 
     final picture = recorder.endRecording();
@@ -790,7 +1056,7 @@ class _SignatureController extends ChangeNotifier {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Signature Pad Widget (uses raw Listener for instant 0ms first-touch drawing)
+// Signature Pad Widget (captures stylus events, pressure, and velocity)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SignaturePadWidget extends StatefulWidget {
@@ -818,11 +1084,23 @@ class _SignaturePadWidgetState extends State<_SignaturePadWidget> {
       onPointerDown: (event) {
         if (_activePointer != null) return;
         _activePointer = event.pointer;
-        widget.controller.startStroke(event.localPosition);
+        final isStylus = event.kind == ui.PointerDeviceKind.stylus ||
+            event.kind == ui.PointerDeviceKind.invertedStylus;
+        widget.controller.startStroke(
+          event.localPosition,
+          event.pressure,
+          isStylus: isStylus,
+        );
       },
       onPointerMove: (event) {
         if (_activePointer != event.pointer) return;
-        widget.controller.updateStroke(event.localPosition);
+        final isStylus = event.kind == ui.PointerDeviceKind.stylus ||
+            event.kind == ui.PointerDeviceKind.invertedStylus;
+        widget.controller.updateStroke(
+          event.localPosition,
+          event.pressure,
+          isStylus: isStylus,
+        );
       },
       onPointerUp: (event) {
         if (_activePointer != event.pointer) return;
@@ -845,13 +1123,13 @@ class _SignaturePadWidgetState extends State<_SignaturePadWidget> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.gesture_rounded,
+                          Icons.draw_rounded,
                           size: 38,
                           color: Colors.grey.withValues(alpha: 0.38),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'اكتب توقيعك هنا مباشرة',
+                          'اكتب توقيعك هنا بالقلم أو اللمس',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -870,76 +1148,147 @@ class _SignaturePadWidgetState extends State<_SignaturePadWidget> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Signature Painter (Smooth Quadratic Bézier curves)
+// Signature Painter (Fluid Variable-Width Bézier Curves & Round Joints)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SignaturePainter extends CustomPainter {
   _SignaturePainter(this.controller) : super(repaint: controller);
   final _SignatureController controller;
 
-  static void paintStrokes({
+  static void paintAllStrokes({
     required Canvas canvas,
-    required List<List<Offset>> strokes,
-    required List<Offset>? currentStroke,
-    required Color inkColor,
+    required List<InkStroke> strokes,
+    required List<InkPoint>? currentPoints,
+    required Color currentStrokeColor,
+    required PenType currentPenType,
+    required double currentBaseWidth,
   }) {
-    final paint = Paint()
-      ..color = inkColor
-      ..strokeWidth = 3.6
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..isAntiAlias = true
-      ..style = PaintingStyle.stroke;
-
-    void drawStroke(List<Offset> stroke) {
-      if (stroke.isEmpty) return;
-      if (stroke.length == 1) {
-        canvas.drawCircle(
-          stroke.first,
-          2.0,
-          Paint()
-            ..color = inkColor
-            ..isAntiAlias = true
-            ..style = PaintingStyle.fill,
-        );
-        return;
-      }
-      if (stroke.length == 2) {
-        canvas.drawLine(stroke[0], stroke[1], paint);
-        return;
-      }
-
-      final path = Path()..moveTo(stroke.first.dx, stroke.first.dy);
-      for (int i = 1; i < stroke.length - 1; i++) {
-        final p0 = stroke[i];
-        final p1 = stroke[i + 1];
-        final midX = (p0.dx + p1.dx) / 2;
-        final midY = (p0.dy + p1.dy) / 2;
-        path.quadraticBezierTo(p0.dx, p0.dy, midX, midY);
-      }
-      path.lineTo(stroke.last.dx, stroke.last.dy);
-      canvas.drawPath(path, paint);
-    }
-
     for (final stroke in strokes) {
-      drawStroke(stroke);
+      _paintSingleStroke(canvas, stroke.points, stroke.color);
+    }
+    if (currentPoints != null && currentPoints.isNotEmpty) {
+      _paintSingleStroke(canvas, currentPoints, currentStrokeColor);
+    }
+  }
+
+  static void _paintSingleStroke(
+    Canvas canvas,
+    List<InkPoint> points,
+    Color color,
+  ) {
+    if (points.isEmpty) return;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    if (points.length == 1) {
+      canvas.drawCircle(points.first.point, points.first.width / 2, paint);
+      return;
     }
 
-    if (currentStroke != null && currentStroke.isNotEmpty) {
-      drawStroke(currentStroke);
+    if (points.length == 2) {
+      _drawSegment(
+        canvas,
+        points[0].point,
+        points[1].point,
+        points[0].width,
+        points[1].width,
+        paint,
+      );
+      return;
     }
+
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = (i == 0) ? points[0] : points[i - 1];
+      final p1 = points[i];
+      final p2 = points[i + 1];
+
+      final startPt = Offset(
+        (p0.point.dx + p1.point.dx) / 2,
+        (p0.point.dy + p1.point.dy) / 2,
+      );
+      final controlPt = p1.point;
+      final endPt = Offset(
+        (p1.point.dx + p2.point.dx) / 2,
+        (p1.point.dy + p2.point.dy) / 2,
+      );
+
+      final startW = (p0.width + p1.width) / 2;
+      final endW = (p1.width + p2.width) / 2;
+
+      const steps = 6;
+      Offset prevSample = startPt;
+      double prevW = startW;
+
+      for (int s = 1; s <= steps; s++) {
+        final t = s / steps;
+        final oneMinusT = 1.0 - t;
+        final samplePt = Offset(
+          oneMinusT * oneMinusT * startPt.dx +
+              2 * oneMinusT * t * controlPt.dx +
+              t * t * endPt.dx,
+          oneMinusT * oneMinusT * startPt.dy +
+              2 * oneMinusT * t * controlPt.dy +
+              t * t * endPt.dy,
+        );
+        final sampleW = startW + (endW - startW) * t;
+
+        _drawSegment(canvas, prevSample, samplePt, prevW, sampleW, paint);
+        prevSample = samplePt;
+        prevW = sampleW;
+      }
+    }
+  }
+
+  static void _drawSegment(
+    Canvas canvas,
+    Offset a,
+    Offset b,
+    double wa,
+    double wb,
+    Paint paint,
+  ) {
+    final ra = math.max(wa / 2, 0.4);
+    final rb = math.max(wb / 2, 0.4);
+
+    canvas.drawCircle(a, ra, paint);
+    canvas.drawCircle(b, rb, paint);
+
+    final diff = b - a;
+    final dist = diff.distance;
+    if (dist < 0.1) return;
+
+    final nx = -diff.dy / dist;
+    final ny = diff.dx / dist;
+
+    final p1 = Offset(a.dx + nx * ra, a.dy + ny * ra);
+    final p2 = Offset(a.dx - nx * ra, a.dy - ny * ra);
+    final p3 = Offset(b.dx - nx * rb, b.dy - ny * rb);
+    final p4 = Offset(b.dx + nx * rb, b.dy + ny * rb);
+
+    final path = Path()
+      ..moveTo(p1.dx, p1.dy)
+      ..lineTo(p4.dx, p4.dy)
+      ..lineTo(p3.dx, p3.dy)
+      ..lineTo(p2.dx, p2.dy)
+      ..close();
+
+    canvas.drawPath(path, paint);
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    paintStrokes(
+    paintAllStrokes(
       canvas: canvas,
       strokes: controller.strokes,
-      currentStroke: controller.currentStroke,
-      inkColor: controller.inkColor,
+      currentPoints: controller.currentPoints,
+      currentStrokeColor: controller.inkColor,
+      currentPenType: controller.penType,
+      currentBaseWidth: controller.baseStrokeWidth,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _SignaturePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SignaturePainter oldDelegate) => true;
 }

@@ -206,7 +206,7 @@ class _SaveAndExportSheetContentState
                         ),
                       ),
                       Text(
-                        '${formatPageCount(widget.pageCount)} • معالجة أوفلاين 100%',
+                        '${formatPageCount(widget.pageCount)} • دقة معالجة فائقة',
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF8E8E93),

@@ -252,7 +252,7 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
               ),
             ),
             Text(
-              '${_allFiles.length} ملف • Web Drop أوفلاين',
+              '${_allFiles.length} ملف • Web Drop مباشر',
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,

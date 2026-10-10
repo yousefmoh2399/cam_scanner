@@ -1429,7 +1429,7 @@ Uint8List _buildXlsxWorkbookInIsolate({
     final metaCell =
         sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1));
     metaCell.value = TextCellValue(
-      'تحويل ذكي بـ  Offline • جدول بيانات كامل قابل للتعديل • الكتل المستخرجة: ${page.blocks.length} • الأبعاد: ${page.imageWidth}x${page.imageHeight}',
+      'تحويل ذكي فائق الدقة • جدول بيانات كامل قابل للتعديل • الكتل المستخرجة: ${page.blocks.length} • الأبعاد: ${page.imageWidth}x${page.imageHeight}',
     );
     metaCell.cellStyle = CellStyle(
       fontSize: 9,

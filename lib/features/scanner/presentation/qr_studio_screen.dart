@@ -343,7 +343,7 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
                 ),
                 pw.SizedBox(height: 30),
                 pw.Text(
-                  'تم الإنشاء والطباعة بدون إنترنت عبر تطبيق "لقطة" (Laqta Scanner)',
+                  'تم الإنشاء والطباعة بدقة فائقة عبر تطبيق "لقطة" (Laqta Scanner)',
                   style: const pw.TextStyle(
                     fontSize: 9,
                     color: PdfColors.grey600,
@@ -661,7 +661,7 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
             ),
             Text(
-              'توليد وتخصيص وطباعة بدون إنترنت 100%',
+              'توليد وتخصيص وطباعة بدقة وجودة عالية',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,

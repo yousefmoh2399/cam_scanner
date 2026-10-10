@@ -228,7 +228,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'ai_magic_clean',
       title: 'الممحاة الذكية وتنظيف الورق',
-      subtitle: 'إزالة أصابع اليد، ثقوب الدباسة، وبقع القهوة بدون إنترنت',
+      subtitle: 'إزالة أصابع اليد، ثقوب الدباسة، وبقع القهوة بذكاء اصطناعي',
       category: ToolCategory.intelligence,
       icon: Icons.auto_fix_high_rounded,
       badge: 'ذكاء محلي',
@@ -298,7 +298,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'ai_qr_studio',
       title: 'منشئ رموز QR والباركود الذكي',
-      subtitle: 'توليد رموز فورية للواي فاي، كروت الأعمال vCard، الروابط مع تخصيص الألوان والشعار وطباعتها أوفلاين',
+      subtitle: 'توليد رموز فورية للواي فاي، كروت الأعمال vCard، والروابط مع تخصيص الألوان والشعار وطباعتها',
       category: ToolCategory.intelligence,
       icon: Icons.qr_code_2_rounded,
       badge: 'QR Studio 📱',
@@ -360,7 +360,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'transfer_web_drop',
       title: 'نقل للكمبيوتر محلياً (Web Drop)',
-      subtitle: 'إرسال وتنزيل الملفات عبر المتصفح بدون كابلات أو إنترنت',
+      subtitle: 'إرسال وتنزيل الملفات عبر المتصفح بسرعة فائقة بدون كابلات',
       category: ToolCategory.pdf,
       icon: Icons.wifi_tethering_rounded,
       badge: 'AirDrop محلي',
@@ -442,7 +442,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'sec_backup_zip',
       title: 'النسخ الاحتياطي السحابي المشفر',
-      subtitle: 'مزامنة Google Drive و iCloud بتشفير Zero-Knowledge عسكري بدون إنترنت',
+      subtitle: 'مزامنة Google Drive و iCloud بتشفير Zero-Knowledge عسكري معزز',
       category: ToolCategory.security,
       icon: Icons.cloud_sync_rounded,
       badge: 'Zero-Knowledge 🔒',
@@ -776,7 +776,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                             style: TextStyle(
                                 fontWeight: FontWeight.w800, fontSize: 15)),
                         SizedBox(height: 2),
-                        Text('اختر طريقة المسح والقراءة الفورية أوفلاين',
+                        Text('اختر طريقة المسح والقراءة الفورية',
                             style: TextStyle(fontSize: 11.5, color: Colors.grey)),
                       ],
                     ),
@@ -797,7 +797,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 title: const Text('فتح الكاميرا للمسح فوراً',
                     style:
                         TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                subtitle: const Text('توجيه الكاميرا إلى أي كود لمسحه أوفلاين',
+                subtitle: const Text('توجيه الكاميرا إلى أي كود لمسحه بدقة وسرعة',
                     style: TextStyle(fontSize: 11, color: Colors.grey)),
                 trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                 onTap: () => Navigator.pop(ctx, 'camera'),
@@ -2177,7 +2177,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               ),
             ),
             Text(
-              '${_allTools.length} أداة احترافية • أوفلاين 100%',
+              '${_allTools.length} أداة احترافية • دقة وسرعة فائقة',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(

@@ -32,6 +32,7 @@ import 'widgets/cloud_backup_sheet.dart';
 import 'widgets/onboarding_welcome_sheet.dart';
 import 'widgets/about_app_sheet.dart';
 import 'widgets/in_app_privacy_dialog.dart';
+import 'widgets/folder_visual_helper.dart';
 import '../data/batch_zip_service.dart';
 import '../data/native_scanner_bridge.dart';
 import 'id_card_a4_screen.dart';
@@ -388,46 +389,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   Future<void> _createFolderDialog() async {
-    final controller = TextEditingController();
-    final palette = context.appThemePalette;
-    final createdName = await showDialog<String>(
+    final result = await FolderCustomizationDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(
-          'إنشاء مجلد جديد',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: 'اسم المجلد',
-            hintText: 'مثال: عقود العمل، الفواتير، الهويات...',
-            prefixIcon: Icon(Icons.create_new_folder_rounded, color: palette.accent),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              if (text.isNotEmpty) {
-                Navigator.pop(ctx, text);
-              }
-            },
-            child: const Text('إنشاء المجلد'),
-          ),
-        ],
-      ),
+      title: 'إنشاء مجلد جديد',
     );
 
-    if (createdName == null || createdName.isEmpty || !mounted) return;
+    if (result == null || !mounted) return;
     try {
-      await ref.read(documentFolderServiceProvider).createFolder(createdName);
+      await ref.read(documentFolderServiceProvider).createFolder(
+            result.name,
+            colorValue: result.colorValue,
+            iconKey: result.iconKey,
+          );
       await _loadFolders();
     } catch (e) {
       if (!mounted) return;
@@ -612,8 +585,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       final folder = _folders[idx];
                       return ListTile(
                         leading: Icon(
-                          Icons.folder_rounded,
-                          color: palette.warning,
+                          FolderVisualHelper.getIcon(folder.iconKey),
+                          color: FolderVisualHelper.getColor(folder.colorValue),
                         ),
                         title: Text(
                           folder.name,
@@ -942,7 +915,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     icon: Icons.transform_rounded,
                     iconColor: const Color(0xFF2B579A),
                     title: 'حفظ وتصدير (PDF • Word • Excel)',
-                    subtitle: 'تحويل ذكي أوفلاين مع تعرف النصوص OCR',
+                    subtitle: 'تحويل ذكي فائق الدقة مع استخراج النصوص OCR',
                     onTap: () {
                       Navigator.pop(ctx);
                       _exportDocumentSheet(doc);
@@ -1899,7 +1872,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   Text(
                     activeFolder != null
                         ? '${visibleDocs.length} مستند بالمجلد'
-                        : '${allDocs.length} مستند • أوفلاين',
+                        : '${allDocs.length} مستند • خصوصية تامة',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -2929,12 +2902,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.15),
+                          color: FolderVisualHelper.getColor(folder.colorValue)
+                              .withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
-                          Icons.folder_rounded,
-                          color: Colors.amber,
+                        child: Icon(
+                          FolderVisualHelper.getIcon(folder.iconKey),
+                          color: FolderVisualHelper.getColor(folder.colorValue),
                           size: 26,
                         ),
                       ),
@@ -3160,12 +3134,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: Colors.amber.withValues(alpha: 0.15),
+                            color: FolderVisualHelper.getColor(folder.colorValue)
+                                .withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
-                            Icons.folder_rounded,
-                            color: Colors.amber,
+                          child: Icon(
+                            FolderVisualHelper.getIcon(folder.iconKey),
+                            color: FolderVisualHelper.getColor(folder.colorValue),
                             size: 26,
                           ),
                         ),
@@ -3195,6 +3170,54 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ),
                     child: Column(
                       children: [
+                        ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: FolderVisualHelper.getColor(folder.colorValue)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.palette_outlined,
+                              color: FolderVisualHelper.getColor(folder.colorValue),
+                              size: 18,
+                            ),
+                          ),
+                          title: const Text(
+                            'تخصيص اللون والأيقونة',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          onTap: () async {
+                            Navigator.pop(ctx);
+                            final result = await FolderCustomizationDialog.show(
+                              context: context,
+                              initialFolder: folder,
+                              title: 'تخصيص المجلد',
+                            );
+                            if (result != null && mounted) {
+                              await ref
+                                  .read(documentFolderServiceProvider)
+                                  .renameFolder(folder.id, result.name);
+                              await ref
+                                  .read(documentFolderServiceProvider)
+                                  .updateFolderVisuals(
+                                    folder.id,
+                                    colorValue: result.colorValue,
+                                    iconKey: result.iconKey,
+                                  );
+                              await _loadFolders();
+                            }
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          indent: 52,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.06),
+                        ),
                         if (_activeFolderId != folder.id) ...[
                           ListTile(
                             leading: Container(
@@ -3598,10 +3621,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         padding: const EdgeInsets.only(top: 2),
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.folder_rounded,
+                            Icon(
+                              FolderVisualHelper.getIcon(folder.iconKey),
                               size: 11,
-                              color: Colors.amber,
+                              color: FolderVisualHelper.getColor(folder.colorValue),
                             ),
                             const SizedBox(width: 3),
                             Expanded(
@@ -3609,10 +3632,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                 folder.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.amber,
+                                  color: FolderVisualHelper.getColor(folder.colorValue),
                                 ),
                               ),
                             ),
@@ -3830,20 +3853,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                       return Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(
-                                            Icons.folder_rounded,
+                                          Icon(
+                                            FolderVisualHelper.getIcon(folder.iconKey),
                                             size: 11,
-                                            color: Colors.amber,
+                                            color: FolderVisualHelper.getColor(folder.colorValue),
                                           ),
                                           const SizedBox(width: 3),
                                           Text(
                                             folder.name,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 10,
                                               fontWeight: FontWeight.w600,
-                                              color: Colors.amber,
+                                              color: FolderVisualHelper.getColor(folder.colorValue),
                                             ),
                                           ),
                                         ],

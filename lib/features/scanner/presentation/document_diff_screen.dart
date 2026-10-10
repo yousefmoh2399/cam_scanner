@@ -324,7 +324,7 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
 • الكلمات المضافة (+): ${r.addedCount}
 • الكلمات المحذوفة (-): ${r.deletedCount}
 
-تم الفحص بنجاح بدون إنترنت بواسطة تطبيق  .
+تم الفحص بنجاح وبدقة متناهية بواسطة تطبيق "لقطة".
 ''';
     Share.share(summary, subject: 'تقرير مقارنة الفروقات بين المستندات');
   }
@@ -506,7 +506,7 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
                             CircularProgressIndicator.adaptive(),
                             SizedBox(height: 16),
                             Text(
-                              'جاري فحص المستندات واستخراج الفروقات بدون إنترنت...',
+                              'جاري فحص المستندات واستخراج الفروقات بدقة متناهية...',
                               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                             ),
                           ],

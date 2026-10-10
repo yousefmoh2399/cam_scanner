@@ -526,7 +526,7 @@ class _SmartContractStudioScreenState
               ),
             ),
             const Text(
-              'صيغ قانونية محكمة • توثيق وتفقيد مالي 100% أوفلاين',
+              'صيغ قانونية محكمة • توثيق وتدقيق مالي معتمد',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,

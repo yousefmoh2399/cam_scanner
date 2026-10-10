@@ -282,7 +282,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'الماسح الضوئي الذكي • يعمل محلياً 100%',
+                                  'الماسح الضوئي الذكي الاحترافي • خصوصية وأمان',
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.65),
                                     fontSize: 11,
