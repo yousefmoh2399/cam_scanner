@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -236,6 +236,10 @@ class ThreeDReconstructionService {
       throw Exception('حجم ملف STL غير صالح');
     }
 
+    return compute(_parseStlBytes, bytes);
+  }
+
+  static StlMesh _parseStlBytes(Uint8List bytes) {
     final byteData = ByteData.sublistView(bytes);
     final triangleCount = byteData.getUint32(80, Endian.little);
 
@@ -292,21 +296,10 @@ class ThreeDReconstructionService {
       minZ = 0; maxZ = 50;
     }
 
-    // Interactive mobile viewport optimization (cap at 5,000 triangles for 60 FPS)
-    const maxViewportTriangles = 5000;
-    final displayTriangles = <StlMeshTriangle>[];
-    if (triangles.length > maxViewportTriangles) {
-      final stride = (triangles.length / maxViewportTriangles).ceil().clamp(1, 25);
-      for (int i = 0; i < triangles.length; i += stride) {
-        displayTriangles.add(triangles[i]);
-      }
-    } else {
-      displayTriangles.addAll(triangles);
-    }
-
+    // 100% contiguous watertight mesh: every triangle rendered, ZERO dots/skipping!
     return StlMesh(
       triangles: triangles,
-      viewportTriangles: displayTriangles,
+      viewportTriangles: triangles,
       minBounds: [minX, minY, minZ],
       maxBounds: [maxX, maxY, maxZ],
     );

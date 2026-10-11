@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -485,7 +486,6 @@ class _StlViewportPainter extends CustomPainter {
     final ly = 0.577;
     final lz = 0.577;
 
-    final solidPaint = Paint()..style = PaintingStyle.fill;
     final wirePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.7
@@ -555,7 +555,7 @@ class _StlViewportPainter extends CustomPainter {
       final intensity = (0.35 + 0.65 * dot).clamp(0.0, 1.0);
 
       // Back-face culling: skip if facing away from camera
-      if (fnz < -0.2 && !showWireframe) continue;
+      if (fnz < -0.05 && !showWireframe) continue;
 
       sortedTriangles.add(
         _ProjectedTriangle(
@@ -571,24 +571,41 @@ class _StlViewportPainter extends CustomPainter {
     // Sort Painter's Algorithm: farthest depth first
     sortedTriangles.sort((a, b) => a.depth.compareTo(b.depth));
 
-    for (final tri in sortedTriangles) {
-      final path = Path()
-        ..moveTo(tri.pt1.dx, tri.pt1.dy)
-        ..lineTo(tri.pt2.dx, tri.pt2.dy)
-        ..lineTo(tri.pt3.dx, tri.pt3.dy)
-        ..close();
+    if (showWireframe) {
+      final wirePath = Path();
+      for (final tri in sortedTriangles) {
+        wirePath.moveTo(tri.pt1.dx, tri.pt1.dy);
+        wirePath.lineTo(tri.pt2.dx, tri.pt2.dy);
+        wirePath.lineTo(tri.pt3.dx, tri.pt3.dy);
+        wirePath.close();
+      }
+      canvas.drawPath(wirePath, wirePaint);
+    } else {
+      // GPU hardware accelerated triangle shading via ui.Vertices (1 draw call, zero jank)
+      final positions = <Offset>[];
+      final colors = <Color>[];
 
-      if (!showWireframe) {
-        // Metallic PLA Grey/Cyan theme shading
+      for (final tri in sortedTriangles) {
+        positions.add(tri.pt1);
+        positions.add(tri.pt2);
+        positions.add(tri.pt3);
+
         final r = (45 + 140 * tri.intensity).toInt();
         final g = (65 + 160 * tri.intensity).toInt();
         final b = (80 + 175 * tri.intensity).toInt();
-        solidPaint.color = Color.fromARGB(255, r, g, b);
-        canvas.drawPath(path, solidPaint);
+        final c = Color.fromARGB(255, r, g, b);
+        colors.add(c);
+        colors.add(c);
+        colors.add(c);
       }
 
-      if (showWireframe) {
-        canvas.drawPath(path, wirePaint);
+      if (positions.isNotEmpty) {
+        final vertices = ui.Vertices(
+          ui.VertexMode.triangles,
+          positions,
+          colors: colors,
+        );
+        canvas.drawVertices(vertices, BlendMode.src, Paint());
       }
     }
   }
