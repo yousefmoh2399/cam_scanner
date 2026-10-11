@@ -944,7 +944,6 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
   Widget _buildAdvancedOptionsCard(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
@@ -957,10 +956,13 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
+      child: Material(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
           leading: Container(
             padding: const EdgeInsets.all(6),
@@ -1145,8 +1147,9 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildLiveSheetPreview(bool isDark) {
     return Container(

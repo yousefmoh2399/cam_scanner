@@ -91,11 +91,12 @@ android {
             val targetPlatformProp = project.findProperty("target-platform")?.toString() ?: ""
             val isX86Only = targetPlatformProp == "android-x64" || targetPlatformProp == "android-x86"
             val isSplitPerAbi = project.findProperty("split-per-abi")?.toString() == "true"
-            if (!isSplitPerAbi && !isX86Only) {
-                ndk {
+            ndk {
+                if (!isSplitPerAbi && !isX86Only) {
                     abiFilters.clear()
                     abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
                 }
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
             isMinifyEnabled = true
             isShrinkResources = true

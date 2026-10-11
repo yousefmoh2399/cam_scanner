@@ -52,6 +52,7 @@ import 'interactive_table_editor_screen.dart';
 import 'booklet_and_binding_screen.dart';
 import 'legal_audit_studio_screen.dart';
 import 'lanyard_id_badge_screen.dart';
+import 'three_d_maker_studio_screen.dart';
 
 /// Categories for organizing tools in the hub
 enum ToolCategory {
@@ -209,6 +210,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
 
     // ── Intelligence & Extraction Category ──
+    ToolItem(
+      id: 'three_d_maker_studio',
+      title: 'ماسح المجسمات 3D (3D Maker Studio)',
+      subtitle: 'مسح القطع الحقيقية واستخراج مجسم STL صلب للطباعة 3D بمقاس متري حقيقي (مم)',
+      category: ToolCategory.intelligence,
+      icon: Icons.view_in_ar_rounded,
+      badge: 'STL 3D • جديد 🧊',
+      accentColor: Color(0xFF00C853),
+      keywords: ['3d', 'stl', 'طباعة ثلاثية', 'مجسم', 'سكانر 3d', 'cura', 'slicer', 'فوتوغرامتري', 'طابعة', '3d printer'],
+    ),
     ToolItem(
       id: 'ai_interactive_table',
       title: 'مستخرج ومحرر الجداول التفاعلي',
@@ -574,6 +585,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
   void _onToolSelected(ToolItem tool) {
     switch (tool.id) {
+      case 'three_d_maker_studio':
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const ThreeDMakerStudioScreen(),
+          ),
+        );
+        break;
+
       case 'gov_id_card':
         Navigator.of(context).push(
           MaterialPageRoute(

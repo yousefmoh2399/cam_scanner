@@ -2010,31 +2010,41 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         }
                       },
                       itemBuilder: (ctx) => [
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'cloud_backup',
                           child: Row(
-                            children: [
+                            children: const [
                               Icon(
                                 Icons.cloud_sync_rounded,
                                 size: 18,
                                 color: Color(0xFF007AFF),
                               ),
                               SizedBox(width: 10),
-                              Text('النسخ الاحتياطي السحابي (Zero-Knowledge)'),
+                              Expanded(
+                                child: Text(
+                                  'النسخ الاحتياطي السحابي (Zero-Knowledge)',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'web_drop',
                           child: Row(
-                            children: [
+                            children: const [
                               Icon(
                                 Icons.wifi_tethering_rounded,
                                 size: 18,
                                 color: Color(0xFF007AFF),
                               ),
                               SizedBox(width: 10),
-                              Text('نقل للكمبيوتر والماك (Web Drop)'),
+                              Expanded(
+                                child: Text(
+                                  'نقل للكمبيوتر والماك (Web Drop)',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),

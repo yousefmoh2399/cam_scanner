@@ -1035,13 +1035,16 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.enhanced_encryption_rounded,
+          children: const [
+            Icon(Icons.enhanced_encryption_rounded,
                 color: Color(0xFF10B981), size: 18),
-            const SizedBox(width: 8),
-            const Text(
-              'الخزنة السرية (AES-256)',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'الخزنة السرية (AES-256)',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

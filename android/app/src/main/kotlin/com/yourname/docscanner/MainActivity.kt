@@ -9,8 +9,14 @@ import com.googlecode.tesseract.android.TessBaseAPI
 import com.yourname.docscanner.scanner.DocumentDetector
 import com.yourname.docscanner.scanner.ImageFilters
 import com.yourname.docscanner.scanner.ScannerActivity
+import com.yourname.docscanner.scanner.ThreeDReconstructionEngine
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -659,11 +665,158 @@ class MainActivity : FlutterFragmentActivity() {
                             }
                         }
                     }
+                    "reconstruct3DModel" -> {
+                        val imagePaths = call.argument<List<String>>("imagePaths") ?: emptyList()
+                        val outPath = call.argument<String>("outPath")
+                        val voxelSize = call.argument<Double>("voxelSizeMm") ?: 0.8
+                        val consensus = call.argument<Double>("consensusRatio") ?: 0.90
+                        val elevations = call.argument<List<Double>>("elevationsDeg")
+                        val azimuths = call.argument<List<Double>>("azimuthsDeg")
+
+                        if (imagePaths.isEmpty() || outPath.isNullOrBlank()) {
+                            result.error("INVALID_ARGS", "imagePaths and outPath are required", null)
+                            return@setMethodCallHandler
+                        }
+
+                        mainScope.launch(Dispatchers.Default) {
+                            nativeOpSemaphore.acquire()
+                            try {
+                                val res = ThreeDReconstructionEngine.reconstructModel(
+                                    imagePaths = imagePaths,
+                                    outputPath = outPath,
+                                    voxelSizeMm = voxelSize,
+                                    consensusRatio = consensus,
+                                    elevationsDeg = elevations,
+                                    azimuthsDeg = azimuths
+                                )
+                                val map = HashMap<String, Any>()
+                                map["stlPath"] = res.stlPath
+                                map["vertexCount"] = res.vertexCount
+                                map["triangleCount"] = res.triangleCount
+                                map["dimX"] = res.dimX
+                                map["dimY"] = res.dimY
+                                map["dimZ"] = res.dimZ
+                                map["isWatertight"] = res.isWatertight
+                                map["durationMs"] = res.durationMs
+
+                                withContext(Dispatchers.Main) {
+                                    result.success(map)
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    result.error("RECONSTRUCTION_FAILED", e.message, null)
+                                }
+                            } finally {
+                                nativeOpSemaphore.release()
+                            }
+                        }
+                    }
+                    "generate3DCalibrationSpecimen" -> {
+                        val outPath = call.argument<String>("outPath")
+                        val specimenType = call.argument<String>("specimenType") ?: "cube_50mm"
+
+                        if (outPath.isNullOrBlank()) {
+                            result.error("INVALID_ARGS", "outPath is required", null)
+                            return@setMethodCallHandler
+                        }
+
+                        mainScope.launch(Dispatchers.Default) {
+                            try {
+                                val res = ThreeDReconstructionEngine.generateCalibrationSpecimen(
+                                    outputPath = outPath,
+                                    specimenType = specimenType
+                                )
+                                val map = HashMap<String, Any>()
+                                map["stlPath"] = res.stlPath
+                                map["vertexCount"] = res.vertexCount
+                                map["triangleCount"] = res.triangleCount
+                                map["dimX"] = res.dimX
+                                map["dimY"] = res.dimY
+                                map["dimZ"] = res.dimZ
+                                map["isWatertight"] = res.isWatertight
+                                map["durationMs"] = res.durationMs
+
+                                withContext(Dispatchers.Main) {
+                                    result.success(map)
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    result.error("SPECIMEN_GEN_FAILED", e.message, null)
+                                }
+                            }
+                        }
+                    }
+                    "generateSilhouettePreview" -> {
+                        val imagePath = call.argument<String>("imagePath")
+                        val outPreviewPath = call.argument<String>("outPreviewPath")
+                        if (imagePath.isNullOrBlank() || outPreviewPath.isNullOrBlank()) {
+                            result.error("INVALID_ARGS", "imagePath and outPreviewPath are required", null)
+                            return@setMethodCallHandler
+                        }
+                        mainScope.launch(Dispatchers.Default) {
+                            try {
+                                val map = ThreeDReconstructionEngine.generateSilhouettePreview(imagePath, outPreviewPath)
+                                withContext(Dispatchers.Main) {
+                                    result.success(map)
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    result.error("SILHOUETTE_PREVIEW_ERR", e.message, null)
+                                }
+                            }
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, docScannerChannel).setMethodCallHandler(handler)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, altScannerChannel).setMethodCallHandler(handler)
+
+        val orientationChannel = EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.yourname.docscanner/device_orientation")
+        orientationChannel.setStreamHandler(object : EventChannel.StreamHandler, SensorEventListener {
+            private var sensorManager: SensorManager? = null
+            private var rotationSensor: Sensor? = null
+            private var eventSink: EventChannel.EventSink? = null
+            private val rMat = FloatArray(9)
+            private val orientation = FloatArray(3)
+
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                eventSink = events
+                sensorManager = getSystemService(android.content.Context.SENSOR_SERVICE) as? SensorManager
+                rotationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+                    ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ORIENTATION)
+                if (rotationSensor != null) {
+                    sensorManager?.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_UI)
+                }
+            }
+
+            override fun onCancel(arguments: Any?) {
+                sensorManager?.unregisterListener(this)
+                sensorManager = null
+                rotationSensor = null
+                eventSink = null
+            }
+
+            override fun onSensorChanged(event: SensorEvent?) {
+                if (event == null || eventSink == null) return
+                if (event.sensor.type == Sensor.TYPE_ROTATION_VECTOR) {
+                    SensorManager.getRotationMatrixFromVector(rMat, event.values)
+                    SensorManager.getOrientation(rMat, orientation)
+                    var azimDeg = Math.toDegrees(orientation[0].toDouble())
+                    if (azimDeg < 0) azimDeg += 360.0
+                    var pitchDeg = Math.abs(Math.toDegrees(orientation[1].toDouble()))
+                    if (pitchDeg > 90) pitchDeg = 180.0 - pitchDeg
+
+                    val data = mapOf(
+                        "azimuth" to azimDeg,
+                        "pitch" to pitchDeg
+                    )
+                    eventSink?.success(data)
+                }
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        })
     }
 
     private fun replyScannerResult(block: (MethodChannel.Result) -> Unit) {
