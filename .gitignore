@@ -54,4 +54,6 @@ android/key.properties
 # Python 3D Prototype Temp Artifacts
 __pycache__/
 tools/3d_prototype/dataset_50mm_cube/
+tools/3d_prototype/exp_dataset_opt/
+tools/3d_prototype/exp_dataset_orig/
 tools/3d_prototype/__pycache__/
