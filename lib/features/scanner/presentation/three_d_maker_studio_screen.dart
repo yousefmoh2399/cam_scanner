@@ -70,6 +70,503 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
     }
   }
 
+  Future<void> _pickProductImagesAndReconstruct() async {
+    HapticFeedback.selectionClick();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
+      allowMultiple: true,
+    );
+
+    if (result == null || result.paths.isEmpty) return;
+    final validPaths = result.paths.whereType<String>().toList();
+    if (validPaths.isEmpty) return;
+
+    if (mounted) {
+      _showProductReconstructSheet(validPaths);
+    }
+  }
+
+  void _showProductReconstructSheet(List<String> initialPaths) {
+    final List<String> currentPaths = List.from(initialPaths);
+    final String defaultTitle = initialPaths.isNotEmpty
+        ? 'مجسم_${p.basenameWithoutExtension(initialPaths.first)}'
+        : 'مجسم_منتج';
+    final TextEditingController titleController = TextEditingController(text: defaultTitle);
+    double selectedVoxelSize = 1.4;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF181B22),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final int count = currentPaths.length;
+            final bool hasPng = currentPaths.any((p) => p.toLowerCase().endsWith('.png'));
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag Handle
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Header Row
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00E676).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.auto_awesome_rounded,
+                            color: Color(0xFF00E676),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'تحويل صور المنتج إلى مجسم 3D',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'تجميع الصور ونحت المجسم 360° أوفلاين بالكامل',
+                                style: TextStyle(color: Colors.white60, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Transparency / Feature notice
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: hasPng
+                            ? const Color(0xFF00E676).withValues(alpha: 0.10)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: hasPng
+                              ? const Color(0xFF00E676).withValues(alpha: 0.3)
+                              : Colors.white12,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            hasPng ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                            color: hasPng ? const Color(0xFF00E676) : Colors.amber,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              hasPng
+                                  ? 'تم اكتشاف صور PNG! سيتم استخراج الشفافية بدقة 100% لعزل فوري ونحت 3D بدون تشويش.'
+                                  : 'للحصول على مجسم 360° دقيق، يُفضل 3 صور أو أكثر بزوايا مختلفة حول المنتج أو بصيغة PNG مفرغة.',
+                              style: TextStyle(
+                                color: hasPng ? Colors.white : Colors.white70,
+                                fontSize: 12,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Thumbnails Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'الصور المحددة ($count)',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () async {
+                            final added = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
+                              allowMultiple: true,
+                            );
+                            if (added != null) {
+                              final newPaths = added.paths.whereType<String>();
+                              setSheetState(() {
+                                currentPaths.addAll(newPaths);
+                              });
+                            }
+                          },
+                          icon: const Icon(Icons.add_photo_alternate_rounded, size: 16, color: Color(0xFF00E676)),
+                          label: const Text(
+                            'إضافة صور',
+                            style: TextStyle(color: Color(0xFF00E676), fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Thumbnails Row
+                    SizedBox(
+                      height: 80,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: currentPaths.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (ctx, idx) {
+                          final imgPath = currentPaths[idx];
+                          final isPng = imgPath.toLowerCase().endsWith('.png');
+
+                          return Stack(
+                            children: [
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isPng
+                                        ? const Color(0xFF00E676).withValues(alpha: 0.6)
+                                        : Colors.white24,
+                                  ),
+                                  color: Colors.black26,
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: Image.file(
+                                  File(imgPath),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Center(
+                                    child: Icon(Icons.broken_image, color: Colors.white24, size: 24),
+                                  ),
+                                ),
+                              ),
+                              if (isPng)
+                                Positioned(
+                                  bottom: 10,
+                                  left: 2,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF00E676),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'PNG',
+                                      style: TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setSheetState(() {
+                                      currentPaths.removeAt(idx);
+                                    });
+                                  },
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black87,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    padding: const EdgeInsets.all(3),
+                                    child: const Icon(Icons.close, color: Colors.redAccent, size: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Title Input
+                    const Text(
+                      'اسم المجسم 3D',
+                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: titleController,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFF101216),
+                        hintText: 'مثال: علبة_سماعات_3D',
+                        hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Quality Selection
+                    const Text(
+                      'دقة النحت الشبكي (Voxel Resolution)',
+                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _buildQualityChip(
+                          label: 'فائق (1.2 مم)',
+                          selected: selectedVoxelSize == 1.2,
+                          onTap: () => setSheetState(() => selectedVoxelSize = 1.2),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildQualityChip(
+                          label: 'متوازن (1.4 مم)',
+                          selected: selectedVoxelSize == 1.4,
+                          onTap: () => setSheetState(() => selectedVoxelSize = 1.4),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildQualityChip(
+                          label: 'سريع (2.0 مم)',
+                          selected: selectedVoxelSize == 2.0,
+                          onTap: () => setSheetState(() => selectedVoxelSize = 2.0),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Build Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: currentPaths.isEmpty
+                            ? null
+                            : () {
+                                final title = titleController.text.trim().isEmpty
+                                    ? defaultTitle
+                                    : titleController.text.trim();
+                                Navigator.pop(bottomSheetContext);
+                                _startProductReconstruction(
+                                  paths: currentPaths,
+                                  title: title,
+                                  voxelSizeMm: selectedVoxelSize,
+                                );
+                              },
+                        icon: const Icon(Icons.view_in_ar_rounded, size: 20),
+                        label: Text(
+                          'بدء بناء المجسم 3D (${currentPaths.length} صور)',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00C853),
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.white12,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  static Widget _buildQualityChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF00E676).withValues(alpha: 0.15) : const Color(0xFF101216),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? const Color(0xFF00E676) : Colors.white12,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? const Color(0xFF00E676) : Colors.white70,
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startProductReconstruction({
+    required List<String> paths,
+    required String title,
+    required double voxelSizeMm,
+  }) async {
+    final ValueNotifier<double> progressNotifier = ValueNotifier(0.05);
+    final ValueNotifier<String> statusNotifier =
+        ValueNotifier('جارٍ قراءة الصور وتحليل القنوات والأقنعة...');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: const Color(0xFF181B22),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.view_in_ar_rounded,
+                    color: Color(0xFF00E676),
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'جارٍ بناء المجسم ثلاثي الأبعاد (3D)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                ValueListenableBuilder<String>(
+                  valueListenable: statusNotifier,
+                  builder: (_, status, __) => Text(
+                    status,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ValueListenableBuilder<double>(
+                  valueListenable: progressNotifier,
+                  builder: (_, progress, __) => Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          backgroundColor: Colors.white12,
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: const TextStyle(
+                          color: Color(0xFF00E676),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final result = await ThreeDReconstructionService.reconstructFromImageFiles(
+        filePaths: paths,
+        title: title,
+        voxelSizeMm: voxelSizeMm,
+        onProgress: (status, progress) {
+          statusNotifier.value = status;
+          progressNotifier.value = progress;
+        },
+      );
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        _loadSavedScans();
+
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ThreeDMeshViewerScreen(result: result),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل بناء المجسم ثلاثي الأبعاد: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _pickExternalStl() async {
     HapticFeedback.selectionClick();
     final result = await FilePicker.platform.pickFiles(
@@ -225,13 +722,32 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
                       },
                       icon: const Icon(Icons.camera_rounded, size: 20),
                       label: const Text(
-                        'بدء مسح قطعة جديدة (New 3D Scan)',
+                        'بدء مسح قطعة جديدة (الكاميرا الحية)',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF00C853),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Secondary CTA: Convert Product Images (PNG / JPG) to 3D
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _pickProductImagesAndReconstruct,
+                      icon: const Icon(Icons.add_photo_alternate_rounded, size: 20, color: Color(0xFF00E676)),
+                      label: const Text(
+                        'تحويل صور المنتج (PNG / JPG) إلى مجسم 3D',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF00E676), width: 1.5),
+                        backgroundColor: const Color(0xFF00E676).withValues(alpha: 0.08),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),

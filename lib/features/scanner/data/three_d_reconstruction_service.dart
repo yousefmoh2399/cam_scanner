@@ -58,6 +58,44 @@ class ThreeDReconstructionService {
     };
   }
 
+  /// Reconstructs a complete 3D model from multiple imported product images (PNG, JPG, WEBP).
+  /// Works 100% offline without internet.
+  /// Seamlessly handles transparent PNGs with ground-truth alpha silhouettes.
+  static Future<ThreeDReconstructionResult> reconstructFromImageFiles({
+    required List<String> filePaths,
+    required String title,
+    double voxelSizeMm = 1.4,
+    void Function(String status, double progress)? onProgress,
+  }) async {
+    final count = filePaths.length;
+    final photos = <ThreeDScanPhoto>[];
+    final now = DateTime.now();
+
+    for (var i = 0; i < count; i++) {
+      // Distribute uniformly around 360° orbit
+      final azim = count == 1 ? 0.0 : (i * (360.0 / count));
+      final elev = count == 1 ? 45.0 : 30.0;
+      photos.add(
+        ThreeDScanPhoto(
+          path: filePaths[i],
+          elevationDeg: elev,
+          azimuthDeg: azim,
+          timestamp: now,
+        ),
+      );
+    }
+
+    return reconstructFromPhotos(
+      photos: photos,
+      title: title,
+      config: ThreeDReconstructionConfig(
+        voxelSizeMm: voxelSizeMm,
+        consensusRatio: count >= 4 ? 0.55 : 0.35,
+      ),
+      onProgress: onProgress,
+    );
+  }
+
   /// Runs native multi-view 3D reconstruction and exports a watertight metric STL.
   static Future<ThreeDReconstructionResult> reconstructFromPhotos({
     required List<ThreeDScanPhoto> photos,

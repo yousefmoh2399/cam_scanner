@@ -69,9 +69,44 @@ object ThreeDReconstructionEngine {
         val detectedPaperScale: Double? = null
     )
 
-    private fun loadUprightImage(path: String): Mat? {
-        val raw = Imgcodecs.imread(path, Imgcodecs.IMREAD_COLOR)
+    data class LoadedImage(
+        val bgr: Mat,
+        val alphaMask: Mat? = null
+    )
+
+    private fun loadUprightImage(path: String): LoadedImage? {
+        val raw = Imgcodecs.imread(path, Imgcodecs.IMREAD_UNCHANGED)
         if (raw == null || raw.empty()) return null
+
+        var bgrMat = Mat()
+        var alphaMat: Mat? = null
+
+        if (raw.channels() == 4) {
+            val channels = ArrayList<Mat>()
+            Core.split(raw, channels)
+            val alphaChannel = channels[3]
+
+            val transMask = Mat()
+            Imgproc.threshold(alphaChannel, transMask, 250.0, 255.0, Imgproc.THRESH_BINARY_INV)
+            val transCount = Core.countNonZero(transMask)
+            transMask.release()
+
+            val totalPix = raw.cols() * raw.rows()
+            if (transCount > (totalPix * 0.005)) {
+                val binaryMask = Mat()
+                Imgproc.threshold(alphaChannel, binaryMask, 127.0, 255.0, Imgproc.THRESH_BINARY)
+                alphaMat = binaryMask
+            }
+
+            Imgproc.cvtColor(raw, bgrMat, Imgproc.COLOR_BGRA2BGR)
+            for (c in channels) c.release()
+            raw.release()
+        } else if (raw.channels() == 1) {
+            Imgproc.cvtColor(raw, bgrMat, Imgproc.COLOR_GRAY2BGR)
+            raw.release()
+        } else {
+            bgrMat = raw
+        }
 
         try {
             val exif = ExifInterface(path)
@@ -81,42 +116,64 @@ object ThreeDReconstructionEngine {
             )
             when (orientation) {
                 ExifInterface.ORIENTATION_ROTATE_90 -> {
-                    if (raw.cols() > raw.rows()) {
-                        val rotated = Mat()
-                        Core.rotate(raw, rotated, Core.ROTATE_90_CLOCKWISE)
-                        raw.release()
-                        return rotated
+                    if (bgrMat.cols() > bgrMat.rows()) {
+                        val rotatedBgr = Mat()
+                        Core.rotate(bgrMat, rotatedBgr, Core.ROTATE_90_CLOCKWISE)
+                        bgrMat.release()
+                        bgrMat = rotatedBgr
+
+                        if (alphaMat != null) {
+                            val rotatedAlpha = Mat()
+                            Core.rotate(alphaMat, rotatedAlpha, Core.ROTATE_90_CLOCKWISE)
+                            alphaMat.release()
+                            alphaMat = rotatedAlpha
+                        }
                     }
                 }
                 ExifInterface.ORIENTATION_ROTATE_270 -> {
-                    if (raw.cols() > raw.rows()) {
-                        val rotated = Mat()
-                        Core.rotate(raw, rotated, Core.ROTATE_90_COUNTERCLOCKWISE)
-                        raw.release()
-                        return rotated
+                    if (bgrMat.cols() > bgrMat.rows()) {
+                        val rotatedBgr = Mat()
+                        Core.rotate(bgrMat, rotatedBgr, Core.ROTATE_90_COUNTERCLOCKWISE)
+                        bgrMat.release()
+                        bgrMat = rotatedBgr
+
+                        if (alphaMat != null) {
+                            val rotatedAlpha = Mat()
+                            Core.rotate(alphaMat, rotatedAlpha, Core.ROTATE_90_COUNTERCLOCKWISE)
+                            alphaMat.release()
+                            alphaMat = rotatedAlpha
+                        }
                     }
                 }
                 ExifInterface.ORIENTATION_ROTATE_180 -> {
-                    val rotated = Mat()
-                    Core.rotate(raw, rotated, Core.ROTATE_180)
-                    raw.release()
-                    return rotated
+                    val rotatedBgr = Mat()
+                    Core.rotate(bgrMat, rotatedBgr, Core.ROTATE_180)
+                    bgrMat.release()
+                    bgrMat = rotatedBgr
+
+                    if (alphaMat != null) {
+                        val rotatedAlpha = Mat()
+                        Core.rotate(alphaMat, rotatedAlpha, Core.ROTATE_180)
+                        alphaMat.release()
+                        alphaMat = rotatedAlpha
+                    }
                 }
             }
         } catch (_: Exception) {}
 
-        return raw
+        return LoadedImage(bgr = bgrMat, alphaMask = alphaMat)
     }
 
     fun generateSilhouettePreview(imagePath: String, outPreviewPath: String): Map<String, Any> {
-        val img = loadUprightImage(imagePath)
-        if (img == null || img.empty()) {
+        val loaded = loadUprightImage(imagePath)
+        if (loaded == null || loaded.bgr.empty()) {
             return mapOf(
                 "isClean" to false,
                 "coveragePercent" to 0.0,
                 "message" to "فشل قراءة الصورة للتأكد من العزل"
             )
         }
+        val img = loaded.bgr
         val origW = img.cols()
         val origH = img.rows()
         val scale = 600.0 / max(origW, origH).coerceAtLeast(1)
@@ -127,12 +184,23 @@ object ThreeDReconstructionEngine {
         Imgproc.resize(img, resized, Size(procW.toDouble(), procH.toDouble()), 0.0, 0.0, Imgproc.INTER_AREA)
         img.release()
 
-        val grayMat = Mat()
-        Imgproc.cvtColor(resized, grayMat, Imgproc.COLOR_BGR2GRAY)
+        val maskBytes = ByteArray(procW * procH)
+        val isPngAlpha = loaded.alphaMask != null
 
-        val silResult = extractSmartSilhouette(resized, grayMat, procW, procH)
-        val maskBytes = silResult.maskData
-        grayMat.release()
+        if (loaded.alphaMask != null) {
+            val resizedMask = Mat()
+            Imgproc.resize(loaded.alphaMask, resizedMask, Size(procW.toDouble(), procH.toDouble()), 0.0, 0.0, Imgproc.INTER_NEAREST)
+            loaded.alphaMask.release()
+            resizedMask.get(0, 0, maskBytes)
+            resizedMask.release()
+        } else {
+            val grayMat = Mat()
+            Imgproc.cvtColor(resized, grayMat, Imgproc.COLOR_BGR2GRAY)
+            val silResult = extractSmartSilhouette(resized, grayMat, procW, procH)
+            val extracted = silResult.maskData
+            System.arraycopy(extracted, 0, maskBytes, 0, maskBytes.size)
+            grayMat.release()
+        }
 
         var fgCount = 0
         for (b in maskBytes) {
@@ -161,10 +229,12 @@ object ThreeDReconstructionEngine {
         Imgcodecs.imwrite(outPreviewPath, overlay)
         overlay.release()
 
-        val isClean = coverage in 3.0..75.0
-        val message = if (isClean) {
+        val isClean = coverage in 2.0..85.0
+        val message = if (isPngAlpha) {
+            "تم عزل المنتج بنجاح من الشفافية (PNG) بدقة 100% (${String.format(java.util.Locale.US, "%.1f", coverage)}% من الكادر)"
+        } else if (isClean) {
             "تم عزل المجسم بنجاح (${String.format(java.util.Locale.US, "%.1f", coverage)}% من الكادر)"
-        } else if (coverage < 3.0) {
+        } else if (coverage < 2.0) {
             "المجسم صغير جداً أو تم عزل كل شيء. قرّب الكاميرا أكثر."
         } else {
             "تداخل مع الخلفية. تأكد من وضع المجسم في منتصف الورقة البيضاء."
@@ -192,11 +262,10 @@ object ThreeDReconstructionEngine {
         val count = imagePaths.size
         val nominalRadius = 320.0 // mm comfortable handheld orbit distance
 
-        val defaultElevations = listOf(20.0, 40.0, 60.0, 80.0)
-
         for (i in 0 until count) {
             val path = imagePaths[i]
-            val img = loadUprightImage(path) ?: continue
+            val loaded = loadUprightImage(path) ?: continue
+            val img = loaded.bgr
 
             // Downscale to ~800px on long side for ultra-fast silhouette processing
             val origW = img.cols()
@@ -215,18 +284,30 @@ object ThreeDReconstructionEngine {
             val grayBytes = ByteArray(procW * procH)
             grayMat.get(0, 0, grayBytes)
 
-            // Extract smart silhouette isolating object from substrate/background
-            val silResult = extractSmartSilhouette(resized, grayMat, procW, procH)
-            val maskBytes = silResult.maskData
-            val detectedPaperScale = silResult.detectedPaperScale
+            val maskBytes = ByteArray(procW * procH)
+            var detectedPaperScale: Double? = null
+
+            if (loaded.alphaMask != null) {
+                val resizedMask = Mat()
+                Imgproc.resize(loaded.alphaMask, resizedMask, Size(procW.toDouble(), procH.toDouble()), 0.0, 0.0, Imgproc.INTER_NEAREST)
+                loaded.alphaMask.release()
+                resizedMask.get(0, 0, maskBytes)
+                resizedMask.release()
+            } else {
+                // Extract smart silhouette isolating object from substrate/background
+                val silResult = extractSmartSilhouette(resized, grayMat, procW, procH)
+                val extracted = silResult.maskData
+                System.arraycopy(extracted, 0, maskBytes, 0, maskBytes.size)
+                detectedPaperScale = silResult.detectedPaperScale
+            }
             grayMat.release()
             resized.release()
 
-            // Pose determination: Use supplied sensor angles or distribute uniformly over orbit
-            val elev = elevationsDeg?.getOrNull(i) ?: defaultElevations[(i / 12) % defaultElevations.size]
-            val azim = azimuthsDeg?.getOrNull(i) ?: ((i % 12) * (360.0 / 12.0))
+            // Pose determination: Use supplied sensor angles or distribute uniformly around 360° orbit
+            val elev = elevationsDeg?.getOrNull(i) ?: if (count == 1) 45.0 else 30.0
+            val azim = azimuthsDeg?.getOrNull(i) ?: (i.toDouble() * (360.0 / max(1, count)))
 
-            val elevRad = Math.toRadians(elev.coerceIn(10.0, 88.0))
+            val elevRad = Math.toRadians(elev.coerceIn(5.0, 88.0))
             val azimRad = Math.toRadians(azim)
 
             val camPos = doubleArrayOf(
@@ -235,8 +316,8 @@ object ThreeDReconstructionEngine {
                 nominalRadius * sin(elevRad)
             )
 
-            // Look-at center (0, 0, 15) - physical center of real objects sitting on table
-            val target = doubleArrayOf(0.0, 0.0, 15.0)
+            // Look-at center (0, 0, 0) - geometric origin of physical object
+            val target = doubleArrayOf(0.0, 0.0, 0.0)
             val fwd = doubleArrayOf(
                 target[0] - camPos[0],
                 target[1] - camPos[1],
@@ -296,34 +377,33 @@ object ThreeDReconstructionEngine {
             )
         }
 
-        // Bounding Volume for Volumetric Carving
-        val minX = -105.0; val maxX = 105.0
-        val minY = -105.0; val maxY = 105.0
-        val minZ = 0.0;    val maxZ = 95.0
+        // Bounding Volume for Volumetric Carving (centered around origin)
+        val minX = -85.0; val maxX = 85.0
+        val minY = -85.0; val maxY = 85.0
+        val minZ = -70.0; val maxZ = 70.0
 
-        val step = voxelSizeMm.coerceIn(1.0, 2.5)
+        val step = voxelSizeMm.coerceIn(1.2, 2.5)
         val nx = ((maxX - minX) / step).toInt() + 1
         val ny = ((maxY - minY) / step).toInt() + 1
         val nz = ((maxZ - minZ) / step).toInt() + 1
         val totalVoxels = nx * ny * nz
 
-        // Check if capture is tabletop scan (phone/piece on desk/paper) vs 360° free-standing orbit
+        // Full 360° orbit photogrammetry vs single-view tabletop relief scan
         val azimSpan = computeAzimuthSpan(azimuthsDeg)
-        val isSingleSideScan = azimSpan < 160.0 || count < 6
-        val isTabletopScan = isSingleSideScan || (count < 8) || (elevationsDeg?.all { it >= 15.0 } == true)
+        val isTabletopScan = (count < 3) || (azimuthsDeg != null && azimSpan < 150.0)
 
         var triangles: List<StlTriangle> = emptyList()
 
         if (!isTabletopScan) {
             // Full 360° orbit: Run multi-view space carving for free-standing 3D volume
             val solid = ByteArray(totalVoxels)
-            val effectiveRatio = consensusRatio.coerceIn(0.20, 0.55)
+            val effectiveRatio = consensusRatio.coerceIn(0.25, 0.75)
             var minVotes = if (views.isNotEmpty()) (views.size * effectiveRatio).toInt().coerceAtLeast(1) else 1
 
             var solidCount = runSpaceCarvingPass(solid, nx, ny, nz, minX, minY, minZ, step, views, minVotes)
 
             if (solidCount < 80 && views.isNotEmpty() && minVotes > 1) {
-                minVotes = (views.size * 0.25).toInt().coerceAtLeast(1)
+                minVotes = (views.size * 0.30).toInt().coerceAtLeast(1)
                 solidCount = runSpaceCarvingPass(solid, nx, ny, nz, minX, minY, minZ, step, views, minVotes)
             }
 
@@ -903,8 +983,6 @@ object ThreeDReconstructionEngine {
                 val wy = minY + j * step
                 for (k in 0 until nz) {
                     val wz = minZ + k * step
-
-                    if (wz <= 0.0) continue
 
                     var votes = 0
                     var visibleViews = 0
