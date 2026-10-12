@@ -10,6 +10,7 @@
 -dontwarn com.google.android.play.core.**
 
 # ─── Application Native Scanner & OpenCV 4.9.0 + Tesseract JNI ──────────────
+-keep class com.laqta.scanner.** { *; }
 -keep class com.yourname.docscanner.** { *; }
 -keep class org.opencv.** { *; }
 -keepclassmembers class org.opencv.** { *; }

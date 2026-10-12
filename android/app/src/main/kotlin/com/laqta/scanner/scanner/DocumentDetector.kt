@@ -1,4 +1,4 @@
-package com.yourname.docscanner.scanner
+package com.laqta.scanner.scanner
 
 import org.opencv.core.Core
 import org.opencv.core.Mat

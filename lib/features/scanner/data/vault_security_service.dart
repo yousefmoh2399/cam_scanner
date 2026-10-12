@@ -71,7 +71,7 @@ class VaultSecuritySettings {
 /// with real on-disk AES-256-GCM encryption (`cryptography` + Android Keystore via `FlutterSecureStorage`).
 class VaultSecurityService {
   static const MethodChannel _scannerChannel =
-      MethodChannel('com.yourname.docscanner/scanner');
+      MethodChannel('com.laqta.scanner/scanner');
 
   static const _keyMasterAes = 'vault_master_aes256_key_v1';
   static const _keyPinHash = 'vault_pin_sha256_hash_v1';

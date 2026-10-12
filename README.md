@@ -15,11 +15,7 @@
 
 ---
 
-## 📦 تغيير المعرّف النهائي للتطبيق (`applicationId` / Package)
+## 📦 معرّف التطبيق النهائي (Application ID / Package)
 
-تم ضبط المعرّف الحالي على القيمة القياسية: `com.yourname.docscanner`.
-لتغييره إلى اسم شركتك أو نطاقك الخاص، عدّل المواضع الـ 3 التالية فقط:
-1. `android/app/build.gradle.kts`: غيّر `namespace = "com.yourname.docscanner"` و`applicationId = "com.yourname.docscanner"`.
-2. `android/app/proguard-rules.pro`: غيّر `-keep class com.yourname.docscanner.** { *; }`.
-3. مجلد ملفات Kotlin في `android/app/src/main/kotlin/com/yourname/docscanner/`: غيّر مسار المجلد وسطر `package com.yourname.docscanner` في أول كل ملف.
-*(ملاحظة: اسم قناة الاتصال `ismart/doc_scanner` مستقل عن اسم الحزمة ولا يحتاج لتغيير).*
+تم ضبط المعرّف الرسمي للتطبيق على: `com.laqta.scanner` وهو متوافق ومعتمد في Google Play Console.
+جميع ملفات Kotlin وإعدادات Gradle وProguard مهيأة الآن تحت `com.laqta.scanner`.

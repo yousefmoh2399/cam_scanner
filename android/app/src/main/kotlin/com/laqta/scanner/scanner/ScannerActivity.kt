@@ -1,4 +1,4 @@
-package com.yourname.docscanner.scanner
+package com.laqta.scanner.scanner
 
 import android.Manifest
 import android.annotation.SuppressLint

@@ -1,4 +1,4 @@
-package com.yourname.docscanner
+package com.laqta.scanner
 
 import android.content.Intent
 import android.service.quicksettings.TileService

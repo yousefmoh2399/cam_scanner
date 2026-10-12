@@ -36,12 +36,17 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   // Mock native channels
-  const scannerChannel = MethodChannel('com.yourname.docscanner/scanner');
+  const scannerChannel = MethodChannel('com.laqta.scanner/scanner');
+  const legacyScannerChannel = MethodChannel('com.yourname.docscanner/scanner');
   const bridgeChannel = MethodChannel('ismart/doc_scanner');
 
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(scannerChannel, (MethodCall methodCall) async {
+      return null;
+    });
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(legacyScannerChannel, (MethodCall methodCall) async {
       return null;
     });
 
@@ -71,6 +76,8 @@ void main() {
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(scannerChannel, null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(legacyScannerChannel, null);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(bridgeChannel, null);
   });

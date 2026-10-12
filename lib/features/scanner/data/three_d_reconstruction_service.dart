@@ -12,7 +12,7 @@ import 'models/three_d_scan_models.dart';
 class ThreeDReconstructionService {
   static const MethodChannel _channel = MethodChannel('ismart/doc_scanner');
   static const EventChannel _orientationChannel =
-      EventChannel('com.yourname.docscanner/device_orientation');
+      EventChannel('com.laqta.scanner/device_orientation');
 
   /// Streams live device pitch (tilt 0°-90°) and azimuth (orbit heading 0°-360°).
   static Stream<Map<String, double>> get deviceOrientationStream {

@@ -1,4 +1,4 @@
-package com.yourname.docscanner
+package com.laqta.scanner
 
 import android.app.Activity
 import android.content.Intent
@@ -6,10 +6,10 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.SystemClock
 import com.googlecode.tesseract.android.TessBaseAPI
-import com.yourname.docscanner.scanner.DocumentDetector
-import com.yourname.docscanner.scanner.ImageFilters
-import com.yourname.docscanner.scanner.ScannerActivity
-import com.yourname.docscanner.scanner.ThreeDReconstructionEngine
+import com.laqta.scanner.scanner.DocumentDetector
+import com.laqta.scanner.scanner.ImageFilters
+import com.laqta.scanner.scanner.ScannerActivity
+import com.laqta.scanner.scanner.ThreeDReconstructionEngine
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import android.hardware.Sensor
@@ -36,6 +36,7 @@ import kotlin.math.max
 class MainActivity : FlutterFragmentActivity() {
     private val docScannerChannel = "ismart/doc_scanner"
     private val altScannerChannel = "com.yourname.docscanner/scanner"
+    private val laqtaScannerChannel = "com.laqta.scanner/scanner"
     private val REQUEST_CODE_SCANNER = 0x534341
     private var pendingScannerResult: MethodChannel.Result? = null
     private val mainScope = CoroutineScope(Dispatchers.Main)
@@ -773,9 +774,11 @@ class MainActivity : FlutterFragmentActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, docScannerChannel).setMethodCallHandler(handler)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, altScannerChannel).setMethodCallHandler(handler)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, laqtaScannerChannel).setMethodCallHandler(handler)
 
         val orientationChannel = EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.yourname.docscanner/device_orientation")
-        orientationChannel.setStreamHandler(object : EventChannel.StreamHandler, SensorEventListener {
+        val laqtaOrientationChannel = EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.laqta.scanner/device_orientation")
+        val orientationStreamHandler = object : EventChannel.StreamHandler, SensorEventListener {
             private var sensorManager: SensorManager? = null
             private var rotationSensor: Sensor? = null
             private var eventSink: EventChannel.EventSink? = null
@@ -818,7 +821,9 @@ class MainActivity : FlutterFragmentActivity() {
             }
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-        })
+        }
+        orientationChannel.setStreamHandler(orientationStreamHandler)
+        laqtaOrientationChannel.setStreamHandler(orientationStreamHandler)
     }
 
     private fun replyScannerResult(block: (MethodChannel.Result) -> Unit) {
@@ -902,7 +907,7 @@ class MainActivity : FlutterFragmentActivity() {
             try {
                 val uriStr = uri.toString()
                 // Never re-import internal files belonging to the app
-                if (uriStr.contains(packageName) || uriStr.contains("com.yourname.docscanner") || uriStr.contains("Exports")) {
+                if (uriStr.contains(packageName) || uriStr.contains("com.laqta.scanner") || uriStr.contains("com.yourname.docscanner") || uriStr.contains("Exports")) {
                     continue
                 }
                 val mime = contentResolver.getType(uri) ?: ""
@@ -936,6 +941,7 @@ class MainActivity : FlutterFragmentActivity() {
             flutterEngine?.dartExecutor?.binaryMessenger?.let {
                 MethodChannel(it, docScannerChannel).invokeMethod("onQuickAction", action)
                 MethodChannel(it, altScannerChannel).invokeMethod("onQuickAction", action)
+                MethodChannel(it, laqtaScannerChannel).invokeMethod("onQuickAction", action)
             }
         }
         if (newIntent.getBooleanExtra("run_ocr_benchmark", false)) {

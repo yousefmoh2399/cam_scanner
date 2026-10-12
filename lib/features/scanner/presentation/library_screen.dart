@@ -235,7 +235,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   Future<void> _consumeSharedIncomingFiles() async {
     if (!Platform.isAndroid) return;
     try {
-      const channel = MethodChannel('com.yourname.docscanner/scanner');
+      const channel = MethodChannel('com.laqta.scanner/scanner');
       final rawList =
           await channel.invokeMethod<List<dynamic>>('consumeIncomingFiles');
       if (rawList == null || rawList.isEmpty) return;
@@ -256,7 +256,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
         // Never re-import internal files generated or exported by our app
         final normalized = item.replaceAll('\\', '/');
-        if (normalized.contains('com.yourname.docscanner') ||
+        if (normalized.contains('com.laqta.scanner') ||
+            normalized.contains('com.yourname.docscanner') ||
             normalized.contains('app_flutter') ||
             normalized.contains('/Exports/') ||
             normalized.contains('/Documents/') ||

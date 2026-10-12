@@ -8,8 +8,8 @@
         android:shortcutLongLabel="@string/shortcut_quick_scan_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.yourname.docscanner"
-            android:targetClass="com.yourname.docscanner.MainActivity">
+            android:targetPackage="com.laqta.scanner"
+            android:targetClass="com.laqta.scanner.MainActivity">
             <extra android:name="quick_action" android:value="scan" />
         </intent>
     </shortcut>
@@ -21,8 +21,8 @@
         android:shortcutLongLabel="@string/shortcut_gov_docs_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.yourname.docscanner"
-            android:targetClass="com.yourname.docscanner.MainActivity">
+            android:targetPackage="com.laqta.scanner"
+            android:targetClass="com.laqta.scanner.MainActivity">
             <extra android:name="quick_action" android:value="gov" />
         </intent>
     </shortcut>
@@ -34,8 +34,8 @@
         android:shortcutLongLabel="@string/shortcut_vault_long">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="com.yourname.docscanner"
-            android:targetClass="com.yourname.docscanner.MainActivity">
+            android:targetPackage="com.laqta.scanner"
+            android:targetClass="com.laqta.scanner.MainActivity">
             <extra android:name="quick_action" android:value="vault" />
         </intent>
     </shortcut>
