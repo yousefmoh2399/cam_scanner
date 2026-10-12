@@ -635,424 +635,155 @@ object ThreeDReconstructionEngine {
         val vx = cos(angleRad)
         val vy = sin(angleRad)
 
-        if (isPhone) {
-            // =========================================================================
-            // PIPELINE 1: CANONICAL PARAMETRIC SMARTPHONE 3D CAD MODEL (100% Watertight)
-            // =========================================================================
-            val targetWidthMm = 74.0
-            val targetLongMm = 158.0
-            val targetThicknessMm = 8.2
-            val halfW = targetWidthMm / 2.0
-            val halfL = targetLongMm / 2.0
-            val cornerR = 9.5
-            val filletR = 2.2
-            val scaleMmPerPx = targetLongMm / longPx
+        // Simplified boundary contour in object space (sub-pixel accurate)
+        val approx = MatOfPoint2f()
+        val peri = Imgproc.arcLength(c2f, true)
+        Imgproc.approxPolyDP(c2f, approx, (peri * 0.0028).coerceIn(1.0, 3.2), true)
+        val polyPts = approx.toArray()
+        approx.release()
 
-            // Phone Camera Island specs (Modern triple camera layout)
-            val islandX1 = -halfW + 3.5
-            val islandX2 = -halfW + 36.5
-            val islandY1 = halfL - 42.0
-            val islandY2 = halfL - 4.5
+        val N = polyPts.size
+        if (N < 3) {
+            c2f.release()
+            for (c in contours) c.release()
+            return list
+        }
 
-            val lens1X = -halfW + 14.5; val lens1Y = halfL - 16.5; val lens1R = 6.2
-            val lens2X = -halfW + 14.5; val lens2Y = halfL - 30.5; val lens2R = 6.2
-            val lens3X = -halfW + 26.5; val lens3Y = halfL - 23.5; val lens3R = 5.0
-            val flashX = -halfW + 26.5; val flashY = halfL - 12.0; val flashR = 3.2
-            val lidarX = -halfW + 26.5; val lidarY = halfL - 34.0; val lidarR = 2.2
-
-            fun isInsidePhone(px: Double, py: Double): Boolean {
-                val ax = abs(px); val ay = abs(py)
-                if (ax > halfW || ay > halfL) return false
-                val dx = max(0.0, ax - (halfW - cornerR))
-                val dy = max(0.0, ay - (halfL - cornerR))
-                return (dx * dx + dy * dy) <= (cornerR * cornerR)
-            }
-
-            fun getDistToEdge(px: Double, py: Double): Double {
-                val ax = abs(px); val ay = abs(py)
-                val dx = max(0.0, ax - (halfW - cornerR))
-                val dy = max(0.0, ay - (halfL - cornerR))
-                return if (ax > (halfW - cornerR) && ay > (halfL - cornerR)) {
-                    cornerR - sqrt(dx * dx + dy * dy)
-                } else {
-                    min(halfW - ax, halfL - ay)
-                }
-            }
-
-            fun clampToPhone(px: Double, py: Double): Pair<Double, Double> {
-                var cx = px.coerceIn(-halfW, halfW)
-                var cy = py.coerceIn(-halfL, halfL)
-                val ax = abs(cx); val ay = abs(cy)
-                if (ax > (halfW - cornerR) && ay > (halfL - cornerR)) {
-                    val cornerCenterX = if (cx > 0) halfW - cornerR else -halfW + cornerR
-                    val cornerCenterY = if (cy > 0) halfL - cornerR else -halfL + cornerR
-                    val diffX = cx - cornerCenterX
-                    val diffY = cy - cornerCenterY
-                    val len = hypot(diffX, diffY)
-                    if (len > cornerR && len > 1e-6) {
-                        cx = cornerCenterX + (diffX / len) * cornerR
-                        cy = cornerCenterY + (diffY / len) * cornerR
-                    }
-                }
-                return Pair(cx, cy)
-            }
-
-            fun getPhoneZ(px: Double, py: Double): Double {
-                val dEdge = max(0.0, getDistToEdge(px, py))
-                var z = if (dEdge < filletR) {
-                    val f = (dEdge / filletR).coerceIn(0.0, 1.0)
-                    targetThicknessMm * sqrt(1.0 - (1.0 - f) * (1.0 - f))
-                } else {
-                    targetThicknessMm
-                }
-
-                // Camera Island
-                if (px in islandX1..islandX2 && py in islandY1..islandY2) {
-                    val dIsland = min(min(px - islandX1, islandX2 - px), min(py - islandY1, islandY2 - py))
-                    val chamfer = (dIsland / 1.0).coerceIn(0.0, 1.0)
-                    z += 1.8 * chamfer
-
-                    val d1 = hypot(px - lens1X, py - lens1Y)
-                    if (d1 < lens1R) z += if (d1 >= 4.2) 0.70 else -0.35
-                    val d2 = hypot(px - lens2X, py - lens2Y)
-                    if (d2 < lens2R) z += if (d2 >= 4.2) 0.70 else -0.35
-                    val d3 = hypot(px - lens3X, py - lens3Y)
-                    if (d3 < lens3R) z += if (d3 >= 3.2) 0.60 else -0.30
-                    val dFl = hypot(px - flashX, py - flashY)
-                    if (dFl < flashR) z += 0.35
-                    val dLi = hypot(px - lidarX, py - lidarY)
-                    if (dLi < lidarR) z -= 0.40
-                }
-
-                // Top speaker slit
-                if (abs(px) <= 6.5 && py in (halfL - 3.8)..(halfL - 2.2)) {
-                    z -= 0.85
-                }
-
-                // Front camera punch hole
-                val dHole = hypot(px, py - (halfL - 9.0))
-                if (dHole < 1.8) {
-                    z -= 0.45
-                }
-
-                // Photometric micro-relief from image contrast (logos, textures)
-                val imgPx = (centerPxX + (px * vx + py * ux) / scaleMmPerPx).toInt().coerceIn(0, procW - 1)
-                val imgPy = (centerPxY + (px * vy + py * uy) / scaleMmPerPx).toInt().coerceIn(0, procH - 1)
-                val gVal = grayBytes[imgPy * procW + imgPx].toInt() and 0xFF
-                val bVal = blurBytes[imgPy * procW + imgPx].toInt() and 0xFF
-                val diff = (gVal - bVal).toDouble()
-                z += (diff / 128.0) * 0.25
-
-                return max(targetThicknessMm * 0.25, z)
-            }
-
-            // Build smooth height field grid with 1.1mm step
-            val delta = 1.1 // mm
-            val NX = ((targetWidthMm + 1.0) / delta).toInt() + 1
-            val NY = ((targetLongMm + 1.0) / delta).toInt() + 1
-            val startX = -halfW
-            val startY = -halfL
-
-            val active = Array(NX) { BooleanArray(NY) }
-            val nodeX = Array(NX + 1) { DoubleArray(NY + 1) }
-            val nodeY = Array(NX + 1) { DoubleArray(NY + 1) }
-            val nodeZ = Array(NX + 1) { DoubleArray(NY + 1) }
-
-            for (i in 0..NX) {
-                val rawX = startX + i * delta
-                for (j in 0..NY) {
-                    val rawY = startY + j * delta
-                    val clamped = clampToPhone(rawX, rawY)
-                    nodeX[i][j] = clamped.first
-                    nodeY[i][j] = clamped.second
-                    nodeZ[i][j] = getPhoneZ(clamped.first, clamped.second)
-                }
-            }
-
-            for (i in 0 until NX) {
-                for (j in 0 until NY) {
-                    val cx = startX + (i + 0.5) * delta
-                    val cy = startY + (j + 0.5) * delta
-                    active[i][j] = isInsidePhone(cx, cy)
-                }
-            }
-
-            fun isCellActive(ci: Int, cj: Int): Boolean {
-                if (ci !in 0 until NX || cj !in 0 until NY) return false
-                return active[ci][cj]
-            }
-
-            val normDown = Vec3(0.0, 0.0, -1.0)
-
-            for (i in 0 until NX) {
-                for (j in 0 until NY) {
-                    if (!active[i][j]) continue
-
-                    val x00 = nodeX[i][j];     val y00 = nodeY[i][j];     val z00 = nodeZ[i][j]
-                    val x10 = nodeX[i + 1][j]; val y10 = nodeY[i + 1][j]; val z10 = nodeZ[i + 1][j]
-                    val x11 = nodeX[i + 1][j + 1]; val y11 = nodeY[i + 1][j + 1]; val z11 = nodeZ[i + 1][j + 1]
-                    val x01 = nodeX[i][j + 1]; val y01 = nodeY[i][j + 1]; val z01 = nodeZ[i][j + 1]
-
-                    val t00 = Vec3(x00, y00, z00)
-                    val t10 = Vec3(x10, y10, z10)
-                    val t11 = Vec3(x11, y11, z11)
-                    val t01 = Vec3(x01, y01, z01)
-
-                    val b00 = Vec3(x00, y00, 0.0)
-                    val b10 = Vec3(x10, y10, 0.0)
-                    val b11 = Vec3(x11, y11, 0.0)
-                    val b01 = Vec3(x01, y01, 0.0)
-
-                    // 1. Top Face (Height Field Surface)
-                    val nTop1 = computeNormal(t00, t10, t11)
-                    list.add(StlTriangle(t00, t10, t11, nTop1))
-
-                    val nTop2 = computeNormal(t00, t11, t01)
-                    list.add(StlTriangle(t00, t11, t01, nTop2))
-
-                    // 2. Bottom Face (Flat base on print bed)
-                    list.add(StlTriangle(b00, b11, b10, normDown))
-                    list.add(StlTriangle(b00, b01, b11, normDown))
-
-                    // 3. Side Walls
-                    if (!isCellActive(i - 1, j)) {
-                        val nWall = computeNormal(b00, b01, t01)
-                        list.add(StlTriangle(b00, b01, t01, nWall))
-                        list.add(StlTriangle(b00, t01, t00, nWall))
-                    }
-                    if (!isCellActive(i + 1, j)) {
-                        val nWall = computeNormal(b11, b10, t10)
-                        list.add(StlTriangle(b11, b10, t10, nWall))
-                        list.add(StlTriangle(b11, t10, t11, nWall))
-                    }
-                    if (!isCellActive(i, j - 1)) {
-                        val nWall = computeNormal(b10, b00, t00)
-                        list.add(StlTriangle(b10, b00, t00, nWall))
-                        list.add(StlTriangle(b10, t00, t10, nWall))
-                    }
-                    if (!isCellActive(i, j + 1)) {
-                        val nWall = computeNormal(b01, b11, t11)
-                        list.add(StlTriangle(b01, b11, t11, nWall))
-                        list.add(StlTriangle(b01, t11, t01, nWall))
-                    }
-                }
-            }
-        } else if (objectType == "box") {
-            // =========================================================================
-            // PIPELINE 2: CLEAN CONTOUR POLYGON PRISM FOR BOXES (Ear-Clipping)
-            // =========================================================================
-            val approx = MatOfPoint2f()
-            val peri = Imgproc.arcLength(c2f, true)
-            Imgproc.approxPolyDP(c2f, approx, (peri * 0.0035).coerceIn(1.2, 5.0), true)
-            val polyPts = approx.toArray()
-            approx.release()
-
-            val polySize = polyPts.size
-            if (polySize >= 3) {
-                val scaleCam = (220.0 / v.fx).coerceIn(0.18, 0.40)
-                val targetThicknessMm = (min(shortPx * scaleCam, longPx * scaleCam) * 0.30).coerceIn(6.0, 22.0)
-
-                val polyMm = ArrayList<Point2D>()
-                for (pt in polyPts) {
-                    val xm = (pt.x - centerPxX) * scaleCam
-                    val ym = -(pt.y - centerPxY) * scaleCam
-                    polyMm.add(Point2D(xm, ym))
-                }
-
-                val earTriangles = triangulatePolygonEarClipping(polyMm)
-                val normUp = Vec3(0.0, 0.0, 1.0)
-                val normDown = Vec3(0.0, 0.0, -1.0)
-
-                for (tri in earTriangles) {
-                    val pA = tri.first; val pB = tri.second; val pC = tri.third
-                    list.add(StlTriangle(Vec3(pA.x, pA.y, targetThicknessMm), Vec3(pB.x, pB.y, targetThicknessMm), Vec3(pC.x, pC.y, targetThicknessMm), normUp))
-                    list.add(StlTriangle(Vec3(pA.x, pA.y, 0.0), Vec3(pC.x, pC.y, 0.0), Vec3(pB.x, pB.y, 0.0), normDown))
-                }
-
-                for (k in 0 until polySize) {
-                    val p1 = polyMm[k]
-                    val p2 = polyMm[(k + 1) % polySize]
-                    val t1 = Vec3(p1.x, p1.y, targetThicknessMm)
-                    val t2 = Vec3(p2.x, p2.y, targetThicknessMm)
-                    val b1 = Vec3(p1.x, p1.y, 0.0)
-                    val b2 = Vec3(p2.x, p2.y, 0.0)
-                    val nWall = computeNormal(b1, b2, t2)
-                    list.add(StlTriangle(b1, b2, t2, nWall))
-                    list.add(StlTriangle(b1, t2, t1, nWall))
-                }
-            }
+        // Scale factor: millimeters per pixel
+        val scaleMmPerPx = if (v.detectedPaperScale != null && v.detectedPaperScale in 0.10..0.85) {
+            v.detectedPaperScale
+        } else if (isPhone) {
+            158.0 / longPx
         } else {
-            // =========================================================================
-            // PIPELINE 3: AUTHENTIC PRODUCT 3D MESH (Distance-Transform Fillet + Photometric Relief)
-            // Reconstructs the REAL object using its exact silhouette contour, natural curvature,
-            // and real surface relief from the photo (100% Watertight 2-Manifold).
-            // =========================================================================
-            val scaleMmPerPx = if (v.detectedPaperScale != null && v.detectedPaperScale in 0.10..0.85) {
-                v.detectedPaperScale
-            } else {
-                val targetLongMm = (longPx * (220.0 / v.fx)).coerceIn(60.0, 180.0)
-                targetLongMm / longPx
-            }
+            val targetLongMm = (longPx * (220.0 / v.fx)).coerceIn(60.0, 180.0)
+            targetLongMm / longPx
+        }
 
-            val targetWidthMm = shortPx * scaleMmPerPx
-            val targetLongMm = longPx * scaleMmPerPx
-            val halfW = targetWidthMm / 2.0
-            val halfL = targetLongMm / 2.0
-            val targetThicknessMm = (targetWidthMm * 0.28).coerceIn(6.0, 36.0)
+        val targetWidthMm = shortPx * scaleMmPerPx
+        val targetLongMm = longPx * scaleMmPerPx
+        val halfW = targetWidthMm / 2.0
+        val halfL = targetLongMm / 2.0
 
-            // Compute Euclidean Distance Transform of the object silhouette
-            val objMask = Mat.zeros(Size(procW.toDouble(), procH.toDouble()), CvType.CV_8UC1)
-            Imgproc.drawContours(objMask, listOf(bestC), -1, Scalar(255.0), -1)
+        val targetThicknessMm = if (isPhone) 8.2 else (targetWidthMm * 0.28).coerceIn(6.0, 35.0)
+        val zRim = if (isPhone) 5.6 else targetThicknessMm * 0.55
+        val bevelR = if (isPhone) 2.2 else min(5.0, (targetWidthMm * 0.15)).coerceAtLeast(1.2)
 
-            val distMat = Mat()
-            Imgproc.distanceTransform(objMask, distMat, Imgproc.DIST_L2, 5)
-            val distFloats = FloatArray(procW * procH)
-            distMat.get(0, 0, distFloats)
-            distMat.release()
-            objMask.release()
+        // Convert polygon vertices to centered object coordinates (mm)
+        val polyMm = ArrayList<Point2D>(N)
+        for (pt in polyPts) {
+            val dx = pt.x - centerPxX
+            val dy = pt.y - centerPxY
+            // Conformal orthogonal projection
+            val xm = (dx * vx + dy * vy) * scaleMmPerPx
+            val ym = (dx * ux + dy * uy) * scaleMmPerPx
+            polyMm.add(Point2D(xm, ym))
+        }
 
-            var maxDistPx = 1.0f
-            for (d in distFloats) {
-                if (d > maxDistPx) maxDistPx = d
-            }
-            val maxDistMm = maxDistPx * scaleMmPerPx
-            val filletR = min(6.0, maxDistMm * 0.35).coerceAtLeast(1.5)
+        // Camera island bounds for smartphone (if phone mode)
+        val islandX1 = -halfW + 3.5; val islandX2 = -halfW + 36.5
+        val islandY1 = halfL - 42.0; val islandY2 = halfL - 4.5
+        val lens1X = -halfW + 14.5;  val lens1Y = halfL - 16.5; val lens1R = 6.2
+        val lens2X = -halfW + 14.5;  val lens2Y = halfL - 30.5; val lens2R = 6.2
+        val lens3X = -halfW + 26.5;  val lens3Y = halfL - 23.5; val lens3R = 5.0
 
-            fun getProductZ(xm: Double, ym: Double): Double {
-                val dx = (xm * vx - ym * ux) / scaleMmPerPx
-                val dy = (xm * vy - ym * uy) / scaleMmPerPx
-                val px = (centerPxX + dx).toInt().coerceIn(0, procW - 1)
-                val py = (centerPxY + dy).toInt().coerceIn(0, procH - 1)
+        fun getZAtPoint(pt: Point2D): Double {
+            val closest = closestPointOnPolygon(pt, polyMm)
+            val dEdge = hypot(pt.x - closest.x, pt.y - closest.y)
 
-                var dPx = distFloats[py * procW + px]
-                if (dPx <= 0.1f) {
-                    var foundD = 0.0f
-                    for (oy in -1..1) {
-                        for (ox in -1..1) {
-                            val sx = (px + ox).coerceIn(0, procW - 1)
-                            val sy = (py + oy).coerceIn(0, procH - 1)
-                            val sd = distFloats[sy * procW + sx]
-                            if (sd > foundD) foundD = sd
-                        }
-                    }
-                    dPx = foundD
+            // Smooth bevel rising from zRim at edge up to targetThicknessMm in plateau
+            val u = (dEdge / bevelR).coerceIn(0.0, 1.0)
+            var z = zRim + (targetThicknessMm - zRim) * sqrt(1.0 - (1.0 - u) * (1.0 - u))
+
+            // Photometric relief from image contrast
+            val dx = (pt.x * vx + pt.y * ux) / scaleMmPerPx
+            val dy = (pt.x * vy + pt.y * uy) / scaleMmPerPx
+            val px = (centerPxX + dx).toInt().coerceIn(0, procW - 1)
+            val py = (centerPxY + dy).toInt().coerceIn(0, procH - 1)
+
+            val gVal = grayBytes[py * procW + px].toInt() and 0xFF
+            val bVal = blurBytes[py * procW + px].toInt() and 0xFF
+            val diff = (gVal - bVal).toDouble()
+            val edgeFade = (dEdge / 0.8).coerceIn(0.0, 1.0)
+            val reliefMm = (diff / 128.0) * (targetThicknessMm * 0.05).coerceIn(0.15, 0.70) * edgeFade
+            z += reliefMm
+
+            if (isPhone) {
+                // Raised Camera Bump
+                if (pt.x in islandX1..islandX2 && pt.y in islandY1..islandY2) {
+                    val dIsland = min(min(pt.x - islandX1, islandX2 - pt.x), min(pt.y - islandY1, islandY2 - pt.y))
+                    val chamfer = (dIsland / 1.0).coerceIn(0.0, 1.0)
+                    z += 1.6 * chamfer
+
+                    val d1 = hypot(pt.x - lens1X, pt.y - lens1Y)
+                    if (d1 < lens1R) z += if (d1 >= 4.2) 0.65 else -0.30
+                    val d2 = hypot(pt.x - lens2X, pt.y - lens2Y)
+                    if (d2 < lens2R) z += if (d2 >= 4.2) 0.65 else -0.30
+                    val d3 = hypot(pt.x - lens3X, pt.y - lens3Y)
+                    if (d3 < lens3R) z += if (d3 >= 3.2) 0.55 else -0.25
                 }
-                if (dPx <= 0.05f) return targetThicknessMm * 0.15
-
-                val dMm = dPx * scaleMmPerPx
-                val zBase = if (dMm < filletR) {
-                    val u = (dMm / filletR).coerceIn(0.0, 1.0)
-                    targetThicknessMm * sqrt(1.0 - (1.0 - u) * (1.0 - u))
-                } else {
-                    val v = ((dMm - filletR) / (maxDistMm - filletR + 1e-5)).coerceIn(0.0, 1.0)
-                    targetThicknessMm * (1.0 + 0.10 * sin(v * Math.PI / 2.0))
-                }
-
-                val gVal = grayBytes[py * procW + px].toInt() and 0xFF
-                val bVal = blurBytes[py * procW + px].toInt() and 0xFF
-                val diff = (gVal - bVal).toDouble()
-                val reliefMm = (diff / 128.0) * (targetThicknessMm * 0.06).coerceIn(0.2, 0.9)
-
-                return max(targetThicknessMm * 0.15, zBase + reliefMm)
-            }
-
-            fun isCellInProduct(xm: Double, ym: Double): Boolean {
-                val dx = (xm * vx - ym * ux) / scaleMmPerPx
-                val dy = (xm * vy - ym * uy) / scaleMmPerPx
-                val px = (centerPxX + dx).toInt()
-                val py = (centerPxY + dy).toInt()
-                if (px !in 0 until procW || py !in 0 until procH) return false
-                return distFloats[py * procW + px] > 0.4f
-            }
-
-            val delta = 1.2
-            val NX = ((targetWidthMm + 2.0) / delta).toInt() + 1
-            val NY = ((targetLongMm + 2.0) / delta).toInt() + 1
-            val startX = -halfW - 1.0
-            val startY = -halfL - 1.0
-
-            val active = Array(NX) { BooleanArray(NY) }
-            val nodeX = Array(NX + 1) { DoubleArray(NY + 1) }
-            val nodeY = Array(NX + 1) { DoubleArray(NY + 1) }
-            val nodeZ = Array(NX + 1) { DoubleArray(NY + 1) }
-
-            for (i in 0..NX) {
-                val rawX = startX + i * delta
-                for (j in 0..NY) {
-                    val rawY = startY + j * delta
-                    nodeX[i][j] = rawX
-                    nodeY[i][j] = rawY
-                    nodeZ[i][j] = getProductZ(rawX, rawY)
+                // Top speaker slit
+                if (abs(pt.x) <= 6.5 && pt.y in (halfL - 3.8)..(halfL - 2.2)) {
+                    z -= 0.80
                 }
             }
 
-            for (i in 0 until NX) {
-                for (j in 0 until NY) {
-                    val cx = startX + (i + 0.5) * delta
-                    val cy = startY + (j + 0.5) * delta
-                    active[i][j] = isCellInProduct(cx, cy)
-                }
+            return max(zRim * 0.5, z)
+        }
+
+        // 1. Bottom Face: Flat at Z = 0 via Ear-Clipping (sealed to base)
+        val earTriangles = triangulatePolygonEarClipping(polyMm)
+        val normDown = Vec3(0.0, 0.0, -1.0)
+        for (tri in earTriangles) {
+            val pA = tri.first; val pB = tri.second; val pC = tri.third
+            list.add(StlTriangle(
+                Vec3(pA.x, pA.y, 0.0),
+                Vec3(pC.x, pC.y, 0.0),
+                Vec3(pB.x, pB.y, 0.0),
+                normDown
+            ))
+        }
+
+        // 2. Vertical Clean Quad Side Walls: Connect (0.0) to (zRim) with zero stair-steps
+        for (k in 0 until N) {
+            val p1 = polyMm[k]
+            val p2 = polyMm[(k + 1) % N]
+            val b1 = Vec3(p1.x, p1.y, 0.0)
+            val b2 = Vec3(p2.x, p2.y, 0.0)
+            val t1 = Vec3(p1.x, p1.y, zRim)
+            val t2 = Vec3(p2.x, p2.y, zRim)
+            val nWall = computeNormal(b1, b2, t2)
+            list.add(StlTriangle(b1, b2, t2, nWall))
+            list.add(StlTriangle(b1, t2, t1, nWall))
+        }
+
+        // 3. Top Surface: Subdivided Conforming Triangular Mesh
+        // Subdivide Ear-Clipped triangles to depth 2 (each triangle -> 16 subtriangles)
+        // This gives high-resolution curvature & photometric relief while sealing 100% to t1, t2
+        data class Tri2D(val a: Point2D, val b: Point2D, val c: Point2D)
+        var topTriangles = earTriangles.map { Tri2D(it.first, it.second, it.third) }
+
+        val subdivDepth = 2
+        for (d in 0 until subdivDepth) {
+            val nextList = ArrayList<Tri2D>(topTriangles.size * 4)
+            for (tri in topTriangles) {
+                val ab = Point2D((tri.a.x + tri.b.x) * 0.5, (tri.a.y + tri.b.y) * 0.5)
+                val bc = Point2D((tri.b.x + tri.c.x) * 0.5, (tri.b.y + tri.c.y) * 0.5)
+                val ca = Point2D((tri.c.x + tri.a.x) * 0.5, (tri.c.y + tri.a.y) * 0.5)
+
+                nextList.add(Tri2D(tri.a, ab, ca))
+                nextList.add(Tri2D(ab, tri.b, bc))
+                nextList.add(Tri2D(ca, bc, tri.c))
+                nextList.add(Tri2D(ab, bc, ca))
             }
+            topTriangles = nextList
+        }
 
-            fun isCellActive(ci: Int, cj: Int): Boolean {
-                if (ci !in 0 until NX || cj !in 0 until NY) return false
-                return active[ci][cj]
-            }
-
-            val normDown = Vec3(0.0, 0.0, -1.0)
-
-            for (i in 0 until NX) {
-                for (j in 0 until NY) {
-                    if (!active[i][j]) continue
-
-                    val x00 = nodeX[i][j];     val y00 = nodeY[i][j];     val z00 = nodeZ[i][j]
-                    val x10 = nodeX[i + 1][j]; val y10 = nodeY[i + 1][j]; val z10 = nodeZ[i + 1][j]
-                    val x11 = nodeX[i + 1][j + 1]; val y11 = nodeY[i + 1][j + 1]; val z11 = nodeZ[i + 1][j + 1]
-                    val x01 = nodeX[i][j + 1]; val y01 = nodeY[i][j + 1]; val z01 = nodeZ[i][j + 1]
-
-                    val t00 = Vec3(x00, y00, z00)
-                    val t10 = Vec3(x10, y10, z10)
-                    val t11 = Vec3(x11, y11, z11)
-                    val t01 = Vec3(x01, y01, z01)
-
-                    val b00 = Vec3(x00, y00, 0.0)
-                    val b10 = Vec3(x10, y10, 0.0)
-                    val b11 = Vec3(x11, y11, 0.0)
-                    val b01 = Vec3(x01, y01, 0.0)
-
-                    // 1. Top Face
-                    val nTop1 = computeNormal(t00, t10, t11)
-                    list.add(StlTriangle(t00, t10, t11, nTop1))
-                    val nTop2 = computeNormal(t00, t11, t01)
-                    list.add(StlTriangle(t00, t11, t01, nTop2))
-
-                    // 2. Bottom Face (Flat base on print bed)
-                    list.add(StlTriangle(b00, b11, b10, normDown))
-                    list.add(StlTriangle(b00, b01, b11, normDown))
-
-                    // 3. Side Walls (Watertight manifold perimeter)
-                    if (!isCellActive(i - 1, j)) {
-                        val nWall = computeNormal(b00, b01, t01)
-                        list.add(StlTriangle(b00, b01, t01, nWall))
-                        list.add(StlTriangle(b00, t01, t00, nWall))
-                    }
-                    if (!isCellActive(i + 1, j)) {
-                        val nWall = computeNormal(b11, b10, t10)
-                        list.add(StlTriangle(b11, b10, t10, nWall))
-                        list.add(StlTriangle(b11, t10, t11, nWall))
-                    }
-                    if (!isCellActive(i, j - 1)) {
-                        val nWall = computeNormal(b10, b00, t00)
-                        list.add(StlTriangle(b10, b00, t00, nWall))
-                        list.add(StlTriangle(b10, t00, t10, nWall))
-                    }
-                    if (!isCellActive(i, j + 1)) {
-                        val nWall = computeNormal(b01, b11, t11)
-                        list.add(StlTriangle(b01, b11, t11, nWall))
-                        list.add(StlTriangle(b01, t11, t01, nWall))
-                    }
-                }
-            }
+        for (tri in topTriangles) {
+            val vA = Vec3(tri.a.x, tri.a.y, getZAtPoint(tri.a))
+            val vB = Vec3(tri.b.x, tri.b.y, getZAtPoint(tri.b))
+            val vC = Vec3(tri.c.x, tri.c.y, getZAtPoint(tri.c))
+            val nTop = computeNormal(vA, vB, vC)
+            list.add(StlTriangle(vA, vB, vC, nTop))
         }
 
         c2f.release()
@@ -1409,8 +1140,24 @@ object ThreeDReconstructionEngine {
         lab.get(0, 0, labBytes)
         lab.release()
 
-        // 1. Check if there is a white paper substrate in the scene (A4 / white sheet on desk)
-        // White paper in Lab has high L (>= 168) and low chroma: (a-128)^2 + (b-128)^2 < 35^2
+        // 1. Adaptive Luminance Substrate Analysis: Detect white paper mat under real lighting
+        val histL = IntArray(256)
+        for (idx in 0 until totalPixels) {
+            val l = labBytes[idx * 3].toInt() and 0xFF
+            histL[l]++
+        }
+        var accum = 0
+        var l80 = 150
+        for (l in 255 downTo 0) {
+            accum += histL[l]
+            if (accum >= totalPixels * 0.18) {
+                l80 = l
+                break
+            }
+        }
+
+        // White paper in Lab has high relative luminance (l80 - 28) and neutral chroma
+        val paperMinL = max(128, l80 - 28)
         var paperPixelCount = 0
         val paperCandidateBytes = ByteArray(totalPixels)
 
@@ -1422,13 +1169,13 @@ object ThreeDReconstructionEngine {
             val db = b - 128
             val chromaSq = da * da + db * db
 
-            if (l >= 168 && chromaSq < (35 * 35)) {
+            if (l >= paperMinL && chromaSq < (48 * 48)) {
                 paperCandidateBytes[idx] = 255.toByte()
                 paperPixelCount++
             }
         }
 
-        val hasPaperSubstrate = paperPixelCount > (totalPixels * 0.15)
+        val hasPaperSubstrate = paperPixelCount > (totalPixels * 0.10)
 
         if (hasPaperSubstrate) {
             val paperMat = Mat(procH, procW, CvType.CV_8UC1)
@@ -1454,7 +1201,7 @@ object ThreeDReconstructionEngine {
                 }
             }
 
-            if (bestPaperContour != null && bestPaperArea > (totalPixels * 0.12)) {
+            if (bestPaperContour != null && bestPaperArea > (totalPixels * 0.08)) {
                 val paperMask = Mat.zeros(Size(procW.toDouble(), procH.toDouble()), CvType.CV_8UC1)
                 Imgproc.drawContours(paperMask, listOf(bestPaperContour), -1, Scalar(255.0), -1)
 
@@ -1476,7 +1223,7 @@ object ThreeDReconstructionEngine {
                         pCount++
                     }
                 }
-                val avgPaperL = if (pCount > 0) sumL / pCount else 215.0
+                val avgPaperL = if (pCount > 0) sumL / pCount else 200.0
                 val avgPaperA = if (pCount > 0) sumA / pCount else 128.0
                 val avgPaperB = if (pCount > 0) sumB / pCount else 128.0
 
@@ -1492,7 +1239,8 @@ object ThreeDReconstructionEngine {
                         val db = b - avgPaperB
                         val chromaDiffSq = da * da + db * db
 
-                        if (dL > 22.0 || chromaDiffSq > (18.0 * 18.0)) {
+                        // Any pixel significantly darker or colored inside the paper is the object
+                        if (dL > 15.0 || chromaDiffSq > (14.0 * 14.0)) {
                             objectBytes[idx] = 255.toByte()
                         }
                     }
@@ -1502,8 +1250,8 @@ object ThreeDReconstructionEngine {
 
                 val objMat = Mat(procH, procW, CvType.CV_8UC1)
                 objMat.put(0, 0, objectBytes)
-                val objClose = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(13.0, 13.0))
-                val objOpen = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+                val objClose = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(11.0, 11.0))
+                val objOpen = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
                 Imgproc.morphologyEx(objMat, objMat, Imgproc.MORPH_CLOSE, objClose)
                 Imgproc.morphologyEx(objMat, objMat, Imgproc.MORPH_OPEN, objOpen)
                 objClose.release()
@@ -1525,9 +1273,9 @@ object ThreeDReconstructionEngine {
                     }
                 }
 
-                if (bestObjContour != null && bestObjArea > (totalPixels * 0.015)) {
+                if (bestObjContour != null && bestObjArea > (totalPixels * 0.008)) {
                     Imgproc.drawContours(cleanMask, listOf(bestObjContour), -1, Scalar(255.0), -1)
-                    val fillKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(9.0, 9.0))
+                    val fillKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(7.0, 7.0))
                     Imgproc.morphologyEx(cleanMask, cleanMask, Imgproc.MORPH_CLOSE, fillKernel)
                     fillKernel.release()
 
