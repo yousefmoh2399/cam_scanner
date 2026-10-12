@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
+import org.opencv.core.MatOfInt
 import org.opencv.core.MatOfPoint
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Rect
@@ -583,7 +584,29 @@ object ThreeDReconstructionEngine {
         val shortPx = max(1.0, rectW)
         val aspect = longPx / shortPx
 
-        val isPhone = (objectType == "smartphone")
+        // Convexity / rectangularity score: how close is the shape to a perfect rectangle?
+        val hullMat = MatOfPoint()
+        val hullIdxMat = MatOfInt()
+        Imgproc.convexHull(bestC, hullIdxMat)
+        val hullPts = ArrayList<org.opencv.core.Point>()
+        val bestCPts = bestC.toArray()
+        for (idx in hullIdxMat.toArray()) hullPts.add(bestCPts[idx])
+        hullMat.fromList(hullPts)
+        val convexArea = Imgproc.contourArea(hullMat)
+        hullIdxMat.release(); hullMat.release()
+        val rectangularity = if (convexArea > 1.0) (longPx * shortPx) / convexArea else 0.0
+
+        // Smart auto-detection of smartphone:
+        //  - Explicit preset always wins
+        //  - In "auto" or "freeform" mode: phone shape = tall rectangle (aspect 1.75-2.65)
+        //    with high rectangularity (> 0.80) — phones are nearly perfect rectangles
+        val isPhoneShape = aspect in 1.75..2.65 && rectangularity > 0.80
+        val isPhone = when (objectType) {
+            "smartphone" -> true
+            "box", "cylinder" -> false
+            "freeform" -> false
+            else -> isPhoneShape   // "auto" or any unknown: use geometric detection
+        }
 
         // Grayscale image data for internal features & photometric micro-relief
         val grayMat = Mat(procH, procW, CvType.CV_8UC1)
