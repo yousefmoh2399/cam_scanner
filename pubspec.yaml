@@ -1,7 +1,7 @@
 name: cam_scanner
 description: "لقطة (Laqta Scanner) - تطبيق المسح الضوئي الاحترافي - يعمل بدون إنترنت 100%"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.7.0
