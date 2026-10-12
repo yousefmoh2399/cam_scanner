@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
+import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:printing/printing.dart';
@@ -103,6 +105,38 @@ class _GovernmentDocumentsScreenState
   int _selectedTargetKb = 200;
   final TextEditingController _customKbController = TextEditingController();
 
+  // ── ID Card Margins & Header State ──
+  bool _idIncludeHeader = false;
+  final TextEditingController _idHeaderController = TextEditingController();
+  bool _idIncludeFooter = false;
+  final TextEditingController _idFooterController = TextEditingController();
+  bool _idIncludeDate = false;
+  bool _idIncludeCutGuideline = true;
+
+  // ── Passport Margins & Header State ──
+  bool _passportIncludeHeader = false;
+  final TextEditingController _passportHeaderController = TextEditingController();
+  bool _passportIncludeFooter = false;
+  final TextEditingController _passportFooterController = TextEditingController();
+  bool _passportIncludeDate = false;
+  bool _passportIncludeBorder = true;
+
+  // ── Certificate Margins & Header State ──
+  bool _certIncludeHeader = false;
+  final TextEditingController _certHeaderController = TextEditingController();
+  bool _certIncludeFooter = false;
+  final TextEditingController _certFooterController = TextEditingController();
+  bool _certIncludeDate = false;
+  bool _certIncludeBorder = true;
+
+  // ── Photo Grid Margins & Header State ──
+  bool _photoIncludeHeader = false;
+  final TextEditingController _photoHeaderController = TextEditingController();
+  bool _photoIncludeFooter = false;
+  final TextEditingController _photoFooterController = TextEditingController();
+  bool _photoIncludeDate = false;
+  bool _photoIncludeCutGuidelines = true;
+
   // ── Process Indicator ──
   bool _isProcessing = false;
   String? _statusText;
@@ -116,6 +150,14 @@ class _GovernmentDocumentsScreenState
   @override
   void dispose() {
     _customKbController.dispose();
+    _idHeaderController.dispose();
+    _idFooterController.dispose();
+    _passportHeaderController.dispose();
+    _passportFooterController.dispose();
+    _certHeaderController.dispose();
+    _certFooterController.dispose();
+    _photoHeaderController.dispose();
+    _photoFooterController.dispose();
     super.dispose();
   }
 
@@ -442,25 +484,30 @@ class _GovernmentDocumentsScreenState
     );
   }
 
-  /// Rotates an image file 90 degrees clockwise in place with high JPEG quality.
+  /// Rotates an image file 90 degrees clockwise in place with high JPEG quality in background isolate.
   Future<String?> _rotateImage(String imagePath) async {
     try {
-      final file = File(imagePath);
-      final bytes = await file.readAsBytes();
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) return imagePath;
+      final newPath = await compute((String pth) async {
+        final file = File(pth);
+        if (!file.existsSync()) return null;
+        final bytes = await file.readAsBytes();
+        final decoded = img.decodeImage(bytes);
+        if (decoded == null) return null;
 
-      final rotated = img.copyRotate(decoded, angle: 90);
-      final newBytes = img.encodeJpg(rotated, quality: 95);
+        final rotated = img.copyRotate(decoded, angle: 90);
+        final newBytes = img.encodeJpg(rotated, quality: 92);
 
-      final dir = p.dirname(imagePath);
-      final base = p.basenameWithoutExtension(imagePath);
-      final newPath = p.join(
-        dir,
-        '${base}_rot_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
-      await File(newPath).writeAsBytes(newBytes, flush: true);
-      return newPath;
+        final dir = p.dirname(pth);
+        final base = p.basenameWithoutExtension(pth);
+        final targetPath = p.join(
+          dir,
+          '${base}_rot_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        );
+        await File(targetPath).writeAsBytes(newBytes, flush: true);
+        return targetPath;
+      }, imagePath);
+
+      return newPath ?? imagePath;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -746,6 +793,16 @@ class _GovernmentDocumentsScreenState
         _idFrontPath!,
         _idBackPath!,
         isActualSize: _idActualSize,
+        includeHeader: _idIncludeHeader,
+        headerTitle: _idHeaderController.text.trim().isNotEmpty
+            ? _idHeaderController.text.trim()
+            : null,
+        includeFooter: _idIncludeFooter,
+        footerText: _idFooterController.text.trim().isNotEmpty
+            ? _idFooterController.text.trim()
+            : null,
+        includeDate: _idIncludeDate,
+        includeCutGuideline: _idIncludeCutGuideline,
       );
       if (!mounted) return;
       _showResultModal(
@@ -776,6 +833,16 @@ class _GovernmentDocumentsScreenState
       final pdfPath = await service.buildPassportPage(
         _passportImagePath!,
         isLandscape: _passportLandscape,
+        includeHeader: _passportIncludeHeader,
+        headerTitle: _passportHeaderController.text.trim().isNotEmpty
+            ? _passportHeaderController.text.trim()
+            : null,
+        includeFooter: _passportIncludeFooter,
+        footerText: _passportFooterController.text.trim().isNotEmpty
+            ? _passportFooterController.text.trim()
+            : null,
+        includeDate: _passportIncludeDate,
+        includeBorder: _passportIncludeBorder,
       );
       if (!mounted) return;
       _showResultModal(
@@ -806,6 +873,16 @@ class _GovernmentDocumentsScreenState
       final pdfPath = await service.buildCertificatePage(
         _certificateImagePath!,
         isLandscape: _certificateLandscape,
+        includeHeader: _certIncludeHeader,
+        headerTitle: _certHeaderController.text.trim().isNotEmpty
+            ? _certHeaderController.text.trim()
+            : null,
+        includeFooter: _certIncludeFooter,
+        footerText: _certFooterController.text.trim().isNotEmpty
+            ? _certFooterController.text.trim()
+            : null,
+        includeDate: _certIncludeDate,
+        includeBorder: _certIncludeBorder,
       );
       if (!mounted) return;
       _showResultModal(
@@ -836,6 +913,16 @@ class _GovernmentDocumentsScreenState
       final pdfPath = await service.buildPersonalPhotoGrid(
         _photoImagePath!,
         _selectedPhotoType,
+        includeHeader: _photoIncludeHeader,
+        headerTitle: _photoHeaderController.text.trim().isNotEmpty
+            ? _photoHeaderController.text.trim()
+            : null,
+        includeFooter: _photoIncludeFooter,
+        footerText: _photoFooterController.text.trim().isNotEmpty
+            ? _photoFooterController.text.trim()
+            : null,
+        includeDate: _photoIncludeDate,
+        includeCutGuidelines: _photoIncludeCutGuidelines,
       );
       if (!mounted) return;
       _showResultModal(
@@ -1059,6 +1146,222 @@ class _GovernmentDocumentsScreenState
       case OfficialDocMode.compress:
         return _buildCompressionStudio(isDark);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // REUSABLE MARGINS & HEADERS SETTINGS CARD
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildMarginAndHeaderSettings({
+    required bool isDark,
+    required Color accentColor,
+    required bool includeHeader,
+    required ValueChanged<bool> onHeaderChanged,
+    required TextEditingController headerController,
+    required String headerPlaceholder,
+    required bool includeFooter,
+    required ValueChanged<bool> onFooterChanged,
+    required TextEditingController footerController,
+    required String footerPlaceholder,
+    required bool includeDate,
+    required ValueChanged<bool> onDateChanged,
+    bool? includeBorder,
+    ValueChanged<bool>? onBorderChanged,
+    String borderTitle = 'إطار أو خطوط القص',
+    String borderSubtitle = 'تحديد حدود الوثيقة وإرشادات القص الورقي',
+  }) {
+    final hasActiveMargins = includeHeader || includeFooter || includeDate;
+
+    return Material(
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+          initiallyExpanded: false,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          leading: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.tune_rounded,
+              color: accentColor,
+              size: 20,
+            ),
+          ),
+          title: const Text(
+            'تخصيص الهوامش والترويسة (اختياري)',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 13.5,
+            ),
+          ),
+          subtitle: Text(
+            hasActiveMargins
+                ? 'تم تفعيل عناصر مخصصة بالهامش'
+                : 'الورقة نقية وخالية تماماً من أي نصوص أو تواريخ إضافية',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: hasActiveMargins ? FontWeight.w700 : FontWeight.normal,
+              color: hasActiveMargins
+                  ? accentColor
+                  : (isDark ? Colors.white54 : Colors.black45),
+            ),
+          ),
+          children: [
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            // 1. Header Toggle & Custom Text
+            _buildMarginSwitchTile(
+              title: 'إضافة ترويسة علوية (Header)',
+              subtitle: 'نص رسمي أو عنوان أعلى الصفحة',
+              value: includeHeader,
+              onChanged: onHeaderChanged,
+              accentColor: accentColor,
+              isDark: isDark,
+            ),
+            if (includeHeader) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: headerController,
+                decoration: InputDecoration(
+                  hintText: headerPlaceholder,
+                  hintStyle: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
+                  prefixIcon: Icon(Icons.title_rounded, size: 18, color: accentColor),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+            ],
+
+            // 2. Footer Toggle & Custom Text
+            _buildMarginSwitchTile(
+              title: 'إضافة تذييل سفلي (Footer)',
+              subtitle: 'ملاحظات أو نص اعتماد أسفل الصفحة',
+              value: includeFooter,
+              onChanged: onFooterChanged,
+              accentColor: accentColor,
+              isDark: isDark,
+            ),
+            if (includeFooter) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: footerController,
+                decoration: InputDecoration(
+                  hintText: footerPlaceholder,
+                  hintStyle: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white38 : Colors.black38,
+                  ),
+                  prefixIcon: Icon(Icons.notes_rounded, size: 18, color: accentColor),
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+            ],
+
+            // 3. Date Toggle
+            _buildMarginSwitchTile(
+              title: 'إضافة تاريخ اليوم (Date Stamp)',
+              subtitle: 'طباعة التاريخ الحالي (${DateFormat('yyyy/MM/dd').format(DateTime.now())})',
+              value: includeDate,
+              onChanged: onDateChanged,
+              accentColor: accentColor,
+              isDark: isDark,
+            ),
+
+            // 4. Border / Guidelines Toggle (if provided)
+            if (includeBorder != null && onBorderChanged != null) ...[
+              _buildMarginSwitchTile(
+                title: borderTitle,
+                subtitle: borderSubtitle,
+                value: includeBorder,
+                onChanged: onBorderChanged,
+                accentColor: accentColor,
+                isDark: isDark,
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildMarginSwitchTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required Color accentColor,
+    required bool isDark,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: (val) {
+              HapticFeedback.selectionClick();
+              onChanged(val);
+            },
+            activeThumbColor: accentColor,
+          ),
+        ],
+      ),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1308,7 +1611,29 @@ class _GovernmentDocumentsScreenState
           ),
         ),
 
-        const SizedBox(height: 22),
+        const SizedBox(height: 14),
+
+        // Margins, Header, Footer, and Date customization
+        _buildMarginAndHeaderSettings(
+          isDark: isDark,
+          accentColor: const Color(0xFF007AFF),
+          includeHeader: _idIncludeHeader,
+          onHeaderChanged: (val) => setState(() => _idIncludeHeader = val),
+          headerController: _idHeaderController,
+          headerPlaceholder: 'مثال: وثيقة إثبات الهوية الرسمية',
+          includeFooter: _idIncludeFooter,
+          onFooterChanged: (val) => setState(() => _idIncludeFooter = val),
+          footerController: _idFooterController,
+          footerPlaceholder: 'مثال: نسخة رسمية معتمدة • مسح ضوئي عالي الدقة',
+          includeDate: _idIncludeDate,
+          onDateChanged: (val) => setState(() => _idIncludeDate = val),
+          includeBorder: _idIncludeCutGuideline,
+          onBorderChanged: (val) => setState(() => _idIncludeCutGuideline = val),
+          borderTitle: 'خط القص القياسي (✂)',
+          borderSubtitle: 'إظهار خط القص الفاصل بين وجهي البطاقة في منتصف الورقة',
+        ),
+
+        const SizedBox(height: 20),
 
         // Primary Action Button
         FilledButton.icon(
@@ -1439,7 +1764,29 @@ class _GovernmentDocumentsScreenState
           isDark: isDark,
         ),
 
-        const SizedBox(height: 22),
+        const SizedBox(height: 14),
+
+        // Margins, Header, Footer, and Date customization
+        _buildMarginAndHeaderSettings(
+          isDark: isDark,
+          accentColor: const Color(0xFF5856D6),
+          includeHeader: _passportIncludeHeader,
+          onHeaderChanged: (val) => setState(() => _passportIncludeHeader = val),
+          headerController: _passportHeaderController,
+          headerPlaceholder: 'مثال: وثيقة سفر رسمية - صورة الجواز',
+          includeFooter: _passportIncludeFooter,
+          onFooterChanged: (val) => setState(() => _passportIncludeFooter = val),
+          footerController: _passportFooterController,
+          footerPlaceholder: 'مثال: نسخة معتمدة مطابقة لأصل وثيقة السفر لغايات التأشيرات',
+          includeDate: _passportIncludeDate,
+          onDateChanged: (val) => setState(() => _passportIncludeDate = val),
+          includeBorder: _passportIncludeBorder,
+          onBorderChanged: (val) => setState(() => _passportIncludeBorder = val),
+          borderTitle: 'إطار وثيقة السفر المعتمد',
+          borderSubtitle: 'إطار رمادي رفيع يحيط بصفحة بيانات الجواز (ICAO)',
+        ),
+
+        const SizedBox(height: 20),
 
         FilledButton.icon(
           style: FilledButton.styleFrom(
@@ -1534,7 +1881,29 @@ class _GovernmentDocumentsScreenState
           isDark: isDark,
         ),
 
-        const SizedBox(height: 22),
+        const SizedBox(height: 14),
+
+        // Margins, Header, Footer, and Date customization
+        _buildMarginAndHeaderSettings(
+          isDark: isDark,
+          accentColor: const Color(0xFFFF9500),
+          includeHeader: _certIncludeHeader,
+          onHeaderChanged: (val) => setState(() => _certIncludeHeader = val),
+          headerController: _certHeaderController,
+          headerPlaceholder: 'مثال: وثيقة ومستند رسمي معتمد',
+          includeFooter: _certIncludeFooter,
+          onFooterChanged: (val) => setState(() => _certIncludeFooter = val),
+          footerController: _certFooterController,
+          footerPlaceholder: 'مثال: وثيقة رسمية معتمدة - صالحة للجهات الحكومية والجامعات',
+          includeDate: _certIncludeDate,
+          onDateChanged: (val) => setState(() => _certIncludeDate = val),
+          includeBorder: _certIncludeBorder,
+          onBorderChanged: (val) => setState(() => _certIncludeBorder = val),
+          borderTitle: 'الإطار الذهبي المزدوج الفاخر',
+          borderSubtitle: 'إطار رسمي مزخرف للشهادات الأكاديمية والعقود الرسمية',
+        ),
+
+        const SizedBox(height: 20),
 
         FilledButton.icon(
           style: FilledButton.styleFrom(
@@ -1699,7 +2068,29 @@ class _GovernmentDocumentsScreenState
           ],
         ),
 
-        const SizedBox(height: 22),
+        const SizedBox(height: 14),
+
+        // Margins, Header, Footer, and Date customization
+        _buildMarginAndHeaderSettings(
+          isDark: isDark,
+          accentColor: const Color(0xFF34C759),
+          includeHeader: _photoIncludeHeader,
+          onHeaderChanged: (val) => setState(() => _photoIncludeHeader = val),
+          headerController: _photoHeaderController,
+          headerPlaceholder: 'مثال: استوديو صور التأشيرة وجواز السفر',
+          includeFooter: _photoIncludeFooter,
+          onFooterChanged: (val) => setState(() => _photoIncludeFooter = val),
+          footerController: _photoFooterController,
+          footerPlaceholder: 'مثال: جاهزة للطباعة الورقية بمقاسات دولية معتمدة',
+          includeDate: _photoIncludeDate,
+          onDateChanged: (val) => setState(() => _photoIncludeDate = val),
+          includeBorder: _photoIncludeCutGuidelines,
+          onBorderChanged: (val) => setState(() => _photoIncludeCutGuidelines = val),
+          borderTitle: 'إطارات القص الرمادية الفاصلة',
+          borderSubtitle: 'إطار دقيق حول كل صورة شخصية لتسهيل القص بالمقص',
+        ),
+
+        const SizedBox(height: 20),
 
         FilledButton.icon(
           style: FilledButton.styleFrom(

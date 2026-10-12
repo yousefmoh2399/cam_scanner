@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -288,27 +289,33 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
     if (path == null) return;
 
     try {
-      final file = File(path);
-      final bytes = await file.readAsBytes();
-      final decoded = img.decodeImage(bytes);
-      if (decoded == null) return;
+      final newPath = await compute((String pth) async {
+        final file = File(pth);
+        if (!file.existsSync()) return null;
+        final bytes = await file.readAsBytes();
+        final decoded = img.decodeImage(bytes);
+        if (decoded == null) return null;
 
-      final rotated = img.copyRotate(decoded, angle: 90);
-      final newBytes = img.encodeJpg(rotated, quality: 95);
-      final newPath = p.join(
-        p.dirname(path),
-        '${p.basenameWithoutExtension(path)}_rot_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
-      await File(newPath).writeAsBytes(newBytes, flush: true);
+        final rotated = img.copyRotate(decoded, angle: 90);
+        final newBytes = img.encodeJpg(rotated, quality: 92);
+        final targetPath = p.join(
+          p.dirname(pth),
+          '${p.basenameWithoutExtension(pth)}_rot_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        );
+        await File(targetPath).writeAsBytes(newBytes, flush: true);
+        return targetPath;
+      }, path);
 
-      setState(() {
-        if (isFront) {
-          _frontPath = newPath;
-        } else {
-          _backPath = newPath;
-        }
-      });
-      HapticFeedback.selectionClick();
+      if (newPath != null && mounted) {
+        setState(() {
+          if (isFront) {
+            _frontPath = newPath;
+          } else {
+            _backPath = newPath;
+          }
+        });
+        HapticFeedback.selectionClick();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
