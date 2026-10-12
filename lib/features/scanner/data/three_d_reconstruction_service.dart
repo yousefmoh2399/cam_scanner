@@ -141,17 +141,11 @@ class ThreeDReconstructionService {
         onProgress?.call('اكتمل البناء بنجاح!', 1.0);
         return result;
       }
+      throw Exception('لم يُرجع محرك المعالجة نتيجة صالحة.');
     } catch (e) {
-      // If native method channel encounters an error, fallback to demo specimen
+      debugPrint('Error in reconstructFromPhotos: $e');
+      rethrow;
     }
-
-    // Fallback: Generate calibrated specimen in the target directory
-    final fallbackRes = await generateCalibrationSpecimen(
-      title: title,
-      specimenType: 'cube_50mm',
-    );
-    onProgress?.call('اكتمل البناء بنجاح!', 1.0);
-    return fallbackRes;
   }
 
   /// Instantly generates a metric watertight STL calibration specimen (50mm cube or L-bracket).
