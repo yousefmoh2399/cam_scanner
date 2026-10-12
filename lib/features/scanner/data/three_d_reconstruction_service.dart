@@ -65,6 +65,7 @@ class ThreeDReconstructionService {
     required List<String> filePaths,
     required String title,
     double voxelSizeMm = 1.4,
+    String objectType = 'auto',
     void Function(String status, double progress)? onProgress,
   }) async {
     final count = filePaths.length;
@@ -91,6 +92,7 @@ class ThreeDReconstructionService {
       config: ThreeDReconstructionConfig(
         voxelSizeMm: voxelSizeMm,
         consensusRatio: count >= 4 ? 0.55 : 0.35,
+        objectType: objectType,
       ),
       onProgress: onProgress,
     );
@@ -131,6 +133,7 @@ class ThreeDReconstructionService {
           'consensusRatio': config.consensusRatio,
           'elevationsDeg': elevations,
           'azimuthsDeg': azimuths,
+          'objectType': config.objectType,
         },
       );
 

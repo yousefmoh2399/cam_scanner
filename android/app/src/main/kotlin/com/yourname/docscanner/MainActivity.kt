@@ -672,6 +672,7 @@ class MainActivity : FlutterFragmentActivity() {
                         val consensus = call.argument<Double>("consensusRatio") ?: 0.90
                         val elevations = call.argument<List<Double>>("elevationsDeg")
                         val azimuths = call.argument<List<Double>>("azimuthsDeg")
+                        val objectType = call.argument<String>("objectType") ?: "auto"
 
                         if (imagePaths.isEmpty() || outPath.isNullOrBlank()) {
                             result.error("INVALID_ARGS", "imagePaths and outPath are required", null)
@@ -687,7 +688,8 @@ class MainActivity : FlutterFragmentActivity() {
                                     voxelSizeMm = voxelSize,
                                     consensusRatio = consensus,
                                     elevationsDeg = elevations,
-                                    azimuthsDeg = azimuths
+                                    azimuthsDeg = azimuths,
+                                    objectType = objectType
                                 )
                                 val map = HashMap<String, Any>()
                                 map["stlPath"] = res.stlPath

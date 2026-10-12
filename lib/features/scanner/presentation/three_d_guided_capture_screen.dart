@@ -35,6 +35,7 @@ class _ThreeDGuidedCaptureScreenState extends State<ThreeDGuidedCaptureScreen> {
 
   final TextEditingController _modelNameController =
       TextEditingController(text: 'قطعة_طباعة_3D');
+  String _selectedObjectType = 'auto';
 
   final List<double> _elevationRings = [15.0, 35.0, 60.0, 85.0];
 
@@ -344,6 +345,7 @@ class _ThreeDGuidedCaptureScreenState extends State<ThreeDGuidedCaptureScreen> {
           voxelSizeMm: 1.4,
           consensusRatio: 0.40,
           isFlipScanEnabled: _flippedCount > 0,
+          objectType: _selectedObjectType,
         ),
         onProgress: (status, progress) {
           if (mounted) {
@@ -858,7 +860,22 @@ class _ThreeDGuidedCaptureScreenState extends State<ThreeDGuidedCaptureScreen> {
                           },
                         ),
                       ),
-                    const SizedBox(height: 12),
+                    // Object Type Selection Chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildTypeChip('auto', 'تلقائي (كشف ذكي)', Icons.auto_awesome),
+                          const SizedBox(width: 6),
+                          _buildTypeChip('smartphone', 'هاتف ذكي', Icons.smartphone_rounded),
+                          const SizedBox(width: 6),
+                          _buildTypeChip('box', 'علبة / منتج', Icons.inventory_2_rounded),
+                          const SizedBox(width: 6),
+                          _buildTypeChip('freeform', 'قطعة حرة / CAD', Icons.hardware_rounded),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
 
                     // Controls Row
                     Row(
@@ -963,6 +980,40 @@ class _ThreeDGuidedCaptureScreenState extends State<ThreeDGuidedCaptureScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTypeChip(String type, String label, IconData icon) {
+    final isSelected = _selectedObjectType == type;
+    return ChoiceChip(
+      selected: isSelected,
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: isSelected ? Colors.black87 : Colors.white70),
+          const SizedBox(width: 4),
+          Text(label),
+        ],
+      ),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.black87 : Colors.white70,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        fontSize: 11.5,
+      ),
+      selectedColor: const Color(0xFF00E676),
+      backgroundColor: const Color(0xFF282D37),
+      showCheckmark: false,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      onSelected: (val) {
+        if (val) {
+          setState(() {
+            _selectedObjectType = type;
+            if (type == 'smartphone' && _modelNameController.text == 'قطعة_طباعة_3D') {
+              _modelNameController.text = 'هاتف_ذكي_3D';
+            }
+          });
+        }
+      },
     );
   }
 }

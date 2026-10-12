@@ -30,6 +30,7 @@ class ThreeDReconstructionConfig {
     this.voxelSizeMm = 1.4,
     this.consensusRatio = 0.40,
     this.isFlipScanEnabled = true,
+    this.objectType = 'auto',
   });
 
   /// Voxel grid step size in real millimeters (e.g., 1.4 mm for balanced speed/detail).
@@ -40,6 +41,9 @@ class ThreeDReconstructionConfig {
 
   /// Whether dual-session flip scan was performed to eliminate base occlusions.
   final bool isFlipScanEnabled;
+
+  /// Target CAD synthesis preset: 'auto', 'smartphone', 'box', 'cylinder', 'freeform'
+  final String objectType;
 }
 
 /// The metric 3D model result returned from the reconstruction engine.

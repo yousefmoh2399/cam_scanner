@@ -93,7 +93,8 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
         ? 'مجسم_${p.basenameWithoutExtension(initialPaths.first)}'
         : 'مجسم_منتج';
     final TextEditingController titleController = TextEditingController(text: defaultTitle);
-    double selectedVoxelSize = 1.4;
+                    double selectedVoxelSize = 1.4;
+                    String selectedObjectType = 'auto';
 
     showModalBottomSheet(
       context: context,
@@ -347,6 +348,72 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Object Profile Selection
+                    const Text(
+                      'نوع المجسم (Object Profile)',
+                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          ChoiceChip(
+                            selected: selectedObjectType == 'auto',
+                            label: const Text('تلقائي (كشف ذكي)'),
+                            selectedColor: const Color(0xFF00E676),
+                            backgroundColor: const Color(0xFF101216),
+                            labelStyle: TextStyle(
+                              color: selectedObjectType == 'auto' ? Colors.black87 : Colors.white70,
+                              fontWeight: selectedObjectType == 'auto' ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 11.5,
+                            ),
+                            onSelected: (_) => setSheetState(() => selectedObjectType = 'auto'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            selected: selectedObjectType == 'smartphone',
+                            label: const Text('📱 هاتف ذكي'),
+                            selectedColor: const Color(0xFF00E676),
+                            backgroundColor: const Color(0xFF101216),
+                            labelStyle: TextStyle(
+                              color: selectedObjectType == 'smartphone' ? Colors.black87 : Colors.white70,
+                              fontWeight: selectedObjectType == 'smartphone' ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 11.5,
+                            ),
+                            onSelected: (_) => setSheetState(() => selectedObjectType = 'smartphone'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            selected: selectedObjectType == 'box',
+                            label: const Text('📦 علبة / منتج'),
+                            selectedColor: const Color(0xFF00E676),
+                            backgroundColor: const Color(0xFF101216),
+                            labelStyle: TextStyle(
+                              color: selectedObjectType == 'box' ? Colors.black87 : Colors.white70,
+                              fontWeight: selectedObjectType == 'box' ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 11.5,
+                            ),
+                            onSelected: (_) => setSheetState(() => selectedObjectType = 'box'),
+                          ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            selected: selectedObjectType == 'freeform',
+                            label: const Text('⚙️ قطعة حرة / CAD'),
+                            selectedColor: const Color(0xFF00E676),
+                            backgroundColor: const Color(0xFF101216),
+                            labelStyle: TextStyle(
+                              color: selectedObjectType == 'freeform' ? Colors.black87 : Colors.white70,
+                              fontWeight: selectedObjectType == 'freeform' ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 11.5,
+                            ),
+                            onSelected: (_) => setSheetState(() => selectedObjectType = 'freeform'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Quality Selection
                     const Text(
                       'دقة النحت الشبكي (Voxel Resolution)',
@@ -391,6 +458,7 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
                                   paths: currentPaths,
                                   title: title,
                                   voxelSizeMm: selectedVoxelSize,
+                                  objectType: selectedObjectType,
                                 );
                               },
                         icon: const Icon(Icons.view_in_ar_rounded, size: 20),
@@ -453,6 +521,7 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
     required List<String> paths,
     required String title,
     required double voxelSizeMm,
+    String objectType = 'auto',
   }) async {
     final ValueNotifier<double> progressNotifier = ValueNotifier(0.05);
     final ValueNotifier<String> statusNotifier =
@@ -541,6 +610,7 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
         filePaths: paths,
         title: title,
         voxelSizeMm: voxelSizeMm,
+        objectType: objectType,
         onProgress: (status, progress) {
           statusNotifier.value = status;
           progressNotifier.value = progress;
