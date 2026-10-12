@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models/three_d_scan_models.dart';
 import '../data/three_d_reconstruction_service.dart';
@@ -27,6 +28,7 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
   void initState() {
     super.initState();
     _loadSavedScans();
+    _checkAndShowBetaNotice();
   }
 
   Future<void> _loadSavedScans() async {
@@ -38,6 +40,372 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _checkAndShowBetaNotice() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hide = prefs.getBool('hide_3d_maker_beta_notice') ?? false;
+      if (!hide && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showBetaNoticeBottomSheet(isManualTrigger: false);
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _showBetaNoticeBottomSheet({bool isManualTrigger = false}) {
+    bool doNotShowAgain = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.88,
+              ),
+              decoration: const BoxDecoration(
+                color: Color(0xFF181B22),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black54,
+                    blurRadius: 25,
+                    offset: Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle Bar
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 12, bottom: 8),
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+
+                    // Scrollable Content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Header with Beta Badge
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.science_rounded,
+                                    color: Colors.black,
+                                    size: 26,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Text(
+                                            'استوديو النحت والمسح 3D',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: const Color(0xFFF59E0B).withValues(alpha: 0.6),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'BETA 0.9',
+                                              style: TextStyle(
+                                                color: Color(0xFFF59E0B),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'إصدار تجريبي قيد التطوير والترقية المستمرة',
+                                        style: TextStyle(
+                                          color: Colors.white60,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close_rounded, color: Colors.white54),
+                                  onPressed: () => Navigator.pop(bottomSheetContext),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Explanatory Banner
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1F2430),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: const [
+                                      Icon(Icons.privacy_tip_outlined, color: Color(0xFF00E676), size: 18),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'معالجة محلية 100% دون اتصال بالإنترنت',
+                                        style: TextStyle(
+                                          color: Color(0xFF00E676),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'نظام المسح وتحويل المنتجات والمجسمات إلى ملفات ثلاثية الأبعاد (STL Models) يعمل حالياً بنسخته التجريبية المعتمدة على الرؤية الحاسوبية المباشرة (On-Device Computer Vision) لضمان الخصوصية التامة لكافة بياناتك وتصميماتك بدون إرسال أي صورة لخوادم خارجية.\n\nنعمل بصورة دورية على ترقية خوارزميات الذكاء الاصطناعي وبناء شبكات المضلعات ثلاثية الأبعاد المعقدة في التحديثات القادمة.',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12.5,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Tips Section Header
+                            const Text(
+                              '💡 نصائح للحصول على أدق مجسم 3D في هذه النسخة:',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Tip 1: Transparent PNG
+                            _buildBetaTipItem(
+                              icon: Icons.image_search_rounded,
+                              iconColor: const Color(0xFF00E676),
+                              title: 'استخدام صور PNG مفرغة (الأعلى دقة)',
+                              subtitle: 'إذا توفرت صور للمنتج بخلفية شفافة، سيقرأ المحرك طبقة الـ Alpha مباشرة لبناء مجسم متقن وفوري خالي من التشتيت والظلال.',
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Tip 2: A4 Paper
+                            _buildBetaTipItem(
+                              icon: Icons.aspect_ratio_rounded,
+                              iconColor: const Color(0xFF00B0FF),
+                              title: 'ورقة المعايرة البيضاء (A4)',
+                              subtitle: 'عند مسح منتج حقيقي بالكاميرا، ضعه في منتصف ورقة A4 بيضاء سادة لمساعدة المحرك على قياس الأبعاد الحقيقية بالمليمتر وعزل الجسم.',
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Tip 3: Lighting & Angle
+                            _buildBetaTipItem(
+                              icon: Icons.wb_sunny_rounded,
+                              iconColor: const Color(0xFFFFB300),
+                              title: 'إضاءة واضحة وزاوية تصوير 35°',
+                              subtitle: 'التقط الصور في إضاءة متجانسة وزاوية مائلة (35° إلى 45°) لإظهار بروز الأزرار والعدسات والتفاصيل السطحية بوضوح.',
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Tip 4: STL Watertight
+                            _buildBetaTipItem(
+                              icon: Icons.print_rounded,
+                              iconColor: const Color(0xFFAB47BC),
+                              title: 'ملفات STL متماسكة للطباعة ثلاثية الأبعاد',
+                              subtitle: 'جميع النماذج المنتجة مغلقة هندسياً (Watertight Manifold) وتُحفظ بصيغة .stl القياسية لتتمكن من فتحها في برامج السلايسر (Cura/Prusa).',
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Checkbox: Don't show again
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF101216),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white12),
+                              ),
+                              child: CheckboxListTile(
+                                value: doNotShowAgain,
+                                activeColor: const Color(0xFF00E676),
+                                checkColor: Colors.black,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                title: const Text(
+                                  'عدم إظهار هذه الرسالة التوضيحية مرة أخرى',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: const Text(
+                                  'يمكنك دائماً مراجعة هذه النصائح بالضغط على شارة BETA في أعلى الشاشة',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  setSheetState(() {
+                                    doNotShowAgain = val ?? false;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Confirmation Button
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.setBool('hide_3d_maker_beta_notice', doNotShowAgain);
+                                if (bottomSheetContext.mounted) {
+                                  Navigator.pop(bottomSheetContext);
+                                }
+                              },
+                              icon: const Icon(Icons.check_circle_rounded, size: 20),
+                              label: const Text(
+                                'فهمت ذلك، ابدأ التجربة',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00C853),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBetaTipItem({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF101216),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 11.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _generateDemoCube() async {
@@ -712,6 +1080,41 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
             ),
           ],
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 12),
+            child: Center(
+              child: InkWell(
+                onTap: () => _showBetaNoticeBottomSheet(isManualTrigger: true),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.science_rounded, size: 14, color: Color(0xFFF59E0B)),
+                      SizedBox(width: 4),
+                      Text(
+                        'BETA',
+                        style: TextStyle(
+                          color: Color(0xFFF59E0B),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadSavedScans,

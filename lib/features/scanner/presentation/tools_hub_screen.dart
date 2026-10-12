@@ -216,7 +216,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       subtitle: 'مسح القطع الحقيقية واستخراج مجسم STL صلب للطباعة 3D بمقاس متري حقيقي (مم)',
       category: ToolCategory.intelligence,
       icon: Icons.view_in_ar_rounded,
-      badge: 'STL 3D • جديد 🧊',
+      badge: 'STL 3D • Beta 🔬',
       accentColor: Color(0xFF00C853),
       keywords: ['3d', 'stl', 'طباعة ثلاثية', 'مجسم', 'سكانر 3d', 'cura', 'slicer', 'فوتوغرامتري', 'طابعة', '3d printer'],
     ),
