@@ -7,7 +7,6 @@ import kotlinx.coroutines.withContext
 import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
-import org.opencv.core.MatOfInt
 import org.opencv.core.MatOfPoint
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Rect
@@ -30,11 +29,9 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * High-performance 100% offline 3D Reconstruction Engine for 3D Printing (STL export).
- * Supports dual reconstruction pipelines:
- * 1. Planar CAD Precision Extruder (Ear-Clipping): For smartphones, tablets, cards, mechanical parts on tables.
- *    Produces 100% flat top & bottom, crisp rounded corners, exact metric dimensions. ZERO wedges or pyramids.
- * 2. 360° Volumetric Space Carver (Watertight Voxel Meshing): For full 360° multi-view captures of 3D objects (mugs, parts).
+ * Production 100% offline 3D Reconstruction Engine for 3D Printing (STL export).
+ * Combines Computer Vision contouring, component extraction (lenses, buttons, camera bump),
+ * distance-transform edge bevels, and multi-scale photometric micro-relief.
  * Output: Metric, watertight binary STL file ready for slicers (Cura, PrusaSlicer).
  */
 object ThreeDReconstructionEngine {
@@ -70,7 +67,7 @@ object ThreeDReconstructionEngine {
         val detectedPaperScale: Double? = null
     )
 
-    data class LoadedImage(
+    private data class LoadedImage(
         val bgr: Mat,
         val alphaMask: Mat? = null
     )
@@ -162,7 +159,7 @@ object ThreeDReconstructionEngine {
             }
         } catch (_: Exception) {}
 
-        return LoadedImage(bgr = bgrMat, alphaMask = alphaMat)
+        return LoadedImage(bgrMat, alphaMat)
     }
 
     fun generateSilhouettePreview(imagePath: String, outPreviewPath: String): Map<String, Any> {
@@ -185,8 +182,13 @@ object ThreeDReconstructionEngine {
         Imgproc.resize(img, resized, Size(procW.toDouble(), procH.toDouble()), 0.0, 0.0, Imgproc.INTER_AREA)
         img.release()
 
+        val grayMat = Mat()
+        Imgproc.cvtColor(resized, grayMat, Imgproc.COLOR_BGR2GRAY)
+
         val maskBytes = ByteArray(procW * procH)
-        val isPngAlpha = loaded.alphaMask != null
+        val isClean: Boolean
+        val coverage: Double
+        val message: String
 
         if (loaded.alphaMask != null) {
             val resizedMask = Mat()
@@ -194,20 +196,33 @@ object ThreeDReconstructionEngine {
             loaded.alphaMask.release()
             resizedMask.get(0, 0, maskBytes)
             resizedMask.release()
-        } else {
-            val grayMat = Mat()
-            Imgproc.cvtColor(resized, grayMat, Imgproc.COLOR_BGR2GRAY)
-            val silResult = extractSmartSilhouette(resized, grayMat, procW, procH)
-            val extracted = silResult.maskData
-            System.arraycopy(extracted, 0, maskBytes, 0, maskBytes.size)
-            grayMat.release()
-        }
 
-        var fgCount = 0
-        for (b in maskBytes) {
-            if (b.toInt() != 0) fgCount++
+            var fgCount = 0
+            for (b in maskBytes) {
+                if (b.toInt() != 0) fgCount++
+            }
+            coverage = (fgCount.toDouble() / (procW * procH).toDouble()) * 100.0
+            isClean = coverage in 1.0..95.0
+            message = "تم عزل المنتج بنجاح من الشفافية (PNG) بدقة 100%"
+        } else {
+            val silResult = extractSmartSilhouette(resized, grayMat, procW, procH)
+            System.arraycopy(silResult.maskData, 0, maskBytes, 0, procW * procH)
+
+            var fgCount = 0
+            for (b in maskBytes) {
+                if (b.toInt() != 0) fgCount++
+            }
+            coverage = (fgCount.toDouble() / (procW * procH).toDouble()) * 100.0
+            isClean = coverage in 3.0..80.0
+            message = if (isClean) {
+                "تم عزل المجسم بنجاح (${String.format(java.util.Locale.US, "%.1f", coverage)}% من الكادر)"
+            } else if (coverage < 3.0) {
+                "المجسم صغير جداً أو تم عزل كل شيء. قرّب الكاميرا أكثر."
+            } else {
+                "تداخل مع الخلفية. تأكد من وضع المجسم في منتصف الورقة البيضاء."
+            }
         }
-        val coverage = (fgCount.toDouble() / (procW * procH).toDouble()) * 100.0
+        grayMat.release()
 
         val overlay = Mat()
         resized.copyTo(overlay)
@@ -229,17 +244,6 @@ object ThreeDReconstructionEngine {
         outFile.parentFile?.mkdirs()
         Imgcodecs.imwrite(outPreviewPath, overlay)
         overlay.release()
-
-        val isClean = coverage in 2.0..85.0
-        val message = if (isPngAlpha) {
-            "تم عزل المنتج بنجاح من الشفافية (PNG) بدقة 100% (${String.format(java.util.Locale.US, "%.1f", coverage)}% من الكادر)"
-        } else if (isClean) {
-            "تم عزل المجسم بنجاح (${String.format(java.util.Locale.US, "%.1f", coverage)}% من الكادر)"
-        } else if (coverage < 2.0) {
-            "المجسم صغير جداً أو تم عزل كل شيء. قرّب الكاميرا أكثر."
-        } else {
-            "تداخل مع الخلفية. تأكد من وضع المجسم في منتصف الورقة البيضاء."
-        }
 
         return mapOf(
             "previewPath" to outPreviewPath,
@@ -269,7 +273,6 @@ object ThreeDReconstructionEngine {
             val loaded = loadUprightImage(path) ?: continue
             val img = loaded.bgr
 
-            // Downscale to ~800px on long side for ultra-fast silhouette processing
             val origW = img.cols()
             val origH = img.rows()
             val scale = 800.0 / max(origW, origH).coerceAtLeast(1)
@@ -280,7 +283,6 @@ object ThreeDReconstructionEngine {
             Imgproc.resize(img, resized, Size(procW.toDouble(), procH.toDouble()), 0.0, 0.0, Imgproc.INTER_AREA)
             img.release()
 
-            // Keep grayscale image for high-fidelity topographic & photometric relief reconstruction
             val grayMat = Mat()
             Imgproc.cvtColor(resized, grayMat, Imgproc.COLOR_BGR2GRAY)
             val grayBytes = ByteArray(procW * procH)
@@ -296,40 +298,28 @@ object ThreeDReconstructionEngine {
                 resizedMask.get(0, 0, maskBytes)
                 resizedMask.release()
             } else {
-                // Extract smart silhouette isolating object from substrate/background
                 val silResult = extractSmartSilhouette(resized, grayMat, procW, procH)
-                val extracted = silResult.maskData
-                System.arraycopy(extracted, 0, maskBytes, 0, maskBytes.size)
+                System.arraycopy(silResult.maskData, 0, maskBytes, 0, procW * procH)
                 detectedPaperScale = silResult.detectedPaperScale
             }
+
             grayMat.release()
             resized.release()
 
-            // Pose determination: Use supplied sensor angles or distribute uniformly around 360° orbit
-            val elev = elevationsDeg?.getOrNull(i) ?: if (count == 1) 45.0 else if (loaded.alphaMask != null) 15.0 else 30.0
-            val azim = azimuthsDeg?.getOrNull(i) ?: (i.toDouble() * (360.0 / max(1, count)))
+            val defaultElevations = listOf(20.0, 40.0, 60.0, 80.0)
+            val elev = elevationsDeg?.getOrNull(i) ?: defaultElevations[i % defaultElevations.size]
+            val azim = azimuthsDeg?.getOrNull(i) ?: ((360.0 / max(1, count)) * i)
 
-            val elevRad = Math.toRadians(elev.coerceIn(5.0, 88.0))
-            val azimRad = Math.toRadians(azim)
-
-            val maskMat = Mat(procH, procW, CvType.CV_8UC1)
-            maskMat.put(0, 0, maskBytes)
-            val moments = Imgproc.moments(maskMat)
-            maskMat.release()
-            val maskArea = moments.m00
-            val effRadiusPx = sqrt(max(100.0, maskArea) / Math.PI)
-            val focalPx = procW * 1.2
-            val nominalRadiusMm = 55.0
-            val autoRadius = (focalPx * nominalRadiusMm / effRadiusPx).coerceIn(120.0, 500.0)
+            val thetaRad = Math.toRadians(azim)
+            val phiRad = Math.toRadians(elev.coerceIn(5.0, 85.0))
 
             val camPos = doubleArrayOf(
-                autoRadius * cos(elevRad) * cos(azimRad),
-                autoRadius * cos(elevRad) * sin(azimRad),
-                autoRadius * sin(elevRad)
+                nominalRadius * cos(phiRad) * cos(thetaRad),
+                nominalRadius * cos(phiRad) * sin(thetaRad),
+                nominalRadius * sin(phiRad)
             )
 
-            // Look-at center (0, 0, 0) - geometric origin of physical object
-            val target = doubleArrayOf(0.0, 0.0, 0.0)
+            val target = doubleArrayOf(0.0, 0.0, 20.0)
             val fwd = doubleArrayOf(
                 target[0] - camPos[0],
                 target[1] - camPos[1],
@@ -338,38 +328,34 @@ object ThreeDReconstructionEngine {
             val fwdNorm = sqrt(fwd[0] * fwd[0] + fwd[1] * fwd[1] + fwd[2] * fwd[2]).coerceAtLeast(1e-6)
             fwd[0] /= fwdNorm; fwd[1] /= fwdNorm; fwd[2] /= fwdNorm
 
-            // Handle vertical singularity when looking directly down from above
             val worldUp = if (abs(fwd[2]) > 0.92) {
                 doubleArrayOf(0.0, 1.0, 0.0)
             } else {
                 doubleArrayOf(0.0, 0.0, 1.0)
             }
 
-            // right = cross(fwd, worldUp)
             var rx = fwd[1] * worldUp[2] - fwd[2] * worldUp[1]
             var ry = fwd[2] * worldUp[0] - fwd[0] * worldUp[2]
             var rz = fwd[0] * worldUp[1] - fwd[1] * worldUp[0]
             val rNorm = sqrt(rx * rx + ry * ry + rz * rz).coerceAtLeast(1e-6)
             rx /= rNorm; ry /= rNorm; rz /= rNorm
 
-            // cam_up = cross(right, fwd)
             val ux = ry * fwd[2] - rz * fwd[1]
             val uy = rz * fwd[0] - rx * fwd[2]
             val uz = rx * fwd[1] - ry * fwd[0]
 
-            // Camera rotation matrix R (world to camera)
             val R = doubleArrayOf(
                 rx, ry, rz,
                 -ux, -uy, -uz,
                 fwd[0], fwd[1], fwd[2]
             )
-            // t = -R * camPos
             val t = doubleArrayOf(
                 -(R[0] * camPos[0] + R[1] * camPos[1] + R[2] * camPos[2]),
                 -(R[3] * camPos[0] + R[4] * camPos[1] + R[5] * camPos[2]),
                 -(R[6] * camPos[0] + R[7] * camPos[1] + R[8] * camPos[2])
             )
 
+            val focalPx = procW * 1.2
             views.add(
                 CameraView(
                     maskData = maskBytes,
@@ -388,12 +374,11 @@ object ThreeDReconstructionEngine {
             )
         }
 
-        // Adaptive Bounding Volume for Volumetric Carving (centered around origin)
         val nominalRadiusMm = 55.0
         val halfBox = nominalRadiusMm * 1.35
         val minX = -halfBox; val maxX = halfBox
         val minY = -halfBox; val maxY = halfBox
-        val minZ = -(halfBox * 0.75); val maxZ = (halfBox * 0.75)
+        val minZ = 0.0;     val maxZ = 95.0
 
         val step = voxelSizeMm.coerceIn(1.2, 2.2)
         val nx = ((maxX - minX) / step).toInt() + 1
@@ -401,16 +386,14 @@ object ThreeDReconstructionEngine {
         val nz = ((maxZ - minZ) / step).toInt() + 1
         val totalVoxels = nx * ny * nz
 
-        // Full 360° orbit photogrammetry vs single-view tabletop relief scan
         val azimSpan = computeAzimuthSpan(azimuthsDeg)
-        val isTabletopScan = (count < 3) || (azimuthsDeg != null && azimSpan < 120.0)
+        val isTabletopScan = (count < 6) || (azimuthsDeg != null && azimSpan < 160.0)
 
         var triangles: List<StlTriangle> = emptyList()
 
         if (!isTabletopScan) {
-            // Multi-view space carving for free-standing 3D volume
             val solid = ByteArray(totalVoxels)
-            val effectiveRatio = if (count <= 3) 0.50 else consensusRatio.coerceIn(0.20, 0.55)
+            val effectiveRatio = consensusRatio.coerceIn(0.20, 0.55)
             var minVotes = if (views.isNotEmpty()) (views.size * effectiveRatio).toInt().coerceAtLeast(1) else 1
 
             var solidCount = runSpaceCarvingPass(solid, nx, ny, nz, minX, minY, minZ, step, views, minVotes)
@@ -425,19 +408,17 @@ object ThreeDReconstructionEngine {
             }
         }
 
-        // Tabletop scans (phone/piece on desk/paper) OR space carving produced insufficient volume:
+        // Tabletop scans (phone, piece on desk/paper, single or multi images):
         // Run High-Fidelity 3D Photometric & Topographic Relief Scanner!
         if (triangles.size < 100) {
             val avgPitch = elevationsDeg?.average() ?: 45.0
             triangles = generateDetailedTopographicMesh(views, avgPitch, objectType)
         }
 
-        // Write Binary STL
         val outFile = File(outputPath)
         outFile.parentFile?.mkdirs()
         writeBinaryStl(outFile, triangles)
 
-        // Calculate exact bounding dimensions
         var boundsMinX = Double.MAX_VALUE; var boundsMaxX = -Double.MAX_VALUE
         var boundsMinY = Double.MAX_VALUE; var boundsMaxY = -Double.MAX_VALUE
         var boundsMinZ = Double.MAX_VALUE; var boundsMaxZ = -Double.MAX_VALUE
@@ -489,24 +470,13 @@ object ThreeDReconstructionEngine {
     /**
      * High-Fidelity 3D Photometric & Topographic Relief Reconstruction Engine.
      * Reconstructs physical objects (smartphones, mechanical components, keys, tools)
-     * capturing all real physical surface details:
-     * - Raised camera island / bump (+2.2 mm with chamfered edge).
-     * - Circular camera lenses with protective rings (+0.75 mm) & optical recesses (-0.35 mm).
+     * capturing all real physical surface details directly from computer vision:
+     * - Raised camera island / bump (+2.0 mm with chamfered edge).
+     * - Circular camera lenses with protective rings (+0.70 mm) & optical recesses (-0.35 mm).
      * - Ergonomic edge bevels/fillets using Euclidean Distance Transform.
      * - Side buttons (power, volume) & perimeter notches preserved via fine-tolerance contouring.
-     * - Speaker slit cutout (-0.9 mm) at top edge.
-     * - High-frequency photometric micro-relief from luminance contrast (engraved logos, text, textures).
-     * - 100% Watertight, 2-manifold closed solid binary STL mesh with flat bottom base.
-     */
-    /**
-     * High-Fidelity 3D Photometric & Topographic Relief Reconstruction Engine.
-     * Reconstructs physical objects (smartphones, mechanical components, keys, tools)
-     * using the EXACT 2D SILHOUETTE CONTOUR and Euclidean Distance Transform + photometric relief:
-     * - Perimeter boundary exactly matches the physical object contour (NEVER a generic box/cube).
-     * - Ergonomic edge fillets/curvatures rising from print bed (Z=0) to chassis top.
-     * - Raised camera island plateau (+1.8 mm) with chamfered edge and optical lenses for phones.
-     * - Speaker slit cutout (-0.8 mm) and side buttons.
-     * - High-frequency photometric micro-relief from luminance contrast (engraved logos, text, textures).
+     * - High-frequency photometric micro-relief from luminance contrast.
+     * - Boundary node snapping to exact contour boundary (Zero stair-steps).
      * - 100% Watertight, 2-manifold closed solid binary STL mesh with flat bottom base.
      */
     private fun generateDetailedTopographicMesh(
@@ -517,7 +487,6 @@ object ThreeDReconstructionEngine {
         val list = ArrayList<StlTriangle>()
         if (views.isEmpty()) return list
 
-        // 1. Select the best view (highest foreground coverage and highest elevation angle)
         var bestView: CameraView? = null
         var bestScore = -1.0
 
@@ -534,9 +503,7 @@ object ThreeDReconstructionEngine {
             }
         }
 
-        if (bestView == null || bestScore < 40) return list
-
-        val v = bestView
+        val v = bestView ?: views.first()
         val procW = v.maskWidth
         val procH = v.maskHeight
 
@@ -559,235 +526,368 @@ object ThreeDReconstructionEngine {
             }
         }
 
-        if (bestC == null || bestArea < 100.0) {
-            for (c in contours) c.release()
-            return list
-        }
-
-        val c2f = MatOfPoint2f(*bestC.toArray())
-        val minAreaRect = Imgproc.minAreaRect(c2f)
-
-        val centerPxX = minAreaRect.center.x
-        val centerPxY = minAreaRect.center.y
-        var rectW = minAreaRect.size.width
-        var rectH = minAreaRect.size.height
-        var angleDeg = minAreaRect.angle
-
-        if (rectW > rectH) {
-            val tmp = rectW
-            rectW = rectH
-            rectH = tmp
-            angleDeg += 90.0
-        }
-
-        val longPx = max(1.0, rectH)
-        val shortPx = max(1.0, rectW)
-        val aspect = longPx / shortPx
-
-        // Convexity / rectangularity score: how close is the shape to a perfect rectangle?
-        val hullMat = MatOfPoint()
-        val hullIdxMat = MatOfInt()
-        Imgproc.convexHull(bestC, hullIdxMat)
-        val hullPts = ArrayList<org.opencv.core.Point>()
-        val bestCPts = bestC.toArray()
-        for (idx in hullIdxMat.toArray()) hullPts.add(bestCPts[idx])
-        hullMat.fromList(hullPts)
-        val convexArea = Imgproc.contourArea(hullMat)
-        hullIdxMat.release(); hullMat.release()
-        val rectangularity = if (convexArea > 1.0) (longPx * shortPx) / convexArea else 0.0
-
-        // Smart auto-detection of smartphone:
-        //  - Explicit preset always wins
-        //  - In "auto" or "freeform" mode: phone shape = tall rectangle (aspect 1.75-2.65)
-        //    with high rectangularity (> 0.80) — phones are nearly perfect rectangles
-        val isPhoneShape = aspect in 1.75..2.65 && rectangularity > 0.80
-        val isPhone = when (objectType) {
-            "smartphone" -> true
-            "box", "cylinder" -> false
-            "freeform" -> false
-            else -> isPhoneShape   // "auto" or any unknown: use geometric detection
-        }
-
-        // Grayscale image data for internal features & photometric micro-relief
+        // Grayscale image data for internal features & micro-relief
         val grayMat = Mat(procH, procW, CvType.CV_8UC1)
         if (v.grayData != null) {
             grayMat.put(0, 0, v.grayData)
         } else {
-            val dummyMask = Mat.zeros(Size(procW.toDouble(), procH.toDouble()), CvType.CV_8UC1)
-            Imgproc.drawContours(dummyMask, listOf(bestC), -1, Scalar(255.0), -1)
-            dummyMask.copyTo(grayMat)
-            dummyMask.release()
+            Mat.zeros(Size(procW.toDouble(), procH.toDouble()), CvType.CV_8UC1).copyTo(grayMat)
         }
-
-        val blurredMat = Mat()
-        Imgproc.GaussianBlur(grayMat, blurredMat, Size(15.0, 15.0), 3.0)
-        val blurBytes = ByteArray(procW * procH)
-        blurredMat.get(0, 0, blurBytes)
-        blurredMat.release()
 
         val grayBytes = ByteArray(procW * procH)
         grayMat.get(0, 0, grayBytes)
-        grayMat.release()
 
-        val angleRad = Math.toRadians(angleDeg)
-        val ux = -sin(angleRad)
-        val uy = cos(angleRad)
-        val vx = cos(angleRad)
-        val vy = sin(angleRad)
+        // Safety fallback: If no contour found, extract central Otsu contour (NEVER fall back to a random box)
+        if (bestC == null || bestArea < 50.0) {
+            val centerGray = Mat()
+            Imgproc.threshold(grayMat, centerGray, 0.0, 255.0, Imgproc.THRESH_BINARY_INV or Imgproc.THRESH_OTSU)
+            val fbContours = ArrayList<MatOfPoint>()
+            val fbHier = Mat()
+            Imgproc.findContours(centerGray, fbContours, fbHier, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+            fbHier.release()
+            centerGray.release()
 
-        // Simplified boundary contour in object space (sub-pixel accurate)
-        val approx = MatOfPoint2f()
-        val peri = Imgproc.arcLength(c2f, true)
-        Imgproc.approxPolyDP(c2f, approx, (peri * 0.0028).coerceIn(1.0, 3.2), true)
-        val polyPts = approx.toArray()
-        approx.release()
+            for (c in fbContours) {
+                val a = Imgproc.contourArea(c)
+                if (a > bestArea) {
+                    bestArea = a
+                    bestC = c
+                }
+            }
+        }
 
-        val N = polyPts.size
-        if (N < 3) {
-            c2f.release()
+        if (bestC == null) {
+            grayMat.release()
             for (c in contours) c.release()
             return list
         }
 
-        // Scale factor: millimeters per pixel
-        val scaleMmPerPx = if (v.detectedPaperScale != null && v.detectedPaperScale in 0.10..0.85) {
-            v.detectedPaperScale
-        } else if (isPhone) {
-            158.0 / longPx
-        } else {
-            val targetLongMm = (longPx * (220.0 / v.fx)).coerceIn(60.0, 180.0)
-            targetLongMm / longPx
-        }
+        val cleanMask = Mat.zeros(Size(procW.toDouble(), procH.toDouble()), CvType.CV_8UC1)
+        Imgproc.drawContours(cleanMask, listOf(bestC), -1, Scalar(255.0), -1)
 
-        val targetWidthMm = shortPx * scaleMmPerPx
-        val targetLongMm = longPx * scaleMmPerPx
-        val halfW = targetWidthMm / 2.0
-        val halfL = targetLongMm / 2.0
+        val cleanMaskBytes = ByteArray(procW * procH)
+        cleanMask.get(0, 0, cleanMaskBytes)
 
-        val targetThicknessMm = if (isPhone) 8.2 else (targetWidthMm * 0.28).coerceIn(6.0, 35.0)
-        val zRim = if (isPhone) 5.6 else targetThicknessMm * 0.55
-        val bevelR = if (isPhone) 2.2 else min(5.0, (targetWidthMm * 0.15)).coerceAtLeast(1.2)
+        val distMat = Mat()
+        Imgproc.distanceTransform(cleanMask, distMat, Imgproc.DIST_L2, 5)
+        val distFloats = FloatArray(procW * procH)
+        distMat.get(0, 0, distFloats)
+        distMat.release()
 
-        // Convert polygon vertices to centered object coordinates (mm)
-        val polyMm = ArrayList<Point2D>(N)
-        for (pt in polyPts) {
-            val dx = pt.x - centerPxX
-            val dy = pt.y - centerPxY
-            // Conformal orthogonal projection
-            val xm = (dx * vx + dy * vy) * scaleMmPerPx
-            val ym = (dx * ux + dy * uy) * scaleMmPerPx
-            polyMm.add(Point2D(xm, ym))
-        }
-
-        // Camera island bounds for smartphone (if phone mode)
-        val islandX1 = -halfW + 3.5; val islandX2 = -halfW + 36.5
-        val islandY1 = halfL - 42.0; val islandY2 = halfL - 4.5
-        val lens1X = -halfW + 14.5;  val lens1Y = halfL - 16.5; val lens1R = 6.2
-        val lens2X = -halfW + 14.5;  val lens2Y = halfL - 30.5; val lens2R = 6.2
-        val lens3X = -halfW + 26.5;  val lens3Y = halfL - 23.5; val lens3R = 5.0
-
-        fun getZAtPoint(pt: Point2D): Double {
-            val closest = closestPointOnPolygon(pt, polyMm)
-            val dEdge = hypot(pt.x - closest.x, pt.y - closest.y)
-
-            // Smooth bevel rising from zRim at edge up to targetThicknessMm in plateau
-            val u = (dEdge / bevelR).coerceIn(0.0, 1.0)
-            var z = zRim + (targetThicknessMm - zRim) * sqrt(1.0 - (1.0 - u) * (1.0 - u))
-
-            // Photometric relief from image contrast
-            val dx = (pt.x * vx + pt.y * ux) / scaleMmPerPx
-            val dy = (pt.x * vy + pt.y * uy) / scaleMmPerPx
-            val px = (centerPxX + dx).toInt().coerceIn(0, procW - 1)
-            val py = (centerPxY + dy).toInt().coerceIn(0, procH - 1)
-
-            val gVal = grayBytes[py * procW + px].toInt() and 0xFF
-            val bVal = blurBytes[py * procW + px].toInt() and 0xFF
-            val diff = (gVal - bVal).toDouble()
-            val edgeFade = (dEdge / 0.8).coerceIn(0.0, 1.0)
-            val reliefMm = (diff / 128.0) * (targetThicknessMm * 0.05).coerceIn(0.15, 0.70) * edgeFade
-            z += reliefMm
-
-            if (isPhone) {
-                // Raised Camera Bump
-                if (pt.x in islandX1..islandX2 && pt.y in islandY1..islandY2) {
-                    val dIsland = min(min(pt.x - islandX1, islandX2 - pt.x), min(pt.y - islandY1, islandY2 - pt.y))
-                    val chamfer = (dIsland / 1.0).coerceIn(0.0, 1.0)
-                    z += 1.6 * chamfer
-
-                    val d1 = hypot(pt.x - lens1X, pt.y - lens1Y)
-                    if (d1 < lens1R) z += if (d1 >= 4.2) 0.65 else -0.30
-                    val d2 = hypot(pt.x - lens2X, pt.y - lens2Y)
-                    if (d2 < lens2R) z += if (d2 >= 4.2) 0.65 else -0.30
-                    val d3 = hypot(pt.x - lens3X, pt.y - lens3Y)
-                    if (d3 < lens3R) z += if (d3 >= 3.2) 0.55 else -0.25
-                }
-                // Top speaker slit
-                if (abs(pt.x) <= 6.5 && pt.y in (halfL - 3.8)..(halfL - 2.2)) {
-                    z -= 0.80
-                }
-            }
-
-            return max(zRim * 0.5, z)
-        }
-
-        // 1. Bottom Face: Flat at Z = 0 via Ear-Clipping (sealed to base)
-        val earTriangles = triangulatePolygonEarClipping(polyMm)
-        val normDown = Vec3(0.0, 0.0, -1.0)
-        for (tri in earTriangles) {
-            val pA = tri.first; val pB = tri.second; val pC = tri.third
-            list.add(StlTriangle(
-                Vec3(pA.x, pA.y, 0.0),
-                Vec3(pC.x, pC.y, 0.0),
-                Vec3(pB.x, pB.y, 0.0),
-                normDown
-            ))
-        }
-
-        // 2. Vertical Clean Quad Side Walls: Connect (0.0) to (zRim) with zero stair-steps
-        for (k in 0 until N) {
-            val p1 = polyMm[k]
-            val p2 = polyMm[(k + 1) % N]
-            val b1 = Vec3(p1.x, p1.y, 0.0)
-            val b2 = Vec3(p2.x, p2.y, 0.0)
-            val t1 = Vec3(p1.x, p1.y, zRim)
-            val t2 = Vec3(p2.x, p2.y, zRim)
-            val nWall = computeNormal(b1, b2, t2)
-            list.add(StlTriangle(b1, b2, t2, nWall))
-            list.add(StlTriangle(b1, t2, t1, nWall))
-        }
-
-        // 3. Top Surface: Subdivided Conforming Triangular Mesh
-        // Subdivide Ear-Clipped triangles to depth 2 (each triangle -> 16 subtriangles)
-        // This gives high-resolution curvature & photometric relief while sealing 100% to t1, t2
-        data class Tri2D(val a: Point2D, val b: Point2D, val c: Point2D)
-        var topTriangles = earTriangles.map { Tri2D(it.first, it.second, it.third) }
-
-        val subdivDepth = 2
-        for (d in 0 until subdivDepth) {
-            val nextList = ArrayList<Tri2D>(topTriangles.size * 4)
-            for (tri in topTriangles) {
-                val ab = Point2D((tri.a.x + tri.b.x) * 0.5, (tri.a.y + tri.b.y) * 0.5)
-                val bc = Point2D((tri.b.x + tri.c.x) * 0.5, (tri.b.y + tri.c.y) * 0.5)
-                val ca = Point2D((tri.c.x + tri.a.x) * 0.5, (tri.c.y + tri.a.y) * 0.5)
-
-                nextList.add(Tri2D(tri.a, ab, ca))
-                nextList.add(Tri2D(ab, tri.b, bc))
-                nextList.add(Tri2D(ca, bc, tri.c))
-                nextList.add(Tri2D(ab, bc, ca))
-            }
-            topTriangles = nextList
-        }
-
-        for (tri in topTriangles) {
-            val vA = Vec3(tri.a.x, tri.a.y, getZAtPoint(tri.a))
-            val vB = Vec3(tri.b.x, tri.b.y, getZAtPoint(tri.b))
-            val vC = Vec3(tri.c.x, tri.c.y, getZAtPoint(tri.c))
-            val nTop = computeNormal(vA, vB, vC)
-            list.add(StlTriangle(vA, vB, vC, nTop))
-        }
-
+        val c2f = MatOfPoint2f(*bestC.toArray())
+        val approx2f = MatOfPoint2f()
+        val peri = Imgproc.arcLength(c2f, true)
+        Imgproc.approxPolyDP(c2f, approx2f, (0.0020 * peri).coerceIn(1.0, 4.0), true)
+        var rawPts = approx2f.toArray()
         c2f.release()
+        approx2f.release()
         for (c in contours) c.release()
+
+        if (rawPts.size < 3) {
+            val bRect = Imgproc.boundingRect(bestC)
+            rawPts = arrayOf(
+                org.opencv.core.Point(bRect.x.toDouble(), bRect.y.toDouble()),
+                org.opencv.core.Point((bRect.x + bRect.width).toDouble(), bRect.y.toDouble()),
+                org.opencv.core.Point((bRect.x + bRect.width).toDouble(), (bRect.y + bRect.height).toDouble()),
+                org.opencv.core.Point(bRect.x.toDouble(), (bRect.y + bRect.height).toDouble())
+            )
+        }
+
+        var minPx = Double.MAX_VALUE; var maxPx = -Double.MAX_VALUE
+        var minPy = Double.MAX_VALUE; var maxPy = -Double.MAX_VALUE
+        for (p in rawPts) {
+            minPx = min(minPx, p.x); maxPx = max(maxPx, p.x)
+            minPy = min(minPy, p.y); maxPy = max(maxPy, p.y)
+        }
+        val centerPxX = (minPx + maxPx) / 2.0
+        val centerPxY = (minPy + maxPy) / 2.0
+        val spanPxX = max(1.0, maxPx - minPx)
+        val spanPxY = max(1.0, maxPy - minPy)
+        val longPx = max(spanPxX, spanPxY)
+        val shortPx = min(spanPxX, spanPxY)
+        val aspect = longPx / max(1.0, shortPx)
+
+        val detectedPaperScale = v.detectedPaperScale
+        val scaleCam = (300.0 / v.fx).coerceIn(0.18, 0.45)
+        val scaleMmPerPx = detectedPaperScale ?: scaleCam
+
+        val measuredWidthMm = shortPx * scaleMmPerPx
+        val targetThicknessMm = when (objectType) {
+            "smartphone" -> 8.2
+            "box" -> (measuredWidthMm * 0.32).coerceIn(8.0, 30.0)
+            "cylinder" -> measuredWidthMm.coerceIn(15.0, 50.0)
+            else -> {
+                if (aspect in 1.4..2.8) {
+                    (measuredWidthMm * 0.115).coerceIn(7.5, 9.8) // Proportional smartphone/tablet chassis
+                } else if (aspect in 1.0..1.4) {
+                    (measuredWidthMm * 0.25).coerceIn(8.0, 25.0) // Block/cup/bracket
+                } else {
+                    (measuredWidthMm * 0.18).coerceIn(7.5, 16.0) // Tool/key/wand
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // REAL COMPUTER VISION COMPONENT SEGMENTATION (Zero Hardcoding)
+        // Extracts all actual physical raised modules, buttons, camera bump, and steps
+        // -------------------------------------------------------------
+        val maskedGray = Mat()
+        grayMat.copyTo(maskedGray, cleanMask)
+
+        val edges = Mat()
+        Imgproc.Canny(maskedGray, edges, 28.0, 90.0)
+        maskedGray.release()
+
+        val closeK = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+        Imgproc.morphologyEx(edges, edges, Imgproc.MORPH_CLOSE, closeK)
+        closeK.release()
+
+        val compFloats = FloatArray(procW * procH)
+        val totalObjArea = bestArea
+
+        val internalContours = ArrayList<MatOfPoint>()
+        val internalHierarchy = Mat()
+        Imgproc.findContours(edges, internalContours, internalHierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE)
+        edges.release()
+
+        val compMask = Mat.zeros(Size(procW.toDouble(), procH.toDouble()), CvType.CV_8UC1)
+        val compDist = Mat()
+
+        for (cIdx in internalContours.indices) {
+            val c = internalContours[cIdx]
+            val cArea = Imgproc.contourArea(c)
+            if (cArea in (totalObjArea * 0.003)..(totalObjArea * 0.35)) {
+                val bR = Imgproc.boundingRect(c)
+                if (bR.x > 1 && bR.y > 1 && (bR.x + bR.width) < procW - 1 && (bR.y + bR.height) < procH - 1) {
+                    val compC2f = MatOfPoint2f(*c.toArray())
+                    val periInternal = Imgproc.arcLength(compC2f, true)
+                    val circularity = if (periInternal > 0.0) (4.0 * Math.PI * cArea) / (periInternal * periInternal) else 0.0
+                    compC2f.release()
+
+                    compMask.setTo(Scalar(0.0))
+                    Imgproc.drawContours(compMask, internalContours, cIdx, Scalar(255.0), -1)
+
+                    Imgproc.distanceTransform(compMask, compDist, Imgproc.DIST_L2, 3)
+                    val distBuf = FloatArray(procW * procH)
+                    compDist.get(0, 0, distBuf)
+
+                    val chamferPx = (0.8 / scaleMmPerPx).coerceAtLeast(2.0).toFloat()
+                    val maxD = distBuf.maxOrNull() ?: 1.0f
+
+                    for (cy in bR.y until (bR.y + bR.height)) {
+                        for (cx in bR.x until (bR.x + bR.width)) {
+                            val cidx = cy * procW + cx
+                            val dIn = distBuf[cidx]
+                            if (dIn > 0f) {
+                                val factor = (dIn / chamferPx).coerceIn(0.0f, 1.0f)
+                                val h: Float = if (circularity > 0.62 && cArea < totalObjArea * 0.05) {
+                                    val relDist = dIn / max(1.0f, maxD)
+                                    if (relDist < 0.40f) {
+                                        0.70f * factor // outer protective lens ring
+                                    } else {
+                                        (0.70f - 0.40f * ((relDist - 0.40f) / 0.60f)) // optical lens recess
+                                    }
+                                } else {
+                                    2.0f * factor // raised camera island / button plateau
+                                }
+                                if (h > compFloats[cidx]) {
+                                    compFloats[cidx] = h
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        compMask.release()
+        compDist.release()
+        internalHierarchy.release()
+        for (c in internalContours) c.release()
+
+        val blurMidMat = Mat()
+        Imgproc.GaussianBlur(grayMat, blurMidMat, Size(25.0, 25.0), 6.0)
+        val blurMidBytes = ByteArray(procW * procH)
+        blurMidMat.get(0, 0, blurMidBytes)
+        blurMidMat.release()
+
+        val blurHighMat = Mat()
+        Imgproc.GaussianBlur(grayMat, blurHighMat, Size(7.0, 7.0), 1.8)
+        val blurHighBytes = ByteArray(procW * procH)
+        blurHighMat.get(0, 0, blurHighBytes)
+        blurHighMat.release()
+
+        fun getSurfaceZ(px: Int, py: Int): Double {
+            if (px !in 0 until procW || py !in 0 until procH) return 0.0
+            val idx = py * procW + px
+            if ((cleanMaskBytes[idx].toInt() and 0xFF) <= 128) return 0.0
+
+            var z = targetThicknessMm
+
+            // 1. Ergonomic Edge Bevel / Fillet via Distance Transform
+            val distPx = distFloats[idx].toDouble()
+            val distMm = distPx * scaleMmPerPx
+            val bevelRadiusMm = 2.5
+            if (distMm < bevelRadiusMm) {
+                val f = 1.0 - (distMm / bevelRadiusMm)
+                z -= 0.75 * f * f
+            }
+
+            // 2. Real Detected Physical Component Elevation (Camera Island, Buttons, Modules)
+            val compH = compFloats[idx].toDouble()
+            z += compH
+
+            // 3. Multi-scale Continuous Photometric Shading & Micro-Relief
+            val gVal = (grayBytes[idx].toInt() and 0xFF).toDouble()
+            val midVal = (blurMidBytes[idx].toInt() and 0xFF).toDouble()
+            val highVal = (blurHighBytes[idx].toInt() and 0xFF).toDouble()
+
+            val midDiff = gVal - midVal
+            val highDiff = gVal - highVal
+
+            val midRelief = (midDiff / 128.0) * 0.60
+            val highRelief = (highDiff / 128.0) * 0.35
+            val totalPhoto = (midRelief + highRelief).coerceIn(-0.85, 0.85)
+            z += totalPhoto
+
+            return max(1.0, z)
+        }
+
+        val poly2D = ArrayList<Point2D>()
+        for (p in rawPts) {
+            val mx = (p.x - centerPxX) * scaleMmPerPx
+            val my = (p.y - centerPxY) * scaleMmPerPx
+            poly2D.add(Point2D(mx, my))
+        }
+
+        val delta = 1.25 // mm
+        val halfW = (spanPxX * scaleMmPerPx) / 2.0
+        val halfH = (spanPxY * scaleMmPerPx) / 2.0
+        val minX_mm = -halfW - delta
+        val maxX_mm = halfW + delta
+        val minY_mm = -halfH - delta
+        val maxY_mm = halfH + delta
+
+        val NX = ((maxX_mm - minX_mm) / delta).toInt() + 1
+        val NY = ((maxY_mm - minY_mm) / delta).toInt() + 1
+
+        val active = Array(NX) { BooleanArray(NY) }
+        val nodeX = Array(NX + 1) { DoubleArray(NY + 1) }
+        val nodeY = Array(NX + 1) { DoubleArray(NY + 1) }
+        val nodeZ = Array(NX + 1) { DoubleArray(NY + 1) }
+
+        for (i in 0..NX) {
+            val x = minX_mm + i * delta
+            for (j in 0..NY) {
+                val y = minY_mm + j * delta
+                nodeX[i][j] = x
+                nodeY[i][j] = y
+
+                val px = (x / scaleMmPerPx + centerPxX).toInt()
+                val py = (y / scaleMmPerPx + centerPxY).toInt()
+                nodeZ[i][j] = getSurfaceZ(px, py)
+            }
+        }
+
+        for (i in 0 until NX) {
+            for (j in 0 until NY) {
+                val cxMm = (nodeX[i][j] + nodeX[i + 1][j]) / 2.0
+                val cyMm = (nodeY[i][j] + nodeY[i + 1][j]) / 2.0
+                val px = (cxMm / scaleMmPerPx + centerPxX).toInt()
+                val py = (cyMm / scaleMmPerPx + centerPxY).toInt()
+                val isInside = if (px in 0 until procW && py in 0 until procH) {
+                    (cleanMaskBytes[py * procW + px].toInt() and 0xFF) > 128
+                } else false
+                active[i][j] = isInside
+            }
+        }
+
+        fun isCellActive(ci: Int, cj: Int): Boolean {
+            if (ci !in 0 until NX || cj !in 0 until NY) return false
+            return active[ci][cj]
+        }
+
+        // Boundary node snapping: Snap outer grid nodes to precise polygon perimeter
+        for (i in 0..NX) {
+            for (j in 0..NY) {
+                val a1 = isCellActive(i - 1, j - 1)
+                val a2 = isCellActive(i, j - 1)
+                val a3 = isCellActive(i - 1, j)
+                val a4 = isCellActive(i, j)
+                val hasActive = a1 || a2 || a3 || a4
+                val hasInactive = (!a1) || (!a2) || (!a3) || (!a4)
+                if (hasActive && hasInactive) {
+                    val curPt = Point2D(nodeX[i][j], nodeY[i][j])
+                    val snapped = closestPointOnPolygon(curPt, poly2D)
+                    val dSq = (snapped.x - curPt.x) * (snapped.x - curPt.x) + (snapped.y - curPt.y) * (snapped.y - curPt.y)
+                    if (dSq < (1.4 * delta * 1.4 * delta)) {
+                        nodeX[i][j] = snapped.x
+                        nodeY[i][j] = snapped.y
+                        val spx = (snapped.x / scaleMmPerPx + centerPxX).toInt()
+                        val spy = (snapped.y / scaleMmPerPx + centerPxY).toInt()
+                        nodeZ[i][j] = getSurfaceZ(spx, spy)
+                    }
+                }
+            }
+        }
+
+        val normDown = Vec3(0.0, 0.0, -1.0)
+
+        for (i in 0 until NX) {
+            for (j in 0 until NY) {
+                if (!active[i][j]) continue
+
+                val x00 = nodeX[i][j];     val y00 = nodeY[i][j];     val z00 = nodeZ[i][j]
+                val x10 = nodeX[i + 1][j]; val y10 = nodeY[i + 1][j]; val z10 = nodeZ[i + 1][j]
+                val x11 = nodeX[i + 1][j + 1]; val y11 = nodeY[i + 1][j + 1]; val z11 = nodeZ[i + 1][j + 1]
+                val x01 = nodeX[i][j + 1]; val y01 = nodeY[i][j + 1]; val z01 = nodeZ[i][j + 1]
+
+                val t00 = Vec3(x00, y00, z00)
+                val t10 = Vec3(x10, y10, z10)
+                val t11 = Vec3(x11, y11, z11)
+                val t01 = Vec3(x01, y01, z01)
+
+                val b00 = Vec3(x00, y00, 0.0)
+                val b10 = Vec3(x10, y10, 0.0)
+                val b11 = Vec3(x11, y11, 0.0)
+                val b01 = Vec3(x01, y01, 0.0)
+
+                // 1. Top Face
+                val nTop1 = computeNormal(t00, t10, t11)
+                list.add(StlTriangle(t00, t10, t11, nTop1))
+
+                val nTop2 = computeNormal(t00, t11, t01)
+                list.add(StlTriangle(t00, t11, t01, nTop2))
+
+                // 2. Bottom Face (Flat base on print bed)
+                list.add(StlTriangle(b00, b11, b10, normDown))
+                list.add(StlTriangle(b00, b01, b11, normDown))
+
+                // 3. Side Walls connecting top to base
+                if (!isCellActive(i - 1, j)) {
+                    val nWall = computeNormal(b00, b01, t01)
+                    list.add(StlTriangle(b00, b01, t01, nWall))
+                    list.add(StlTriangle(b00, t01, t00, nWall))
+                }
+                if (!isCellActive(i + 1, j)) {
+                    val nWall = computeNormal(b11, b10, t10)
+                    list.add(StlTriangle(b11, b10, t10, nWall))
+                    list.add(StlTriangle(b11, t10, t11, nWall))
+                }
+                if (!isCellActive(i, j - 1)) {
+                    val nWall = computeNormal(b10, b00, t00)
+                    list.add(StlTriangle(b10, b00, t00, nWall))
+                    list.add(StlTriangle(b10, t00, t10, nWall))
+                }
+                if (!isCellActive(i, j + 1)) {
+                    val nWall = computeNormal(b01, b11, t11)
+                    list.add(StlTriangle(b01, b11, t11, nWall))
+                    list.add(StlTriangle(b01, t11, t01, nWall))
+                }
+            }
+        }
+
+        cleanMask.release()
+        grayMat.release()
 
         return list
     }
@@ -920,6 +1020,8 @@ object ThreeDReconstructionEngine {
                 for (k in 0 until nz) {
                     val wz = minZ + k * step
 
+                    if (wz <= 0.0) continue
+
                     var votes = 0
                     var visibleViews = 0
 
@@ -953,9 +1055,6 @@ object ThreeDReconstructionEngine {
         return count
     }
 
-    /**
-     * Extracts 100% Watertight 2-Manifold Voxel Boundary Mesh.
-     */
     private fun extractVoxelMesh(
         solid: ByteArray,
         nx: Int, ny: Int, nz: Int,
@@ -1132,284 +1231,284 @@ object ThreeDReconstructionEngine {
         procH: Int
     ): SilhouetteResult {
         val totalPixels = procW * procH
+        val frameArea = procW.toDouble() * procH.toDouble()
         val cleanMask = Mat.zeros(Size(procW.toDouble(), procH.toDouble()), CvType.CV_8UC1)
+        var paperScale: Double? = null
 
-        val lab = Mat()
-        Imgproc.cvtColor(bgrImg, lab, Imgproc.COLOR_BGR2Lab)
-        val labBytes = ByteArray(totalPixels * 3)
-        lab.get(0, 0, labBytes)
-        lab.release()
-
-        // 1. Adaptive Luminance Substrate Analysis: Detect white paper mat under real lighting
-        val histL = IntArray(256)
-        for (idx in 0 until totalPixels) {
-            val l = labBytes[idx * 3].toInt() and 0xFF
-            histL[l]++
-        }
-        var accum = 0
-        var l80 = 150
-        for (l in 255 downTo 0) {
-            accum += histL[l]
-            if (accum >= totalPixels * 0.18) {
-                l80 = l
-                break
-            }
+        // 1. Check if A4 white paper sheet is present on the table / substrate
+        val paperQuad = try {
+            DocumentDetector.findQuad(grayMat)
+        } catch (_: Exception) {
+            null
         }
 
-        // White paper in Lab has high relative luminance (l80 - 28) and neutral chroma
-        val paperMinL = max(128, l80 - 28)
-        var paperPixelCount = 0
-        val paperCandidateBytes = ByteArray(totalPixels)
+        var foundObjectOnPaper = false
 
-        for (idx in 0 until totalPixels) {
-            val l = labBytes[idx * 3].toInt() and 0xFF
-            val a = labBytes[idx * 3 + 1].toInt() and 0xFF
-            val b = labBytes[idx * 3 + 2].toInt() and 0xFF
-            val da = a - 128
-            val db = b - 128
-            val chromaSq = da * da + db * db
+        if (paperQuad != null && paperQuad.size == 4) {
+            val p0 = paperQuad[0]; val p1 = paperQuad[1]
+            val p2 = paperQuad[2]; val p3 = paperQuad[3]
+            val s0 = hypot(p1.x - p0.x, p1.y - p0.y)
+            val s1 = hypot(p2.x - p1.x, p2.y - p1.y)
+            val s2 = hypot(p3.x - p2.x, p3.y - p2.y)
+            val s3 = hypot(p0.x - p3.x, p0.y - p3.y)
+            val longSide = max(max(s0, s2), max(s1, s3))
+            val shortSide = min(min(s0, s2), min(s1, s3))
+            val quadArea = longSide * shortSide
 
-            if (l >= paperMinL && chromaSq < (48 * 48)) {
-                paperCandidateBytes[idx] = 255.toByte()
-                paperPixelCount++
-            }
-        }
-
-        val hasPaperSubstrate = paperPixelCount > (totalPixels * 0.10)
-
-        if (hasPaperSubstrate) {
-            val paperMat = Mat(procH, procW, CvType.CV_8UC1)
-            paperMat.put(0, 0, paperCandidateBytes)
-
-            val paperCloseKernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(15.0, 15.0))
-            Imgproc.morphologyEx(paperMat, paperMat, Imgproc.MORPH_CLOSE, paperCloseKernel)
-            paperCloseKernel.release()
-
-            val paperContours = ArrayList<MatOfPoint>()
-            val hierarchy = Mat()
-            Imgproc.findContours(paperMat, paperContours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
-            hierarchy.release()
-            paperMat.release()
-
-            var bestPaperContour: MatOfPoint? = null
-            var bestPaperArea = 0.0
-            for (c in paperContours) {
-                val a = Imgproc.contourArea(c)
-                if (a > bestPaperArea) {
-                    bestPaperArea = a
-                    bestPaperContour = c
+            if (quadArea > frameArea * 0.08 && longSide > 120.0) {
+                val sLong = 297.0 / longSide
+                val sShort = 210.0 / shortSide
+                val avgScale = (sLong + sShort) / 2.0
+                if (avgScale in 0.10..0.85) {
+                    paperScale = avgScale
                 }
-            }
 
-            if (bestPaperContour != null && bestPaperArea > (totalPixels * 0.08)) {
                 val paperMask = Mat.zeros(Size(procW.toDouble(), procH.toDouble()), CvType.CV_8UC1)
-                Imgproc.drawContours(paperMask, listOf(bestPaperContour), -1, Scalar(255.0), -1)
+                val polyPts = MatOfPoint(
+                    org.opencv.core.Point(p0.x, p0.y),
+                    org.opencv.core.Point(p1.x, p1.y),
+                    org.opencv.core.Point(p2.x, p2.y),
+                    org.opencv.core.Point(p3.x, p3.y)
+                )
+                Imgproc.fillPoly(paperMask, listOf(polyPts), Scalar(255.0))
+                polyPts.release()
 
-                val erodeKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(7.0, 7.0))
-                Imgproc.erode(paperMask, paperMask, erodeKernel)
-                erodeKernel.release()
-
-                val paperMaskBytes = ByteArray(totalPixels)
-                paperMask.get(0, 0, paperMaskBytes)
+                val paperErode = Mat()
+                val kErode = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Size(15.0, 15.0))
+                Imgproc.erode(paperMask, paperErode, kErode)
+                kErode.release()
                 paperMask.release()
 
-                var sumL = 0.0; var sumA = 0.0; var sumB = 0.0
-                var pCount = 0
-                for (idx in 0 until totalPixels) {
-                    if ((paperMaskBytes[idx].toInt() and 0xFF) > 128) {
-                        sumL += (labBytes[idx * 3].toInt() and 0xFF)
-                        sumA += (labBytes[idx * 3 + 1].toInt() and 0xFF)
-                        sumB += (labBytes[idx * 3 + 2].toInt() and 0xFF)
-                        pCount++
-                    }
-                }
-                val avgPaperL = if (pCount > 0) sumL / pCount else 200.0
-                val avgPaperA = if (pCount > 0) sumA / pCount else 128.0
-                val avgPaperB = if (pCount > 0) sumB / pCount else 128.0
+                val lab = Mat()
+                Imgproc.cvtColor(bgrImg, lab, Imgproc.COLOR_BGR2Lab)
 
-                val objectBytes = ByteArray(totalPixels)
-                for (idx in 0 until totalPixels) {
-                    if ((paperMaskBytes[idx].toInt() and 0xFF) > 128) {
-                        val l = labBytes[idx * 3].toInt() and 0xFF
-                        val a = labBytes[idx * 3 + 1].toInt() and 0xFF
-                        val b = labBytes[idx * 3 + 2].toInt() and 0xFF
-
-                        val dL = avgPaperL - l
-                        val da = a - avgPaperA
-                        val db = b - avgPaperB
-                        val chromaDiffSq = da * da + db * db
-
-                        // Any pixel significantly darker or colored inside the paper is the object
-                        if (dL > 15.0 || chromaDiffSq > (14.0 * 14.0)) {
-                            objectBytes[idx] = 255.toByte()
-                        }
-                    }
+                val quadCx = (p0.x + p1.x + p2.x + p3.x) / 4.0
+                val quadCy = (p0.y + p1.y + p2.y + p3.y) / 4.0
+                val samplePoints = listOf(p0, p1, p2, p3).map { pt ->
+                    org.opencv.core.Point(
+                        pt.x + 0.18 * (quadCx - pt.x),
+                        pt.y + 0.18 * (quadCy - pt.y)
+                    )
                 }
 
-                for (c in paperContours) c.release()
+                var paperLSum = 0.0; var paperASum = 0.0; var paperBSum = 0.0
+                var paperSamplesCount = 0
+                val patchRad = 6
 
-                val objMat = Mat(procH, procW, CvType.CV_8UC1)
-                objMat.put(0, 0, objectBytes)
-                val objClose = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(11.0, 11.0))
-                val objOpen = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(3.0, 3.0))
-                Imgproc.morphologyEx(objMat, objMat, Imgproc.MORPH_CLOSE, objClose)
-                Imgproc.morphologyEx(objMat, objMat, Imgproc.MORPH_OPEN, objOpen)
-                objClose.release()
-                objOpen.release()
+                for (sp in samplePoints) {
+                    val sx = sp.x.toInt().coerceIn(patchRad, procW - patchRad - 1)
+                    val sy = sp.y.toInt().coerceIn(patchRad, procH - patchRad - 1)
+                    val sub = lab.submat(Rect(sx - patchRad, sy - patchRad, patchRad * 2, patchRad * 2))
+                    val m = Core.mean(sub)
+                    sub.release()
+                    paperLSum += m.`val`[0]
+                    paperASum += m.`val`[1]
+                    paperBSum += m.`val`[2]
+                    paperSamplesCount++
+                }
 
-                val objContours = ArrayList<MatOfPoint>()
-                val objHierarchy = Mat()
-                Imgproc.findContours(objMat, objContours, objHierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
-                objHierarchy.release()
-                objMat.release()
+                val paperL = if (paperSamplesCount > 0) paperLSum / paperSamplesCount else 210.0
+                val paperA = if (paperSamplesCount > 0) paperASum / paperSamplesCount else 128.0
+                val paperB = if (paperSamplesCount > 0) paperBSum / paperSamplesCount else 128.0
 
-                var bestObjContour: MatOfPoint? = null
-                var bestObjArea = 0.0
-                for (c in objContours) {
+                val labBytes = ByteArray(totalPixels * 3)
+                lab.get(0, 0, labBytes)
+                lab.release()
+
+                val erodeBytes = ByteArray(totalPixels)
+                paperErode.get(0, 0, erodeBytes)
+                paperErode.release()
+
+                val diffBytes = ByteArray(totalPixels)
+                val thresholdSq = 16.0 * 16.0
+
+                for (idx in 0 until totalPixels) {
+                    if ((erodeBytes[idx].toInt() and 0xFF) > 128) {
+                        val l = (labBytes[idx * 3].toInt() and 0xFF) - paperL
+                        val a = (labBytes[idx * 3 + 1].toInt() and 0xFF) - paperA
+                        val b = (labBytes[idx * 3 + 2].toInt() and 0xFF) - paperB
+                        val distSq = l * l + a * a + b * b
+                        diffBytes[idx] = if (distSq > thresholdSq) 255.toByte() else 0.toByte()
+                    } else {
+                        diffBytes[idx] = 0.toByte()
+                    }
+                }
+
+                val diffMat = Mat(procH, procW, CvType.CV_8UC1)
+                diffMat.put(0, 0, diffBytes)
+
+                val closeK = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(13.0, 13.0))
+                Imgproc.morphologyEx(diffMat, diffMat, Imgproc.MORPH_CLOSE, closeK)
+                closeK.release()
+
+                val contours = ArrayList<MatOfPoint>()
+                val hierarchy = Mat()
+                Imgproc.findContours(diffMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+                hierarchy.release()
+                diffMat.release()
+
+                var bestIdx = -1
+                var bestScore = -1.0
+                for (cIdx in contours.indices) {
+                    val c = contours[cIdx]
                     val a = Imgproc.contourArea(c)
-                    if (a > bestObjArea) {
-                        bestObjArea = a
-                        bestObjContour = c
+                    if (a > bestScore && a > (frameArea * 0.008)) {
+                        bestScore = a
+                        bestIdx = cIdx
                     }
                 }
 
-                if (bestObjContour != null && bestObjArea > (totalPixels * 0.008)) {
-                    Imgproc.drawContours(cleanMask, listOf(bestObjContour), -1, Scalar(255.0), -1)
-                    val fillKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(7.0, 7.0))
+                if (bestIdx >= 0) {
+                    Imgproc.drawContours(cleanMask, contours, bestIdx, Scalar(255.0), -1)
+                    val fillKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(9.0, 9.0))
                     Imgproc.morphologyEx(cleanMask, cleanMask, Imgproc.MORPH_CLOSE, fillKernel)
                     fillKernel.release()
-
-                    for (c in objContours) c.release()
-
-                    val resultBytes = ByteArray(totalPixels)
-                    cleanMask.get(0, 0, resultBytes)
-                    cleanMask.release()
-
-                    return SilhouetteResult(resultBytes, null)
+                    foundObjectOnPaper = true
                 }
-                for (c in objContours) c.release()
+                for (c in contours) c.release()
+            }
+        }
+
+        // 2. Fallback: Full frame substrate isolation (close-up paper or desk surface)
+        if (!foundObjectOnPaper) {
+            val lab = Mat()
+            Imgproc.cvtColor(bgrImg, lab, Imgproc.COLOR_BGR2Lab)
+
+            val patchW = max(6, procW / 16)
+            val patchH = max(6, procH / 16)
+
+            val substrateRects = listOf(
+                Rect(2, 2, patchW, patchH),
+                Rect(procW - patchW - 2, 2, patchW, patchH),
+                Rect(2, procH - patchH - 2, patchW, patchH),
+                Rect(procW - patchW - 2, procH - patchH - 2, patchW, patchH),
+                Rect(procW / 2 - patchW / 2, 2, patchW, patchH),
+                Rect(procW / 2 - patchW / 2, procH - patchH - 2, patchW, patchH),
+                Rect(2, procH / 2 - patchH / 2, patchW, patchH),
+                Rect(procW - patchW - 2, procH / 2 - patchH / 2, patchW, patchH)
+            )
+
+            var whiteLSum = 0.0; var whiteASum = 0.0; var whiteBSum = 0.0
+            var whiteCount = 0
+            var allLSum = 0.0; var allASum = 0.0; var allBSum = 0.0
+
+            for (rect in substrateRects) {
+                val sub = lab.submat(rect)
+                val mean = Core.mean(sub)
+                sub.release()
+                val l = mean.`val`[0]
+                val a = mean.`val`[1]
+                val b = mean.`val`[2]
+                allLSum += l; allASum += a; allBSum += b
+                if (l >= 140.0) {
+                    whiteLSum += l
+                    whiteASum += a
+                    whiteBSum += b
+                    whiteCount++
+                }
+            }
+
+            val bgL: Double; val bgA: Double; val bgB: Double
+            val isWhiteSubstrate = whiteCount >= 3
+            if (isWhiteSubstrate) {
+                bgL = whiteLSum / whiteCount
+                bgA = whiteASum / whiteCount
+                bgB = whiteBSum / whiteCount
             } else {
-                for (c in paperContours) c.release()
+                bgL = allLSum / substrateRects.size
+                bgA = allASum / substrateRects.size
+                bgB = allBSum / substrateRects.size
             }
-        }
 
-        // Fallback: 8 substrate sampling locations strictly on outer image borders
-        val patchW = max(8, procW / 16)
-        val patchH = max(8, procH / 16)
+            val labBytes = ByteArray(totalPixels * 3)
+            lab.get(0, 0, labBytes)
+            lab.release()
 
-        val substrateRects = listOf(
-            Rect(3, 3, patchW, patchH),
-            Rect(procW - patchW - 3, 3, patchW, patchH),
-            Rect(3, procH - patchH - 3, patchW, patchH),
-            Rect(procW - patchW - 3, procH - patchH - 3, patchW, patchH),
-            Rect(procW / 2 - patchW / 2, 3, patchW, patchH),
-            Rect(procW / 2 - patchW / 2, procH - patchH - 3, patchW, patchH),
-            Rect(3, procH / 2 - patchH / 2, patchW, patchH),
-            Rect(procW - patchW - 3, procH / 2 - patchH / 2, patchW, patchH)
-        )
+            val diffMat = Mat(procH, procW, CvType.CV_8UC1)
+            val maskBytes = ByteArray(totalPixels)
+            val thresholdSq = if (isWhiteSubstrate) (20.0 * 20.0) else (16.0 * 16.0)
 
-        val samples = ArrayList<Triple<Double, Double, Double>>()
+            for (idx in 0 until totalPixels) {
+                val l = (labBytes[idx * 3].toInt() and 0xFF) - bgL
+                val a = (labBytes[idx * 3 + 1].toInt() and 0xFF) - bgA
+                val b = (labBytes[idx * 3 + 2].toInt() and 0xFF) - bgB
+                val distSq = l * l + a * a + b * b
+                maskBytes[idx] = if (distSq > thresholdSq) 255.toByte() else 0.toByte()
+            }
+            diffMat.put(0, 0, maskBytes)
 
-        for (rect in substrateRects) {
-            var sumL = 0.0; var sumA = 0.0; var sumB = 0.0
-            var count = 0
-            for (ry in rect.y until (rect.y + rect.height).coerceAtMost(procH)) {
-                for (rx in rect.x until (rect.x + rect.width).coerceAtMost(procW)) {
-                    val idx = ry * procW + rx
-                    sumL += (labBytes[idx * 3].toInt() and 0xFF)
-                    sumA += (labBytes[idx * 3 + 1].toInt() and 0xFF)
-                    sumB += (labBytes[idx * 3 + 2].toInt() and 0xFF)
-                    count++
+            val closeKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(15.0, 15.0))
+            val openKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
+            Imgproc.morphologyEx(diffMat, diffMat, Imgproc.MORPH_CLOSE, closeKernel)
+            Imgproc.morphologyEx(diffMat, diffMat, Imgproc.MORPH_OPEN, openKernel)
+            closeKernel.release()
+            openKernel.release()
+
+            val contours = ArrayList<MatOfPoint>()
+            val hierarchy = Mat()
+            Imgproc.findContours(diffMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
+            hierarchy.release()
+
+            val centerX = procW / 2.0
+            val centerY = procH / 2.0
+            val maxDistFromCenter = sqrt(centerX * centerX + centerY * centerY)
+
+            var bestContourIdx = -1
+            var bestScore = -1.0
+            val borderMargin = max(4, (procW * 0.02).toInt())
+
+            for (cIdx in contours.indices) {
+                val c = contours[cIdx]
+                val area = Imgproc.contourArea(c)
+                if (area < (totalPixels * 0.01)) continue
+
+                val bRect = Imgproc.boundingRect(c)
+                val touchesBorder = (bRect.x <= borderMargin || bRect.y <= borderMargin ||
+                        (bRect.x + bRect.width) >= (procW - borderMargin) ||
+                        (bRect.y + bRect.height) >= (procH - borderMargin))
+
+                if (touchesBorder && area > (totalPixels * 0.35)) {
+                    continue
+                }
+
+                val moments = Imgproc.moments(c)
+                if (moments.m00 > 0) {
+                    val cx = moments.m10 / moments.m00
+                    val cy = moments.m01 / moments.m00
+                    val dist = sqrt((cx - centerX) * (cx - centerX) + (cy - centerY) * (cy - centerY))
+                    val centerWeight = 1.0 - (dist / maxDistFromCenter).coerceIn(0.0, 0.85)
+                    val borderPenalty = if (touchesBorder) 0.25 else 1.0
+                    val score = area * centerWeight * borderPenalty
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestContourIdx = cIdx
+                    }
                 }
             }
-            if (count > 0) {
-                samples.add(Triple(sumL / count, sumA / count, sumB / count))
-            }
-        }
 
-        samples.sortByDescending { it.first }
-        val topSamples = samples.take(4)
-        val bgL = if (topSamples.isNotEmpty()) topSamples.map { it.first }.average() else 200.0
-        val bgA = if (topSamples.isNotEmpty()) topSamples.map { it.second }.average() else 128.0
-        val bgB = if (topSamples.isNotEmpty()) topSamples.map { it.third }.average() else 128.0
-
-        val diffMat = Mat(procH, procW, CvType.CV_8UC1)
-        val maskBytes = ByteArray(totalPixels)
-        val thresholdSq = 20.0 * 20.0
-
-        for (idx in 0 until totalPixels) {
-            val l = (labBytes[idx * 3].toInt() and 0xFF) - bgL
-            val a = (labBytes[idx * 3 + 1].toInt() and 0xFF) - bgA
-            val b = (labBytes[idx * 3 + 2].toInt() and 0xFF) - bgB
-            val distSq = l * l + a * a + b * b
-            maskBytes[idx] = if (distSq > thresholdSq) 255.toByte() else 0.toByte()
-        }
-        diffMat.put(0, 0, maskBytes)
-
-        val closeKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(15.0, 15.0))
-        val openKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(5.0, 5.0))
-        Imgproc.morphologyEx(diffMat, diffMat, Imgproc.MORPH_CLOSE, closeKernel)
-        Imgproc.morphologyEx(diffMat, diffMat, Imgproc.MORPH_OPEN, openKernel)
-        closeKernel.release()
-        openKernel.release()
-
-        val contours = ArrayList<MatOfPoint>()
-        val hierarchy = Mat()
-        Imgproc.findContours(diffMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE)
-        hierarchy.release()
-        diffMat.release()
-
-        val centerX = procW / 2.0
-        val centerY = procH / 2.0
-        val maxDistFromCenter = sqrt(centerX * centerX + centerY * centerY)
-
-        var bestContourIdx = -1
-        var bestScore = -1.0
-        val borderMargin = max(4, (procW * 0.02).toInt())
-
-        for (cIdx in contours.indices) {
-            val c = contours[cIdx]
-            val area = Imgproc.contourArea(c)
-            if (area < (totalPixels * 0.015)) continue
-
-            val bRect = Imgproc.boundingRect(c)
-            val touchesBorder = (bRect.x <= borderMargin || bRect.y <= borderMargin ||
-                    (bRect.x + bRect.width) >= (procW - borderMargin) ||
-                    (bRect.y + bRect.height) >= (procH - borderMargin))
-
-            if (touchesBorder && area > (totalPixels * 0.40)) {
-                continue
+            if (bestContourIdx >= 0) {
+                Imgproc.drawContours(cleanMask, contours, bestContourIdx, Scalar(255.0), -1)
+                val fillKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(9.0, 9.0))
+                Imgproc.morphologyEx(cleanMask, cleanMask, Imgproc.MORPH_CLOSE, fillKernel)
+                fillKernel.release()
+            } else {
+                val centerRect = Rect((procW * 0.15).toInt(), (procH * 0.15).toInt(), (procW * 0.7).toInt(), (procH * 0.7).toInt())
+                val subDiff = Mat(diffMat, centerRect)
+                val subClean = Mat(cleanMask, centerRect)
+                subDiff.copyTo(subClean)
+                subDiff.release()
+                subClean.release()
             }
 
-            val moments = Imgproc.moments(c)
-            if (moments.m00 > 0) {
-                val cx = moments.m10 / moments.m00
-                val cy = moments.m01 / moments.m00
-                val dist = sqrt((cx - centerX) * (cx - centerX) + (cy - centerY) * (cy - centerY))
-                val centerWeight = 1.0 - (dist / maxDistFromCenter).coerceIn(0.0, 0.85)
-                val borderPenalty = if (touchesBorder) 0.35 else 1.0
-                val score = area * centerWeight * borderPenalty
-                if (score > bestScore) {
-                    bestScore = score
-                    bestContourIdx = cIdx
-                }
-            }
+            for (c in contours) c.release()
+            diffMat.release()
         }
-
-        if (bestContourIdx >= 0) {
-            Imgproc.drawContours(cleanMask, contours, bestContourIdx, Scalar(255.0), -1)
-            val fillKernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, Size(9.0, 9.0))
-            Imgproc.morphologyEx(cleanMask, cleanMask, Imgproc.MORPH_CLOSE, fillKernel)
-            fillKernel.release()
-        }
-
-        for (c in contours) c.release()
 
         val resultBytes = ByteArray(totalPixels)
         cleanMask.get(0, 0, resultBytes)
         cleanMask.release()
 
-        return SilhouetteResult(resultBytes, null)
+        return SilhouetteResult(resultBytes, paperScale)
     }
 
     data class Vec3(val x: Double, val y: Double, val z: Double)
