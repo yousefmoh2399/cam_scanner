@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/theme/motion_tokens.dart';
 import '../../../../shared/models/pending_upload.dart';
 import '../../../../shared/models/scan_page.dart';
 import '../../../../shared/providers/providers.dart';
@@ -277,6 +278,7 @@ class AppleBottomNavBar extends ConsumerWidget {
 
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetCtx) => ClipRRect(
