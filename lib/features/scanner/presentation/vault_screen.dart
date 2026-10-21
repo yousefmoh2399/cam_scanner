@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
@@ -218,6 +219,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final chosen = await showModalBottomSheet<PendingUpload>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       useSafeArea: true,
       backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
       shape: const RoundedRectangleBorder(
@@ -518,6 +520,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
       shape: const RoundedRectangleBorder(
