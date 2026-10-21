@@ -91,6 +91,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     return _pressKeys.putIfAbsent(id, () => GlobalKey<RawPressFeedbackState>());
   }
 
+  void _prunePressKeys(List<PendingUpload> activeDocs) {
+    if (_pressKeys.length > activeDocs.length * 2 + 20) {
+      final validIds = activeDocs.map((d) => d.id).toSet();
+      _pressKeys.removeWhere((key, _) {
+        final docId = key.startsWith('grid_') ? key.substring(5) : key.substring(5);
+        return !validIds.contains(docId);
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1662,6 +1672,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   Widget build(BuildContext context) {
     final docsAsync = ref.watch(pendingUploadsControllerProvider);
     final allDocs = docsAsync.valueOrNull ?? const <PendingUpload>[];
+    _prunePressKeys(allDocs);
     final visibleDocs = _filterAndSortDocuments(allDocs);
     final palette = context.appThemePalette;
     final isDark = Theme.of(context).brightness == Brightness.dark;
