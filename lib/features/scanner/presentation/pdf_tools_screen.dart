@@ -12,6 +12,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
@@ -222,6 +223,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
 
     final chosen = await showModalBottomSheet<PendingUpload>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -458,6 +460,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
 
     final chosen = await showModalBottomSheet<PendingUpload>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -686,6 +689,7 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
 
     final chosen = await showModalBottomSheet<PendingUpload>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
