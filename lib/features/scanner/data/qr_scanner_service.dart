@@ -4,6 +4,7 @@ import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import 'native_scanner_bridge.dart';
 
 /// Unified offline QR & Barcode Detection Service.
@@ -70,6 +71,7 @@ class QrScannerService {
 
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
