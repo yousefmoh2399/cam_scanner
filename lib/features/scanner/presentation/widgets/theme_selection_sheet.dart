@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/motion_tokens.dart';
 import '../../../../shared/providers/providers.dart';
 
 class AccentThemeOption {
@@ -59,6 +60,7 @@ Future<void> showThemeSelectionSheet(BuildContext context, WidgetRef ref) async 
 
   await showModalBottomSheet<void>(
     context: context,
+    sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (sheetCtx) => Consumer(
