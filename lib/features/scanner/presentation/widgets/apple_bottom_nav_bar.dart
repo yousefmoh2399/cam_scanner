@@ -299,9 +299,11 @@ class AppleBottomNavBar extends ConsumerWidget {
             ),
             child: SafeArea(
               top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   Container(
                     width: 36,
                     height: 4.5,
@@ -326,18 +328,20 @@ class AppleBottomNavBar extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'إجراءات المسح السريعة',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                          ),
-                          Text(
-                            'اختر نمط المسح أو استيراد ملفات',
-                            style: TextStyle(fontSize: 11.5, color: Color(0xFF8E8E93)),
-                          ),
-                        ],
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'إجراءات المسح السريعة',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                            ),
+                            Text(
+                              'اختر نمط المسح أو استيراد ملفات',
+                              style: TextStyle(fontSize: 11.5, color: Color(0xFF8E8E93)),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -456,7 +460,8 @@ class AppleBottomNavBar extends ConsumerWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildQuickActionTile({
