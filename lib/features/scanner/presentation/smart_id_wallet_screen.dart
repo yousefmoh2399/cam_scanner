@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../data/native_scanner_bridge.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/smart_id_wallet_service.dart';
@@ -137,6 +138,7 @@ class _SmartIdWalletScreenState extends ConsumerState<SmartIdWalletScreen> {
     HapticFeedback.lightImpact();
     showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
