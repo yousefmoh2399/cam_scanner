@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/motion_tokens.dart';
 import '../../../../shared/models/pending_upload.dart';
 import '../../../../shared/providers/providers.dart';
 import '../../../../shared/services/audio_feedback_service.dart';
@@ -19,6 +20,7 @@ class CloudBackupSheet extends ConsumerStatefulWidget {
   static Future<void> show(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const CloudBackupSheet(),
