@@ -546,6 +546,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final palette = context.appThemePalette;
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
@@ -828,6 +829,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       builder: (ctx) => Container(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
@@ -1197,6 +1199,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
+        sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
         builder: (sheetCtx) => SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -3124,6 +3127,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       builder: (ctx) {
         return Container(
           decoration: BoxDecoration(
