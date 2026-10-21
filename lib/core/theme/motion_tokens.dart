@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 /// Motion Tokens for CamScanner RTL (Offline)
@@ -17,6 +19,12 @@ abstract final class MotionTokens {
   /// [Press feedback] (100–160ms) — Emil / Apple
   /// Fast instant response confirming the interface heard the user.
   static const Duration pressFeedback = Duration(milliseconds: 120);
+
+  /// [Press delay] (40–80ms, tuned to 50ms)
+  /// Crucial delay before initiating press scale down.
+  /// Rationale: Allows fast scrolling/flings to move past [kTouchSlop] before
+  /// shrinking the card, preventing distracting micro-shrink flashes during scrolling.
+  static const Duration pressFeedbackDelay = Duration(milliseconds: 50);
 
   /// [Pop in / Filter Selection] (150–200ms)
   /// Used for small chips, segmented selectors, and tooltips.
@@ -136,56 +144,81 @@ abstract final class MotionTokens {
 }
 
 /// A touch feedback wrapper that uses [Listener] (raw pointer events)
-/// instead of [GestureDetector] to eliminate gesture arena conflict with
+/// with touch-slop and drag cancellation to eliminate gesture arena conflict with
 /// [LongPressDraggable] or scrolling containers.
 ///
-/// Architectural note:
-/// - [GestureDetector.onTapDown] competes in Flutter's [GestureArena] and can delay
-///   or interfere with [LongPressDraggable]'s 450ms timer.
-/// - [Listener] listens directly to [PointerDownEvent], [PointerUpEvent], and
-///   [PointerCancelEvent] without entering the arena, ensuring instant (<1 frame)
-///   press response.
-/// - When a drag starts, a [PointerCancelEvent] fires, automatically resetting
-///   the scale to 1.0 cleanly.
+/// Architectural guarantees:
+/// 1. Slop detection: If pointer moves more than [kTouchSlop] (18dp), scale resets to 1.0.
+/// 2. Press delay (50ms): Cancels timer if finger moves before 50ms (avoids scroll jitter).
+/// 3. Explicit drag cancellation: [reset] can be called directly by [LongPressDraggable.onDragStarted].
+/// 4. Up/Cancel safety: Resets scale on [PointerUpEvent] and [PointerCancelEvent].
 class RawPressFeedback extends StatefulWidget {
   const RawPressFeedback({
     super.key,
     required this.child,
     this.targetScale = MotionTokens.pressScale,
     this.duration = MotionTokens.pressFeedback,
+    this.pressDelay = MotionTokens.pressFeedbackDelay,
     this.curve = MotionTokens.easeOutStrong,
-    this.onTap,
   });
 
   final Widget child;
   final double targetScale;
   final Duration duration;
+  final Duration pressDelay;
   final Curve curve;
-  final VoidCallback? onTap;
 
   @override
-  State<RawPressFeedback> createState() => _RawPressFeedbackState();
+  State<RawPressFeedback> createState() => RawPressFeedbackState();
 }
 
-class _RawPressFeedbackState extends State<RawPressFeedback> {
+class RawPressFeedbackState extends State<RawPressFeedback> {
   bool _isPressed = false;
+  Offset? _downPosition;
+  Timer? _pressTimer;
+
+  /// Explicitly resets scale back to 1.0 (e.g. called from onDragStarted).
+  void reset() {
+    _pressTimer?.cancel();
+    _pressTimer = null;
+    _downPosition = null;
+    if (_isPressed && mounted) {
+      setState(() => _isPressed = false);
+    }
+  }
 
   void _onPointerDown(PointerDownEvent event) {
-    if (!_isPressed) {
-      setState(() => _isPressed = true);
+    _downPosition = event.position;
+    _pressTimer?.cancel();
+    _pressTimer = Timer(widget.pressDelay, () {
+      if (mounted && _downPosition != null) {
+        setState(() => _isPressed = true);
+      }
+    });
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (_downPosition != null) {
+      final delta = (event.position - _downPosition!).distance;
+      if (delta > kTouchSlop) {
+        // Pointer moved beyond slop threshold (user is scrolling)
+        reset();
+      }
     }
   }
 
   void _onPointerUp(PointerUpEvent event) {
-    if (_isPressed) {
-      setState(() => _isPressed = false);
-    }
+    reset();
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
-    if (_isPressed) {
-      setState(() => _isPressed = false);
-    }
+    reset();
+  }
+
+  @override
+  void dispose() {
+    _pressTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -194,6 +227,7 @@ class _RawPressFeedbackState extends State<RawPressFeedback> {
 
     return Listener(
       onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
       onPointerUp: _onPointerUp,
       onPointerCancel: _onPointerCancel,
       child: AnimatedScale(
