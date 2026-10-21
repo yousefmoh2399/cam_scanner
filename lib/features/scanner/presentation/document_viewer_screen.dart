@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
@@ -222,6 +223,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       builder: (_) => PdfSecuritySheet(document: _doc),
     );
 
@@ -293,6 +295,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
           return Material(
@@ -580,6 +583,7 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
     final choice = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return Padding(
