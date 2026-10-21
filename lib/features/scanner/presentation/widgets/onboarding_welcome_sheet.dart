@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/theme/motion_tokens.dart';
 import 'in_app_privacy_dialog.dart';
 
 /// نافذة ترحيبية وتعريفية تظهر لأول مرة عند تشغيل التطبيق (First-Run Onboarding)
@@ -31,6 +32,7 @@ class OnboardingWelcomeSheet extends StatelessWidget {
     HapticFeedback.mediumImpact();
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       isDismissible: false,
       enableDrag: false,
