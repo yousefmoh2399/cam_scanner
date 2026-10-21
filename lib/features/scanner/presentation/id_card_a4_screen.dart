@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
@@ -109,6 +110,7 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
 
     final source = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -230,6 +232,7 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
   Future<String?> _pickFromLibraryModal(List<PendingUpload> docs) async {
     return showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -411,6 +414,7 @@ class _IdCardA4ScreenState extends ConsumerState<IdCardA4Screen> {
 
     showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
