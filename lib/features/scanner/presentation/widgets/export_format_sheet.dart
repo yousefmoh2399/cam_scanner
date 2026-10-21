@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/motion_tokens.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/models/pending_upload.dart';
 import '../../../../shared/providers/providers.dart';
@@ -51,6 +52,7 @@ Future<SaveAndExportChoice?> showSaveAndExportBottomSheet({
   final effectiveName = initialFileName ?? initialName ?? '';
   return showModalBottomSheet<SaveAndExportChoice>(
     context: context,
+    sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
@@ -892,6 +894,7 @@ Future<void> showPostExportActionsSheet({
 
   return showModalBottomSheet<void>(
     context: context,
+    sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
     useSafeArea: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
