@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
@@ -139,6 +140,7 @@ class _PrivacyScrubberScreenState extends ConsumerState<PrivacyScrubberScreen> {
 
     final source = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -243,6 +245,7 @@ class _PrivacyScrubberScreenState extends ConsumerState<PrivacyScrubberScreen> {
     } else if (source == 'library') {
       final chosen = await showModalBottomSheet<PendingUpload>(
         context: context,
+        sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
         builder: (ctx) => SafeArea(
           child: ListView.builder(
             shrinkWrap: true,
