@@ -540,14 +540,17 @@ class _LanyardIdBadgeScreenState extends ConsumerState<LanyardIdBadgeScreen> {
                             Expanded(
                               child: DropdownButtonFormField<String>(
                                 initialValue: _badgeType,
+                                isExpanded: true,
+                                isDense: true,
                                 decoration: InputDecoration(
                                   labelText: 'نوع الشارة',
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 ),
                                 items: const [
-                                  DropdownMenuItem(value: 'موظف معتمد', child: Text('موظف معتمد')),
-                                  DropdownMenuItem(value: 'زائر VIP', child: Text('زائر VIP')),
-                                  DropdownMenuItem(value: 'منظم فعالية', child: Text('منظم فعالية')),
+                                  DropdownMenuItem(value: 'موظف معتمد', child: Text('موظف معتمد', overflow: TextOverflow.ellipsis)),
+                                  DropdownMenuItem(value: 'زائر VIP', child: Text('زائر VIP', overflow: TextOverflow.ellipsis)),
+                                  DropdownMenuItem(value: 'منظم فعالية', child: Text('منظم فعالية', overflow: TextOverflow.ellipsis)),
                                 ],
                                 onChanged: (val) {
                                   if (val != null) setState(() => _badgeType = val);
