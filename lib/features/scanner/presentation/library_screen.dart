@@ -3525,28 +3525,29 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         ),
                       ),
                     ),
-                    // Frosted page count pill (top-right)
+                    // High-contrast page count pill (top-right)
                     Positioned(
                       top: 10,
                       right: 10,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2.5,
-                            ),
-                            color: Colors.black.withValues(alpha: 0.55),
-                            child: Text(
-                              formatPageCount(doc.pageCount),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          formatPageCount(doc.pageCount),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -3589,22 +3590,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                     : null,
                               ),
                             )
-                          : ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: BackdropFilter(
-                                filter:
-                                    ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          : Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
                                 child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
                                   onTap: () {
                                     ref
                                         .read(pendingUploadsControllerProvider
                                             .notifier)
                                         .toggleFavorite(doc.id);
                                   },
-                                  child: Container(
+                                  child: Padding(
                                     padding: const EdgeInsets.all(4.5),
-                                    color:
-                                        Colors.black.withValues(alpha: 0.55),
                                     child: Icon(
                                       doc.isFavorite
                                           ? Icons.star_rounded
