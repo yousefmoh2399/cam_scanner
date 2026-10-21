@@ -12,6 +12,7 @@ import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../../../shared/models/document_paper_size.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
@@ -326,6 +327,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
 
     final choice = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -519,6 +521,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
     } else {
       source = await showModalBottomSheet<String>(
         context: context,
+        sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -821,6 +824,7 @@ class _WebDropScreenState extends ConsumerState<WebDropScreen> {
 
     showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
