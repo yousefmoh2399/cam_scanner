@@ -60,10 +60,13 @@ abstract final class MotionTokens {
   /// Source: `--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1)` (Ionic / Apple)
   static const Curve drawerCurve = Cubic(0.32, 0.72, 0.0, 1.0);
 
-  /// Fast exit/dismiss curve for bottom sheets.
-  /// Immediate acceleration away from view so dismissals feel snappy (<200ms).
-  /// Source: `animate/SKILL.md` & `emil-design-eng` (ease-in departure)
-  static const Curve drawerExitCurve = Cubic(0.32, 0.0, 0.67, 0.0);
+  /// Fast start then decelerate exit curve for bottom sheets.
+  /// Physical behavior: Starts moving immediately at peak velocity ($3t^2 = 3.0$)
+  /// when dismissed, then smoothly decelerates as it settles out of screen.
+  /// (Mathematically Cubic(0.32, 0.0, 0.67, 0.0) / easeInCubic, but because
+  /// Flutter reverses $t$ from 1.0 down to 0.0, the perceived visual motion is
+  /// a fast initial drop followed by gentle deceleration, NOT visual ease-in).
+  static const Curve drawerExitDecelerate = Cubic(0.32, 0.0, 0.67, 0.0);
 
   // ─── 3. SPRING DESCRIPTIONS (Apple WWDC Fluid Interfaces) ──────────────────
 
@@ -142,7 +145,7 @@ abstract final class MotionTokens {
     }
     return const AnimationStyle(
       curve: drawerCurve,
-      reverseCurve: drawerExitCurve,
+      reverseCurve: drawerExitDecelerate,
       duration: sheetEnter,
       reverseDuration: sheetExit,
     );
