@@ -11,6 +11,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
@@ -176,6 +177,7 @@ class _GovernmentDocumentsScreenState
 
     final source = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
@@ -419,6 +421,7 @@ class _GovernmentDocumentsScreenState
   ) async {
     return showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -531,6 +534,7 @@ class _GovernmentDocumentsScreenState
 
     showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
