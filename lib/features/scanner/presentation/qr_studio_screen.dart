@@ -13,6 +13,7 @@ import 'package:printing/printing.dart';
 import 'package:qr/qr.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../data/native_scanner_bridge.dart';
 import '../data/qr_scanner_service.dart';
 
@@ -378,6 +379,7 @@ class _QrStudioScreenState extends State<QrStudioScreen> {
     HapticFeedback.mediumImpact();
     final source = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
