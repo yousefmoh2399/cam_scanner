@@ -117,7 +117,10 @@ class AppleBottomNavBar extends ConsumerWidget {
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        filter: ImageFilter.blur(
+          sigmaX: MotionTokens.blurStandard,
+          sigmaY: MotionTokens.blurStandard,
+        ),
         child: Container(
           padding: EdgeInsets.only(
             bottom: bottomPadding > 0 ? bottomPadding : 6,
@@ -150,6 +153,7 @@ class AppleBottomNavBar extends ConsumerWidget {
               // Tab 0: المستندات
               Expanded(
                 child: _buildNavItem(
+                  context: context,
                   index: 0,
                   label: 'المستندات',
                   icon: Icons.folder_outlined,
@@ -164,6 +168,7 @@ class AppleBottomNavBar extends ConsumerWidget {
               // Tab 1: الأدوات
               Expanded(
                 child: _buildNavItem(
+                  context: context,
                   index: 1,
                   label: 'الأدوات',
                   icon: Icons.grid_view_outlined,
@@ -181,6 +186,7 @@ class AppleBottomNavBar extends ConsumerWidget {
               // Tab 2: الهوية
               Expanded(
                 child: _buildNavItem(
+                  context: context,
                   index: 2,
                   label: 'الهوية',
                   icon: Icons.badge_outlined,
@@ -195,6 +201,7 @@ class AppleBottomNavBar extends ConsumerWidget {
               // Tab 3: الخزنة
               Expanded(
                 child: _buildNavItem(
+                  context: context,
                   index: 3,
                   label: 'الخزنة',
                   icon: Icons.lock_outline_rounded,
@@ -284,7 +291,10 @@ class AppleBottomNavBar extends ConsumerWidget {
       builder: (sheetCtx) => ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+          filter: ImageFilter.blur(
+            sigmaX: MotionTokens.blurMaxRecommended,
+            sigmaY: MotionTokens.blurMaxRecommended,
+          ),
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             decoration: BoxDecoration(
@@ -582,6 +592,7 @@ class AppleBottomNavBar extends ConsumerWidget {
   }
 
   Widget _buildNavItem({
+    required BuildContext context,
     required int index,
     required String label,
     required IconData icon,
@@ -604,8 +615,10 @@ class AppleBottomNavBar extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : MotionTokens.standard,
+              curve: MotionTokens.easeOutStrong,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
                 color: isSelected
