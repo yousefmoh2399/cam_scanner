@@ -10,6 +10,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
@@ -97,6 +98,7 @@ class _BookletAndBindingScreenState extends ConsumerState<BookletAndBindingScree
     HapticFeedback.selectionClick();
     showModalBottomSheet(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
