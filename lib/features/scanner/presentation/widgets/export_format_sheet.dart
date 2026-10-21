@@ -419,7 +419,10 @@ class _SaveAndExportSheetContentState
                           },
                           borderRadius: BorderRadius.circular(8),
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : MotionTokens.chipSelection,
+                            curve: MotionTokens.easeOutStrong,
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: isSelected
@@ -698,8 +701,10 @@ class _SaveAndExportSheetContentState
       },
       borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : MotionTokens.chipSelection,
+        curve: MotionTokens.easeOutStrong,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
           color: isSelected
