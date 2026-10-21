@@ -1544,7 +1544,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+        filter: ImageFilter.blur(
+          sigmaX: MotionTokens.blurMaxRecommended,
+          sigmaY: MotionTokens.blurMaxRecommended,
+        ),
         child: Container(
           decoration: BoxDecoration(
             color: isDark
