@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
 import '../data/document_diff_service.dart';
@@ -78,6 +79,7 @@ class _DocumentDiffScreenState extends ConsumerState<DocumentDiffScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final choice = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {
