@@ -142,3 +142,42 @@
 3. **الخطوة الثالثة:** تحديث النوافذ المنبثقة (`Bottom Sheets`) بـ `sheetAnimationStyle` المخصص من `MotionTokens`.
 4. **الخطوة الرابعة:** تحسين انتقال الفلاتر في شاشة المراجعة (بعد القياس).
 5. **مؤجل:** السحب للإغلاق التفاعلي لعارض المستندات (لن يُنفذ بدون موافقة مستقلة).
+
+---
+
+## 10. سجل التنفيذ والإنجاز الفعلي (Implementation Changelog)
+
+تم تنفيذ كافة بنود تدقيق الحركة وتصميم Apple وتحسينات الأداء واستجابة الشاشات (Responsive Design) بنجاح كامل مع الالتزام التام بحدود النطاق وضوابط التحقق:
+
+### أ. التوحيد المركزي للحركة والرموز (`MotionTokens`)
+- إنشاء ملف مركزي موحد `lib/core/theme/motion_tokens.dart` يحدد منحنيات Apple الرسمية (`easeOutStrong`, `drawerEnterCurve`, `drawerExitCurve`, `chipSelection`, `sheetAnimationStyle`) ومحددات التمويه الموصى بها للأداء (`blurStandard: 10.0`, `blurMaxRecommended: 20.0`).
+- إضافة اختبارات ويدجت تغطي سلوك الأنيميشن في الوضعين العادي ومع تفعيل `disableAnimationsOf(context)` (`test/sheet_animation_style_test.dart`).
+
+### ب. تفاعلات اللمس والانكماش الفيزيائي (`Micro-interactions & Press Feedback`)
+- **بطاقات المكتبة:** تفعيل استجابة الضغط الفوري (`RawPressFeedback` مع `scale: 0.97`) المعتمدة على `Listener` الخام لتفادي صراع إيماءات الـ 450ms للسحب والإفلات.
+- **لوحة التوقيع:** تطبيق منحنيات `MotionTokens.chipSelection` و `easeOutStrong` على ألوان الحبر وأحجام الأقلام مع فحص `disableAnimations`.
+- **الخزنة المشفرة:** ربط مؤشرات إدخال رمز PIN (النقاط الأربع) بـ `MotionTokens.chipSelection` و `easeOutStrong`.
+- **عارض المستندات:** ربط مصغرات شريط الصفحات و `animateToPage` بـ `MotionTokens.standard` و `MotionTokens.easeOutStrong`.
+- **شريط التنقل السفلي:** ربط مؤشر التبويب النشط بـ `MotionTokens.standard` و `easeOutStrong`.
+- **شيت وخيارات التصدير:** توحيد شرائح صيغ التصدير وزر التأكيد بمنحنيات الحركة المعتمدة.
+
+### ج. شاشة المراجعة والفلاتر (`Scan Review Screen`)
+- توحيد شريط شرائح الفلاتر بـ `MotionTokens.easeOutStrong` (180ms) بدلاً من التحريك الخطي الافتراضي.
+- إضافة تلاشٍ انسيابي ناعم (`AnimatedSwitcher` بـ 150ms مع `FadeTransition`) لمعاينة الصورة عند التبديل بين الفلاتر لمنع القفز البصري المفاجئ.
+
+### د. النوافذ المنبثقة والقوائم السفلية (`Bottom Sheets`)
+- تطبيق `MotionTokens.sheetAnimationStyle` على كافة نوافذ `showModalBottomSheet` في التطبيق مع احترام إعدادات تقليل الحركة للمستخدم (`disableAnimations`).
+- تثبيت خاصية `enableDrag: false` في لوحة التوقيع لحماية مسار رسم التوقيع من المقاطعة.
+
+### هـ. ترشيد أداء الرسوميات والتمويه (`GPU Blur Ceiling & Shader Thrashing`)
+- إزالة `BackdropFilter` المكرر داخل بطاقات شبكة المكتبة واستبداله بخلفية داكنة عالية التباين وشبه شفافة مع حدود دقيقة، مما يمنع إسقاط الإطارات أثناء التمرير السريع العنيف (Fling Scroll).
+- خفض قيم تمويه التعتيم في شريط التنقل وشيت الثيمات وشريط التحديد المتعدد إلى السقف الموصى به (`MotionTokens.blurMaxRecommended: 20.0`).
+
+### و. التصميم التجاوبي ومنع أخطاء التجاوز (`Responsive UI & Zero Overflow`)
+- **صانع الكارنيهات (`lanyard_id_badge_screen.dart`):**
+  - منع تجاوز العرض في القائمة المنسدلة عبر `isDense: true`، `isExpanded: true` وحشو أفقي مرن.
+  - تغليف معاينة الكارنيه بـ `FittedBox(fit: BoxFit.scaleDown)` للتواؤم مع الشاشات الضيقة (320px) والاتجاه الأفقي.
+  - تحويل شريط ألوان الثيم من `Row` إلى `Wrap` مرن لتجنب تجاوز الحدود مع تصغير الشاشة أو تكبير الخط.
+  - تغليف نصوص الأزرار العريضة بـ `FittedBox(fit: BoxFit.scaleDown)`.
+- **شيت العمليات السريعة (`apple_bottom_nav_bar.dart`):** تغليف محتوى الشيت بـ `SingleChildScrollView` ذي ارتداد فيزيائي `BouncingScrollPhysics` لحماية الواجهة عند استخدام أحجام خطوط إمكانية الوصول الكبيرة أو في وضع التدوير الأفقي.
+- **استوديو المجسمات (`three_d_maker_studio_screen.dart`):** حماية نصوص الترويسة والأزرار من أخطاء الـ Overflow على الشاشات الاقتصادية.
