@@ -71,7 +71,10 @@ Future<void> showThemeSelectionSheet(BuildContext context, WidgetRef ref) async 
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            filter: ImageFilter.blur(
+              sigmaX: MotionTokens.blurMaxRecommended,
+              sigmaY: MotionTokens.blurMaxRecommended,
+            ),
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
               decoration: BoxDecoration(
