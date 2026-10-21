@@ -289,18 +289,22 @@ class _LanyardIdBadgeScreenState extends ConsumerState<LanyardIdBadgeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'صانع كارنيهات العمل والزوار',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-            ),
-            Text(
-              'مقاس حوامل الكروت القياسي (54×86 ملم) بمقياس 1:1',
-              style: TextStyle(fontSize: 10.5, color: Colors.grey),
-            ),
-          ],
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'صانع كارنيهات العمل والزوار',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+              Text(
+                'مقاس حوامل الكروت القياسي (54×86 ملم) بمقياس 1:1',
+                style: TextStyle(fontSize: 10.5, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
         actions: [
           IconButton(
@@ -324,9 +328,11 @@ class _LanyardIdBadgeScreenState extends ConsumerState<LanyardIdBadgeScreen> {
               children: [
                 // Live Interactive Badge Preview
                 Center(
-                  child: Container(
-                    width: _isVertical ? 220 : 320,
-                    height: _isVertical ? 340 : 220,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Container(
+                      width: _isVertical ? 220 : 320,
+                      height: _isVertical ? 340 : 220,
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
                       borderRadius: BorderRadius.circular(16),
@@ -451,11 +457,14 @@ class _LanyardIdBadgeScreenState extends ConsumerState<LanyardIdBadgeScreen> {
                     ),
                   ),
                 ),
+              ),
                 const SizedBox(height: 20),
 
                 // Theme Color Palette
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 8,
                   children: _availableColors.map((color) {
                     final isSelected = _themeColor.toARGB32() == color.toARGB32();
                     return GestureDetector(
@@ -464,7 +473,6 @@ class _LanyardIdBadgeScreenState extends ConsumerState<LanyardIdBadgeScreen> {
                         setState(() => _themeColor = color);
                       },
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 6),
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
@@ -568,9 +576,12 @@ class _LanyardIdBadgeScreenState extends ConsumerState<LanyardIdBadgeScreen> {
                 // Action Export Button
                 FilledButton.icon(
                   icon: const Icon(Icons.print_rounded),
-                  label: const Text(
-                    'تصدير شيت الطباعة 1:1 لمقاس الحامل البلاستيكي',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'تصدير شيت الطباعة 1:1 لمقاس الحامل البلاستيكي',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                    ),
                   ),
                   onPressed: _exportPrintSheet,
                   style: FilledButton.styleFrom(
