@@ -4,6 +4,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../data/local_web_drop_service.dart';
 import '../data/transferred_files_service.dart';
 import 'web_drop_screen.dart';
@@ -576,6 +577,7 @@ class _TransferredFilesScreenState extends State<TransferredFilesScreen> {
 
     showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
