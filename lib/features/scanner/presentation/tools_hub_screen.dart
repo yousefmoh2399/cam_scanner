@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/document_paper_size.dart';
 import '../../../shared/models/pending_upload.dart';
@@ -848,6 +849,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     HapticFeedback.mediumImpact();
     final source = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1050,6 +1052,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     final choice = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1201,6 +1204,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     final choice = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1287,6 +1291,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     final choice = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1371,6 +1376,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     final selectedId = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1412,6 +1418,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     final securityResult = await showModalBottomSheet<PdfSecurityOptions>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1471,6 +1478,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1733,6 +1741,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1964,6 +1973,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
   Future<void> _showBookSplitterDialog() async {
     final source = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
