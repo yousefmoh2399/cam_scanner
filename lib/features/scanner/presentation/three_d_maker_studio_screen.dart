@@ -139,12 +139,16 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
                                     children: [
                                       Row(
                                         children: [
-                                          const Text(
-                                            'استوديو النحت والمسح 3D',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
+                                          const Expanded(
+                                            child: Text(
+                                              'استوديو النحت والمسح 3D',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
@@ -277,12 +281,14 @@ class _ThreeDMakerStudioScreenState extends State<ThreeDMakerStudioScreen> {
                             const SizedBox(height: 16),
 
                             // Checkbox: Don't show again
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF101216),
+                            Material(
+                              color: const Color(0xFF101216),
+                              borderRadius: BorderRadius.circular(14),
+                              shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.white12),
+                                side: const BorderSide(color: Colors.white12),
                               ),
+                              clipBehavior: Clip.antiAlias,
                               child: CheckboxListTile(
                                 value: doNotShowAgain,
                                 activeColor: const Color(0xFF00E676),
