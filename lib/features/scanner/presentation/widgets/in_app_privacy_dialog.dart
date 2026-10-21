@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/theme/motion_tokens.dart';
+
 /// نافذة سياسة الخصوصية والأمان المدمجة داخل التطبيق (In-App Privacy Policy)
 /// متوافقة 100% مع متطلبات Google Play Data Safety و Apple App Store Review
 class InAppPrivacySheet extends StatelessWidget {
@@ -11,6 +13,7 @@ class InAppPrivacySheet extends StatelessWidget {
     HapticFeedback.lightImpact();
     return showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const InAppPrivacySheet(),
