@@ -10,6 +10,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/document_folder.dart';
 import '../../../shared/models/pending_upload.dart';
@@ -84,6 +85,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   bool _isSelectionMode = false;
   bool get _isMultiSelectMode => _isSelectionMode || _selectedDocIds.isNotEmpty;
 
+  final Map<String, GlobalKey<RawPressFeedbackState>> _pressKeys = {};
+
+  GlobalKey<RawPressFeedbackState> _getPressKey(String id) {
+    return _pressKeys.putIfAbsent(id, () => GlobalKey<RawPressFeedbackState>());
+  }
+
   @override
   void initState() {
     super.initState();
@@ -117,6 +124,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
   @override
   void dispose() {
+    _pressKeys.clear();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
@@ -2565,8 +2573,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           });
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
+          duration: MotionTokens.chipSelection,
+          curve: MotionTokens.easeOutStrong,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected
@@ -2651,8 +2659,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
+        duration: MotionTokens.standard,
+        curve: MotionTokens.easeOutStrong,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6.5),
         decoration: BoxDecoration(
           color: isSelected
@@ -2878,7 +2886,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             onLongPress: () => _showFolderOptions(folder),
             borderRadius: BorderRadius.circular(18),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: MotionTokens.standard,
+              curve: MotionTokens.easeOutStrong,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isHovered
@@ -3398,6 +3407,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     bool isDark,
   ) {
     final isSelected = _selectedDocIds.contains(doc.id);
+    final pressKey = _getPressKey('grid_${doc.id}');
 
     return Container(
       decoration: BoxDecoration(
@@ -3427,6 +3437,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             child: LongPressDraggable<PendingUpload>(
               data: doc,
               delay: const Duration(milliseconds: 450),
+              onDragStarted: () => pressKey.currentState?.reset(),
               feedback: Material(
                 color: Colors.transparent,
                 child: Container(
@@ -3460,7 +3471,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ),
                 ),
               ),
-              child: InkWell(
+              child: RawPressFeedback(
+                key: pressKey,
+                targetScale: MotionTokens.pressScale,
+                child: InkWell(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(18),
                 ),
@@ -3528,7 +3542,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       left: 10,
                       child: _isMultiSelectMode
                           ? AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
+                              duration: MotionTokens.chipSelection,
+                              curve: MotionTokens.easeOutStrong,
                               width: 26,
                               height: 26,
                               decoration: BoxDecoration(
@@ -3592,6 +3607,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ],
                 ),
               ),
+            ),
             ),
           ),
 
@@ -3737,6 +3753,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     bool isDark,
   ) {
     final isSelected = _selectedDocIds.contains(doc.id);
+    final pressKey = _getPressKey('list_${doc.id}');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -3765,6 +3782,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             child: LongPressDraggable<PendingUpload>(
               data: doc,
               delay: const Duration(milliseconds: 450),
+              onDragStarted: () => pressKey.currentState?.reset(),
               feedback: Material(
                 color: Colors.transparent,
                 child: Container(
@@ -3783,7 +3801,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ),
                 ),
               ),
-              child: InkWell(
+              child: RawPressFeedback(
+                key: pressKey,
+                targetScale: MotionTokens.pressScaleSubtle,
+                child: InkWell(
                 borderRadius: BorderRadius.circular(16),
                 onTap: () {
                   if (_isMultiSelectMode) {
@@ -3935,12 +3956,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
               ),
             ),
+            ),
           ),
           if (_isMultiSelectMode)
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 14),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
+                duration: MotionTokens.chipSelection,
+                curve: MotionTokens.easeOutStrong,
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
