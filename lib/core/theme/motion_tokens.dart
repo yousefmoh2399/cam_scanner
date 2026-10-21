@@ -120,10 +120,10 @@ abstract final class MotionTokens {
 
   // ─── 6. ACCESSIBILITY & HELPERS (prefers-reduced-motion) ────────────────────
 
-  /// Respects `MediaQuery.disableAnimations`.
+  /// Respects `MediaQuery.disableAnimationsOf`.
   /// Returns [Duration.zero] if the user requested reduced motion.
   static Duration getDuration(BuildContext context, Duration normal) {
-    if (MediaQuery.of(context).disableAnimations) {
+    if (MediaQuery.disableAnimationsOf(context)) {
       return Duration.zero;
     }
     return normal;
@@ -132,7 +132,7 @@ abstract final class MotionTokens {
   /// Builds an [AnimationStyle] for [showModalBottomSheet] adhering to Apple curves
   /// and respecting reduced-motion accessibility.
   static AnimationStyle sheetAnimationStyle(BuildContext context) {
-    if (MediaQuery.of(context).disableAnimations) {
+    if (MediaQuery.disableAnimationsOf(context)) {
       return AnimationStyle.noAnimation;
     }
     return const AnimationStyle(
