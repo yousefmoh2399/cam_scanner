@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/theme/motion_tokens.dart';
 import 'in_app_privacy_dialog.dart';
 
 /// نافذة "حول التطبيق والخصوصية" بهوية Apple Minimalist
@@ -12,6 +13,7 @@ class AboutAppSheet extends StatelessWidget {
     HapticFeedback.lightImpact();
     return showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const AboutAppSheet(),
