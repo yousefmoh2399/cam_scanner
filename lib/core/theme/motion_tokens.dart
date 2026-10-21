@@ -60,6 +60,11 @@ abstract final class MotionTokens {
   /// Source: `--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1)` (Ionic / Apple)
   static const Curve drawerCurve = Cubic(0.32, 0.72, 0.0, 1.0);
 
+  /// Fast exit/dismiss curve for bottom sheets.
+  /// Immediate acceleration away from view so dismissals feel snappy (<200ms).
+  /// Source: `animate/SKILL.md` & `emil-design-eng` (ease-in departure)
+  static const Curve drawerExitCurve = Cubic(0.32, 0.0, 0.67, 0.0);
+
   // ─── 3. SPRING DESCRIPTIONS (Apple WWDC Fluid Interfaces) ──────────────────
 
   /// [Critically Damped Spring] (Damping 1.0, Response ~0.3s)
@@ -137,6 +142,7 @@ abstract final class MotionTokens {
     }
     return const AnimationStyle(
       curve: drawerCurve,
+      reverseCurve: drawerExitCurve,
       duration: sheetEnter,
       reverseDuration: sheetExit,
     );
