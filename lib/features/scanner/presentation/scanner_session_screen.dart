@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/document_paper_size.dart';
 import '../../../shared/models/pending_upload.dart';
@@ -528,6 +529,7 @@ class _ScannerSessionScreenState extends ConsumerState<ScannerSessionScreen> {
     return showModalBottomSheet<_PostScanAction>(
       isScrollControlled: true,
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
