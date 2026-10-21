@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
@@ -341,6 +342,7 @@ class _SmartContractStudioScreenState
   void _showSuccessDialog(String filePath, String fileName, Uint8List pdfBytes) {
     showModalBottomSheet(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
