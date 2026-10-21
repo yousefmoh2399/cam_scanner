@@ -808,7 +808,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen>
                 children: List.generate(4, (index) {
                   final isFilled = index < _enteredPin.length;
                   return AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : MotionTokens.chipSelection,
+                    curve: MotionTokens.easeOutStrong,
                     margin: const EdgeInsets.symmetric(horizontal: 10),
                     width: 16,
                     height: 16,
