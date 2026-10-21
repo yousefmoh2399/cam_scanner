@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/models/scan_page.dart';
 import '../../../shared/providers/providers.dart';
@@ -60,6 +61,7 @@ class _StampStudioScreenState extends ConsumerState<StampStudioScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final choice = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -263,6 +265,7 @@ class _StampStudioScreenState extends ConsumerState<StampStudioScreen> {
 
     await showModalBottomSheet(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -525,6 +528,7 @@ class _StampStudioScreenState extends ConsumerState<StampStudioScreen> {
 
     await showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
@@ -674,6 +678,7 @@ class _StampStudioScreenState extends ConsumerState<StampStudioScreen> {
 
     final sourceChoice = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -863,6 +868,7 @@ class _StampStudioScreenState extends ConsumerState<StampStudioScreen> {
 
       final chosenDoc = await showModalBottomSheet<PendingUpload>(
         context: context,
+        sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
