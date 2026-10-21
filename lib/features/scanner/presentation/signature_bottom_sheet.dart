@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 import '../../../shared/models/signature_model.dart';
 import '../data/signature_extractor_service.dart';
 import '../data/signature_storage_service.dart';
@@ -32,6 +33,7 @@ Future<SignatureResult?> showSignatureBottomSheet({
 }) {
   return showModalBottomSheet<SignatureResult>(
     context: context,
+    sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
     isScrollControlled: true,
     enableDrag: false,
     useSafeArea: true,
