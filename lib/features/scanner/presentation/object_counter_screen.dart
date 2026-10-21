@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/models/pending_upload.dart';
 import '../../../shared/providers/providers.dart';
@@ -83,6 +84,7 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
 
     final source = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -184,6 +186,7 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
     } else if (source == 'library') {
       final chosen = await showModalBottomSheet<PendingUpload>(
         context: context,
+        sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
         builder: (ctx) => SafeArea(
           child: ListView.builder(
             shrinkWrap: true,
@@ -338,6 +341,7 @@ class _ObjectCounterScreenState extends ConsumerState<ObjectCounterScreen> {
 
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
