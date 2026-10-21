@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/motion_tokens.dart';
 import '../../../../shared/models/pending_upload.dart';
 import '../../../../shared/providers/providers.dart';
 import '../../data/native_scanner_bridge.dart';
@@ -33,6 +34,7 @@ class SmartDataExtractionSheet extends ConsumerStatefulWidget {
   }) {
     return showModalBottomSheet<void>(
       context: context,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => SmartDataExtractionSheet(
