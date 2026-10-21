@@ -469,7 +469,10 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
                             _signatureController.setInkColor(color);
                           },
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : MotionTokens.chipSelection,
+                            curve: MotionTokens.easeOutStrong,
                             width: 26,
                             height: 26,
                             decoration: BoxDecoration(
@@ -546,7 +549,10 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
                           },
                           borderRadius: BorderRadius.circular(10),
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : MotionTokens.chipSelection,
+                            curve: MotionTokens.easeOutStrong,
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: _selectedPenType == pen
@@ -599,7 +605,10 @@ class _SignatureBottomSheetState extends State<_SignatureBottomSheet> {
                           },
                           borderRadius: BorderRadius.circular(8),
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : MotionTokens.chipSelection,
+                            curve: MotionTokens.easeOutStrong,
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
                             decoration: BoxDecoration(
                               color: _selectedWidth == widthOpt.$1
