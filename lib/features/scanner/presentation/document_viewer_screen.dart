@@ -1334,12 +1334,17 @@ class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
                                         HapticFeedback.selectionClick();
                                         _pageController.animateToPage(
                                           idx,
-                                          duration: const Duration(milliseconds: 280),
-                                          curve: Curves.easeOutCubic,
+                                          duration: MediaQuery.disableAnimationsOf(context)
+                                              ? Duration.zero
+                                              : MotionTokens.sheetEnter,
+                                          curve: MotionTokens.easeOutStrong,
                                         );
                                       },
                                       child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 200),
+                                        duration: MediaQuery.disableAnimationsOf(context)
+                                            ? Duration.zero
+                                            : MotionTokens.standard,
+                                        curve: MotionTokens.easeOutStrong,
                                         width: 34,
                                         height: 46,
                                         decoration: BoxDecoration(
