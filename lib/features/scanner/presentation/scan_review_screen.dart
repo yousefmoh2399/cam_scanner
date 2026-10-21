@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/motion_tokens.dart';
 
 import '../../../shared/models/image_filter_type.dart';
 import '../../../shared/models/scan_page.dart';
@@ -715,20 +716,31 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Image.file(
-        File(preview),
-        fit: BoxFit.contain,
-        cacheWidth: 1440,
-        errorBuilder: (_, _, _) => const Center(
-          child: Icon(
-            Icons.broken_image_rounded,
-            size: 48,
-            color: Color(0xFF8E8E93),
-          ),
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    final imageWidget = Image.file(
+      File(preview),
+      key: ValueKey<String>(preview),
+      fit: BoxFit.contain,
+      cacheWidth: 1440,
+      errorBuilder: (_, _, _) => const Center(
+        child: Icon(
+          Icons.broken_image_rounded,
+          size: 48,
+          color: Color(0xFF8E8E93),
         ),
       ),
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: disableAnimations
+          ? imageWidget
+          : AnimatedSwitcher(
+              duration: MotionTokens.chipSelection,
+              switchInCurve: MotionTokens.easeOutStrong,
+              switchOutCurve: Curves.easeIn,
+              child: imageWidget,
+            ),
     );
   }
 
@@ -892,7 +904,10 @@ class _ScanReviewScreenState extends ConsumerState<ScanReviewScreen> {
                         borderRadius: BorderRadius.circular(14),
                         onTap: _isBusy ? null : () => _applyFilter(filter.key),
                         child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : MotionTokens.chipSelection,
+                          curve: MotionTokens.easeOutStrong,
                           width: 74,
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
