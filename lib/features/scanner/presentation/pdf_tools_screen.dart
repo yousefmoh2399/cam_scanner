@@ -1769,15 +1769,33 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Row(
               children: [
-                const CircleAvatar(
-                  backgroundColor: Color(0xFF4F46E5),
-                  child: Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4F46E5).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.picture_as_pdf_rounded,
+                    color: Color(0xFF4F46E5),
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1786,33 +1804,74 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
                     children: [
                       Text(
                         _compressPdfTitle ?? 'مستند PDF',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        'الحجم الحالي: ${formatFileSize(_compressOriginalSize)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.deepOrange,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.deepOrange.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              'الحجم الأصلي: ${formatFileSize(_compressOriginalSize)}',
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                color: Colors.deepOrange,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.red),
+                  icon: const Icon(Icons.close_rounded, size: 20, color: Colors.redAccent),
+                  tooltip: 'إلغاء التحديد',
                   onPressed: () => setState(() => _compressPdfPath = null),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
-          const Text(
-            'اختر الحجم المستهدف المطلوب:',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'اختر الحجم المستهدف المطلوب للـ PDF:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4F46E5).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _compressPreset.labelAr,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF4F46E5),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
 
@@ -1825,79 +1884,143 @@ class _PdfToolsScreenState extends ConsumerState<PdfToolsScreen>
               PdfCompressionPreset.manual,
             ].map((p) {
               final isSel = _compressPreset == p;
-              return Card(
-                elevation: isSel ? 2 : 0,
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: isSel
-                        ? const Color(0xFF4F46E5)
-                        : Colors.grey.withValues(alpha: 0.2),
-                    width: isSel ? 2 : 1,
-                  ),
-                ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isSel
-                        ? const Color(0xFF4F46E5)
-                        : Colors.grey.withValues(alpha: 0.15),
-                    foregroundColor: isSel ? Colors.white : Colors.blueGrey,
-                    child: const Icon(Icons.compress_rounded, size: 20),
-                  ),
-                  title: Text(
-                    p.labelAr,
-                    style: TextStyle(
-                      fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Material(
+                  color: isSel
+                      ? const Color(0xFF4F46E5).withValues(alpha: isDark ? 0.16 : 0.08)
+                      : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _compressPreset = p);
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSel
+                              ? const Color(0xFF4F46E5)
+                              : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.07)),
+                          width: isSel ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: isSel
+                                  ? const Color(0xFF4F46E5).withValues(alpha: 0.18)
+                                  : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7)),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.compress_rounded,
+                              color: isSel
+                                  ? const Color(0xFF4F46E5)
+                                  : (isDark ? Colors.white70 : Colors.black54),
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              p.labelAr,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: isSel ? FontWeight.w800 : FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          if (isSel)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF4F46E5),
+                              size: 20,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                  trailing: isSel
-                      ? const Icon(Icons.check_circle_rounded,
-                          color: Color(0xFF4F46E5))
-                      : null,
-                  onTap: () => setState(() => _compressPreset = p),
                 ),
               );
             }).toList(),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
           FilledButton.icon(
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(50),
               backgroundColor: const Color(0xFF4F46E5),
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
             ),
-            icon: const Icon(Icons.compress_rounded),
+            icon: const Icon(Icons.compress_rounded, size: 19),
             label: Text(
               'ضغط الـ PDF ليصل إلى (${_compressPreset.labelAr})',
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
             ),
             onPressed: _executeCompress,
           ),
         ] else ...[
           Container(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             alignment: Alignment.center,
-            child: const Column(
+            child: Column(
               children: [
-                Icon(Icons.compress_rounded, size: 48, color: Colors.grey),
-                SizedBox(height: 12),
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4F46E5).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.compress_rounded,
+                    size: 26,
+                    color: Color(0xFF4F46E5),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 Text(
                   'لم تختر ملف PDF للضغط بعد',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
                   'اختر ملف PDF من ذاكرة الهاتف أو من مكتبة التطبيق لتقليص حجمه مع الحفاظ على وضوح الخطوط وجودة القراءة.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF636366),
+                  ),
                 ),
               ],
             ),

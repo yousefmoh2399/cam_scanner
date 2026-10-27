@@ -171,11 +171,13 @@ class _GovernmentDocumentsScreenState
     BuildContext context, {
     required String title,
     String? subtitle,
+    String? directSource,
   }) async {
     final docs = ref.read(pendingUploadsControllerProvider).valueOrNull ?? [];
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final source = await showModalBottomSheet<String>(
+    final source = directSource ??
+        await showModalBottomSheet<String>(
       context: context,
       sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
       backgroundColor: Colors.transparent,
@@ -2901,14 +2903,17 @@ class _GovernmentDocumentsScreenState
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'اختر معيار ومقاس التأشيرة المطلوب:',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white70 : Colors.black87,
+            Expanded(
+              child: Text(
+                'اختر معيار ومقاس التأشيرة المطلوب:',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -3119,151 +3124,454 @@ class _GovernmentDocumentsScreenState
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STUDIO 5: PRECISION COMPRESSION
+  // STUDIO 5: PRECISION COMPRESSION (APPLE BENTO PAPER DESIGN)
   // ═══════════════════════════════════════════════════════════════════════════
+
+  String _formatTargetLabel(int kb) {
+    if (kb >= 1024) {
+      return '${kb ~/ 1024} ميجابايت';
+    }
+    return '$kb ك.ب';
+  }
+
+  Widget _buildSquircleSourceButton({
+    required IconData icon,
+    required String label,
+    required Color accentColor,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Material(
+      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: accentColor, size: 18),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFrostedMiniActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: isDestructive
+            ? const Color(0xFFFF3B30).withValues(alpha: 0.85)
+            : Colors.black.withValues(alpha: 0.65),
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white24, width: 0.5),
+            ),
+            child: Icon(icon, color: Colors.white, size: 16),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildCompressionStudio(bool isDark) {
     final hasImage =
         _compressImagePath != null && File(_compressImagePath!).existsSync();
     final originalSize =
         hasImage ? File(_compressImagePath!).lengthSync() : 0;
+    final targetBytes = _selectedTargetKb * 1024;
+    final bool willCompress = originalSize > targetBytes;
+    final int savingsPct = willCompress
+        ? (((originalSize - targetBytes) / (originalSize > 0 ? originalSize : 1)) * 100).clamp(0, 95).toInt()
+        : 0;
+
+    final presets = [
+      (
+        kb: 500,
+        title: 'بوابات التوظيف والجهات الرسمية',
+        desc: 'بوابة مصر الرقمية، مسابقات التعيين، والجامعات',
+        badge: '< 500 ك.ب',
+        icon: Icons.account_balance_rounded,
+      ),
+      (
+        kb: 1024,
+        title: 'السفارات والتأشيرات الدولية',
+        desc: 'تأشيرات شنغن الأوروبية، بريطانيا، وأمريكا (ICAO)',
+        badge: '< 1 م.ب',
+        icon: Icons.flight_takeoff_rounded,
+      ),
+      (
+        kb: 200,
+        title: 'المواقع ذات السقف المنخفض جداً',
+        desc: 'البوابات الحكومية القديمة والنماذج الإلكترونية الصارمة',
+        badge: '< 200 ك.ب',
+        icon: Icons.bolt_rounded,
+      ),
+      (
+        kb: 2048,
+        title: 'أقصى جودة ونقاء للأرشفة',
+        desc: 'العقود التجارية الرسمية، المخططات، والشهادات الملونة',
+        badge: '< 2 م.ب',
+        icon: Icons.verified_rounded,
+      ),
+      (
+        kb: 100,
+        title: 'ضغط فائق للحالات الاستثنائية',
+        desc: 'عند اشتراط موقع التقديم سقفاً دقيقاً لا يتعدى 100 ك.ب',
+        badge: '< 100 ك.ب',
+        icon: Icons.speed_rounded,
+      ),
+    ];
 
     return ListView(
       key: const ValueKey('compression_studio'),
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
       children: [
         _buildStudioHeader(
-          title: 'ضغط المستندات للبوابات والسفارات',
+          title: 'ضغط وتقليص حجم المستندات',
           description:
-              'تقليص حجم المستندات بدقة هندسية لضمان عدم تجاوز السقف الحجمي المحدد لبوابات التوظيف ومواقع التقديم الإلكتروني.',
-          badge: 'ضمان القبول',
+              'تقليص حجم المستند بدقة هندسية ليطابق الحدود القصوى لبوابات التوظيف والجهات الرسمية مع حماية دقة النصوص والأختام.',
+          badge: 'مطابق للشروط 100%',
           icon: Icons.speed_rounded,
           accentColor: const Color(0xFFFF2D55),
           isDark: isDark,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
 
-        // File Selector Card
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+        // ── 1. Bento Paper Document Stage ──
+        if (!hasImage)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (hasImage) ...[
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF2D55).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.compress_rounded,
+                    color: Color(0xFFFF2D55),
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'اختر المستند المراد تقليص حجمه',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'التقط المستند بالكاميرا أو اختره من المعرض أو مكتبة التطبيق',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF636366),
+                  ),
+                ),
+                const SizedBox(height: 18),
                 Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.file(
-                        File(_compressImagePath!),
-                        cacheWidth: 180,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 60,
-                          height: 60,
-                          color: Colors.black12,
-                          child: const Icon(Icons.broken_image_rounded),
+                    Expanded(
+                      child: _buildSquircleSourceButton(
+                        icon: Icons.camera_alt_rounded,
+                        label: 'الكاميرا',
+                        accentColor: const Color(0xFF007AFF),
+                        onTap: () async {
+                          final pth = await _pickImageWithSource(
+                            context,
+                            title: 'التقاط المستند بالكاميرا',
+                            directSource: 'camera',
+                          );
+                          if (pth != null) setState(() => _compressImagePath = pth);
+                        },
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildSquircleSourceButton(
+                        icon: Icons.photo_library_rounded,
+                        label: 'المعرض',
+                        accentColor: const Color(0xFFAF52DE),
+                        onTap: () async {
+                          final pth = await _pickImageWithSource(
+                            context,
+                            title: 'اختيار صورة المستند من المعرض',
+                            directSource: 'gallery',
+                          );
+                          if (pth != null) setState(() => _compressImagePath = pth);
+                        },
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildSquircleSourceButton(
+                        icon: Icons.folder_special_rounded,
+                        label: 'المكتبة',
+                        accentColor: const Color(0xFF34C759),
+                        onTap: () async {
+                          final pth = await _pickImageWithSource(
+                            context,
+                            title: 'اختيار مستند من مكتبة التطبيق',
+                            directSource: 'library',
+                          );
+                          if (pth != null) setState(() => _compressImagePath = pth);
+                        },
+                        isDark: isDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.file(
+                          File(_compressImagePath!),
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 140,
+                            color: Colors.black12,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.broken_image_rounded),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            p.basename(_compressImagePath!),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'الحجم الحالي: ${formatFileSize(originalSize)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: originalSize > _selectedTargetKb * 1024
-                                  ? const Color(0xFFFF2D55)
-                                  : const Color(0xFF34C759),
+                    // Top Start badge: Original Size
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white24, width: 0.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.insert_drive_file_rounded, size: 12, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              'الحجم الأصلي: ${formatFileSize(originalSize)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Top End actions
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildFrostedMiniActionButton(
+                            icon: Icons.refresh_rounded,
+                            tooltip: 'تغيير المستند',
+                            onTap: () async {
+                              final pth = await _pickImageWithSource(
+                                context,
+                                title: 'اختيار مستند جديد للضغط',
+                              );
+                              if (pth != null) {
+                                setState(() => _compressImagePath = pth);
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 6),
+                          _buildFrostedMiniActionButton(
+                            icon: Icons.close_rounded,
+                            tooltip: 'حذف',
+                            isDestructive: true,
+                            onTap: () => setState(() => _compressImagePath = null),
                           ),
                         ],
                       ),
                     ),
-                    IconButton.filledTonal(
-                      icon: const Icon(Icons.change_circle_rounded, size: 22),
-                      tooltip: 'تغيير المستند',
-                      onPressed: () async {
-                        final pth = await _pickImageWithSource(
-                          context,
-                          title: 'اختيار مستند جديد للضغط',
-                        );
-                        if (pth != null) {
-                          setState(() => _compressImagePath = pth);
-                        }
-                      },
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF2D55).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: const Icon(
+                        Icons.description_rounded,
+                        size: 14,
+                        color: Color(0xFFFF2D55),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        p.basename(_compressImagePath!),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'جاهز للمعالجة',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF34C759),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ] else ...[
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  icon: const Icon(Icons.upload_file_rounded, size: 24),
-                  label: const Text(
-                    'اختر المستند المراد ضغطه (كاميرا / معرض / مكتبة)',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  onPressed: () async {
-                    final pth = await _pickImageWithSource(
-                      context,
-                      title: 'اختيار المستند المراد ضغطه',
-                    );
-                    if (pth != null) {
-                      setState(() => _compressImagePath = pth);
-                    }
-                  },
-                ),
               ],
-            ],
+            ),
           ),
-        ),
 
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
 
-        // Presets Header
+        // ── 2. Official Portal Limits (Apple Bento Group) ──
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'الحد الأقصى لحجم الملف المستهدف:',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white70 : Colors.black87,
+            Expanded(
+              child: Text(
+                'اختر السقف الحجمي المطلوب للبوابة:',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -3271,9 +3579,9 @@ class _GovernmentDocumentsScreenState
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                '< $_selectedTargetKb KB',
+                'أقل من ${_formatTargetLabel(_selectedTargetKb)}',
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFFFF2D55),
                 ),
@@ -3283,62 +3591,115 @@ class _GovernmentDocumentsScreenState
         ),
         const SizedBox(height: 10),
 
-        // Apple Preset Chips Row
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [100, 200, 500, 1024, 2048].map((kb) {
-              final isSel = _selectedTargetKb == kb;
-              final label = kb >= 1024 ? '< ${kb ~/ 1024} MB' : '< $kb KB';
-              return Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: Material(
-                  color: isSel
-                      ? const Color(0xFFFF2D55)
-                      : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
-                  borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _selectedTargetKb = kb);
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSel
-                              ? const Color(0xFFFF2D55)
-                              : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08)),
-                          width: isSel ? 1.5 : 1,
-                        ),
+        // Bento List of Presets
+        Column(
+          children: presets.map((p) {
+            final isSel = _selectedTargetKb == p.kb;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: isSel
+                    ? const Color(0xFFFF2D55).withValues(alpha: isDark ? 0.16 : 0.08)
+                    : (isDark ? const Color(0xFF1C1C1E) : Colors.white),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedTargetKb = p.kb);
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSel
+                            ? const Color(0xFFFF2D55)
+                            : (isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.07)),
+                        width: isSel ? 1.6 : 1,
                       ),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: isSel
-                              ? Colors.white
-                              : (isDark ? Colors.white70 : Colors.black87),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: isSel
+                                ? const Color(0xFFFF2D55).withValues(alpha: 0.18)
+                                : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7)),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: Icon(
+                            p.icon,
+                            color: isSel
+                                ? const Color(0xFFFF2D55)
+                                : (isDark ? Colors.white70 : Colors.black54),
+                            size: 19,
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.title,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: isSel ? FontWeight.w800 : FontWeight.w700,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                p.desc,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF636366),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isSel
+                                ? const Color(0xFFFF2D55)
+                                : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            p.badge,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: isSel
+                                  ? Colors.white
+                                  : (isDark ? Colors.white70 : Colors.black87),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+              ),
+            );
+          }).toList(),
         ),
-        const SizedBox(height: 16),
 
-        // Real-Time Compression Reduction Gauge Card
+        const SizedBox(height: 12),
+
+        // ── 3. Real-Time Bento Reduction Gauge (if hasImage) ──
         if (hasImage) ...[
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
@@ -3350,57 +3711,51 @@ class _GovernmentDocumentsScreenState
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.tune_rounded, size: 16, color: Color(0xFFFF2D55)),
-                        SizedBox(width: 6),
-                        Text(
-                          'مؤشر التقليص والضغط المتوقع',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
-                        ),
-                      ],
+                    const Expanded(
+                      child: Row(
+                        children: [
+                          Icon(Icons.tune_rounded, size: 16, color: Color(0xFFFF2D55)),
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'مؤشر التقليص والتوفير المتوقع',
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    if (originalSize > _selectedTargetKb * 1024)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF34C759).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'توفير مساحة ~${(((originalSize - _selectedTargetKb * 1024) / originalSize) * 100).clamp(0, 95).toInt()}%',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF34C759),
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF34C759).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'مطابق للسقف بالفعل',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF34C759),
-                          ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: willCompress
+                            ? const Color(0xFF34C759).withValues(alpha: 0.14)
+                            : const Color(0xFF007AFF).withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        willCompress
+                            ? 'توفير متوقع ~$savingsPct%'
+                            : 'مطابق للسقف بالفعل',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: willCompress
+                              ? const Color(0xFF34C759)
+                              : const Color(0xFF007AFF),
                         ),
                       ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(5),
                   child: LinearProgressIndicator(
-                    value: (_selectedTargetKb * 1024 / (originalSize > 0 ? originalSize : 1))
+                    value: (targetBytes / (originalSize > 0 ? originalSize : 1))
                         .clamp(0.05, 1.0),
-                    minHeight: 8,
+                    minHeight: 7,
                     backgroundColor: isDark ? Colors.white10 : Colors.black12,
                     valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF2D55)),
                   ),
@@ -3412,19 +3767,47 @@ class _GovernmentDocumentsScreenState
                     Text(
                       'الحجم الأصلي: ${formatFileSize(originalSize)}',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         color: isDark ? Colors.white54 : Colors.black54,
                       ),
                     ),
                     Text(
-                      'الحد المستهدف: < $_selectedTargetKb KB',
+                      'السقف المستهدف: أقل من ${_formatTargetLabel(_selectedTargetKb)}',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFFFF2D55),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDark ? Colors.white12 : Colors.black12,
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.verified_rounded, size: 15, color: Color(0xFF34C759)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'معالجة Smart DCT: تضمن بقاء نصوص الشهادات والأختام واضحة ومقروءة تماماً.',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -3432,22 +3815,23 @@ class _GovernmentDocumentsScreenState
           const SizedBox(height: 16),
         ],
 
+        // ── 4. Apple Bento Primary Action Button ──
         FilledButton.icon(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
+            minimumSize: const Size.fromHeight(50),
             backgroundColor: const Color(0xFFFF2D55),
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
             ),
             elevation: 0,
           ),
-          icon: const Icon(Icons.compress_rounded, size: 20),
+          icon: const Icon(Icons.compress_rounded, size: 19),
           label: Text(
             hasImage
-                ? 'ضغط المستند لأقل من $_selectedTargetKb KB'
+                ? 'بدء ضغط المستند (أقل من ${_formatTargetLabel(_selectedTargetKb)})'
                 : 'اختر المستند لبدء الضغط',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
           ),
           onPressed: hasImage ? _compressDocument : null,
         ),
