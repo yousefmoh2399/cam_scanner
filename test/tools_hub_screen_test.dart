@@ -26,7 +26,7 @@ void main() {
   });
 
   group('ToolsHubScreen Apple Bento Paper & Functionality Tests', () {
-    testWidgets('renders Apple Bento Hero Card, Spotlight, and Categories on Standard Phone',
+    testWidgets('renders Apple Bento Paper Categorized Sections directly without bloated banners',
         (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
@@ -35,29 +35,24 @@ void main() {
       await tester.pumpWidget(_buildTestApp(const ToolsHubScreen()));
       await tester.pumpAndSettle();
 
-      // Verify Header
+      // Verify Header & Search
       expect(find.text('مركز الأدوات'), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
 
-      // Verify Flagship Apple Bento Hero Card
-      expect(find.text('تصوير البطاقة وش وضهر (A4)'), findsWidgets);
-      expect(find.text('مقياس 1:1 حقيقي'), findsOneWidget);
-      expect(find.text('ورقة A4 رسمية'), findsOneWidget);
-      expect(find.text('ابدأ تصوير البطاقة الآن'), findsOneWidget);
-
-      // Verify Bento Spotlight Dual Row
-      expect(find.text('أدوات بينتو الذكية السريعة'), findsOneWidget);
-      expect(find.text('محرر ومستخرج الجداول (إكسل)'), findsWidgets);
-      expect(find.text('إرسال الملفات للكمبيوتر بدون كابل'), findsWidgets);
-
-      // Verify Category Section Header visible in viewport
+      // Verify Category Section Header visible in viewport immediately
       expect(find.text('الهوية والمستندات الرسمية'), findsOneWidget);
 
-      // Scroll down to verify second section
+      // Verify Clean Bento Paper Cards (without bloated banner duplicates)
+      expect(find.text('تصوير البطاقة وش وضهر (A4)'), findsOneWidget);
+      expect(find.text('مسح جواز السفر والشهادات'), findsOneWidget);
+      expect(find.text('تجهيز صور شخصية 4×6'), findsOneWidget);
+
+      // Scroll down to verify second category
       final scrollable = find.byType(CustomScrollView);
-      await tester.drag(scrollable, const Offset(0, -1200));
+      await tester.drag(scrollable, const Offset(0, -500));
       await tester.pumpAndSettle();
       expect(find.text('الذكاء الاصطناعي ومعالجة الورق'), findsOneWidget);
+      expect(find.text('محرر ومستخرج الجداول (إكسل)'), findsOneWidget);
 
       expect(tester.takeException(), isNull);
     });
@@ -87,8 +82,8 @@ void main() {
       await tester.tap(allCategoryPill);
       await tester.pumpAndSettle();
 
-      // Hero returns
-      expect(find.text('أدوات بينتو الذكية السريعة'), findsOneWidget);
+      // Returns to all categories
+      expect(find.text('الهوية والمستندات الرسمية'), findsOneWidget);
 
       expect(tester.takeException(), isNull);
     });
@@ -121,7 +116,7 @@ void main() {
       await tester.tap(find.text('عرض كافة الأدوات'));
       await tester.pumpAndSettle();
 
-      expect(find.text('تصوير البطاقة وش وضهر (A4)'), findsWidgets);
+      expect(find.text('تصوير البطاقة وش وضهر (A4)'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
