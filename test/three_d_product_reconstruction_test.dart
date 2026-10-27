@@ -1,3 +1,4 @@
+// ignore_for_file: depend_on_referenced_packages
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -38,6 +39,7 @@ void main() {
           final args = call.arguments as Map<dynamic, dynamic>;
           final outPath = args['outPath'] as String;
           final imagePaths = (args['imagePaths'] as List<dynamic>).cast<String>();
+          assert(imagePaths.isNotEmpty);
 
           // Write a valid dummy binary STL file to outPath
           final file = File(outPath);
