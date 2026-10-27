@@ -989,18 +989,35 @@ class _GovernmentDocumentsScreenState
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+        backgroundColor: isDark ? const Color(0xFF121214) : Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
+        titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'استوديو الهوية والوثائق',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'استوديو الهوية والوثائق',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15.5,
+                letterSpacing: -0.2,
+              ),
+            ),
+            Text(
+              'المعايير الرسمية المعتمدة للطباعة والجهات الحكومية',
+              style: TextStyle(
+                fontSize: 10.5,
+                color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF636366),
+              ),
+            ),
+          ],
         ),
-        centerTitle: true,
       ),
       body: Stack(
         children: [
@@ -1068,15 +1085,17 @@ class _GovernmentDocumentsScreenState
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: isDark ? const Color(0xFF121214) : Colors.white,
         border: Border(
           bottom: BorderSide(
             color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
+            width: 0.5,
           ),
         ),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: OfficialDocMode.values.map((mode) {
@@ -1084,46 +1103,60 @@ class _GovernmentDocumentsScreenState
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: InkWell(
-                onTap: () => setState(() => _currentMode = mode),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _currentMode = mode);
+                },
                 borderRadius: BorderRadius.circular(12),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 8,
+                    vertical: 7,
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFF007AFF)
                         : (isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.black.withValues(alpha: 0.04)),
+                            ? const Color(0xFF2C2C2E)
+                            : const Color(0xFFF2F2F7)),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
                           ? const Color(0xFF007AFF)
-                          : Colors.transparent,
+                          : (isDark ? Colors.white10 : const Color(0xFFE5E5EA)),
+                      width: isSelected ? 1.2 : 0.8,
                     ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF007AFF).withValues(alpha: 0.28),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         mode.icon,
-                        size: 17,
+                        size: 16,
                         color: isSelected
                             ? Colors.white
-                            : (isDark ? Colors.white70 : Colors.black87),
+                            : (isDark ? const Color(0xFFA1A1A6) : const Color(0xFF636366)),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         mode.label,
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 12,
                           fontWeight:
-                              isSelected ? FontWeight.w800 : FontWeight.w600,
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
                           color: isSelected
                               ? Colors.white
-                              : (isDark ? Colors.white70 : Colors.black87),
+                              : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
                         ),
                       ),
                     ],
@@ -1825,110 +1858,977 @@ class _GovernmentDocumentsScreenState
 
     return ListView(
       key: const ValueKey('certificate_studio'),
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 90),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 90),
       children: [
+        // 1. Hero Bento Header
         _buildStudioHeader(
           title: 'الشهادات والمستندات والعقود الرسمية',
           description:
               'تنسيق الشهادات الأكاديمية والمهنية وتأطيرها بدقة عالية في صفحة A4 مجهزة للأرشفة والجهات الحكومية والشركات.',
-          badge: 'A4 رسمي',
+          badge: hasImage ? 'جاهز للتصدير ✓' : 'A4 رسمي معتمد',
           icon: Icons.workspace_premium_rounded,
           accentColor: const Color(0xFFFF9500),
           isDark: isDark,
         ),
-        const SizedBox(height: 18),
-
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: _buildSlotItem(
-            label: 'الشهادة أو الوثيقة الرسمية',
-            imagePath: _certificateImagePath,
-            aspectRatio: _certificateLandscape ? 1.41 : (1 / 1.41),
-            isDark: isDark,
-            onPick: () async {
-              final p = await _pickImageWithSource(
-                context,
-                title: 'اختيار الشهادة أو الوثيقة',
-                subtitle: 'شهادات التخرج، العقود، أو خطابات التوثيق الرسمية',
-              );
-              if (p != null) setState(() => _certificateImagePath = p);
-            },
-            onRotate: () async {
-              if (_certificateImagePath != null) {
-                final rot = await _rotateImage(_certificateImagePath!);
-                if (rot != null) setState(() => _certificateImagePath = rot);
-              }
-            },
-            onClear: () => setState(() => _certificateImagePath = null),
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        _buildOrientationSelector(
-          isLandscape: _certificateLandscape,
-          onChanged: (val) => setState(() => _certificateLandscape = val),
-          isDark: isDark,
-        ),
-
         const SizedBox(height: 14),
 
-        // Margins, Header, Footer, and Date customization
-        _buildMarginAndHeaderSettings(
-          isDark: isDark,
-          accentColor: const Color(0xFFFF9500),
-          includeHeader: _certIncludeHeader,
-          onHeaderChanged: (val) => setState(() => _certIncludeHeader = val),
-          headerController: _certHeaderController,
-          headerPlaceholder: 'مثال: وثيقة ومستند رسمي معتمد',
-          includeFooter: _certIncludeFooter,
-          onFooterChanged: (val) => setState(() => _certIncludeFooter = val),
-          footerController: _certFooterController,
-          footerPlaceholder: 'مثال: وثيقة رسمية معتمدة - صالحة للجهات الحكومية والجامعات',
-          includeDate: _certIncludeDate,
-          onDateChanged: (val) => setState(() => _certIncludeDate = val),
-          includeBorder: _certIncludeBorder,
-          onBorderChanged: (val) => setState(() => _certIncludeBorder = val),
-          borderTitle: 'الإطار الذهبي المزدوج الفاخر',
-          borderSubtitle: 'إطار رسمي مزخرف للشهادات الأكاديمية والعقود الرسمية',
-        ),
+        // 2. Bento Certificate Stage (Interactive Canvas with Live Frame Preview)
+        _buildCertificateBentoStage(isDark, hasImage),
+        const SizedBox(height: 14),
 
-        const SizedBox(height: 20),
+        // 3. A4 Page Orientation Bento Selector
+        _buildCertificateOrientationSelector(isDark),
+        const SizedBox(height: 14),
 
+        // 4. Official Border & Framing Bento Selector
+        _buildCertificateFramingSelector(isDark),
+        const SizedBox(height: 14),
+
+        // 5. Official Margins & Certification (Apple Inset)
+        _buildCertificateCertificationSettings(isDark),
+        const SizedBox(height: 14),
+
+        // 6. Live A4 Paper Sheet Preview
+        _buildCertificateLiveSheetPreview(isDark, hasImage),
+        const SizedBox(height: 18),
+
+        // 7. Action CTA Button
         FilledButton.icon(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
+            minimumSize: const Size.fromHeight(48),
             backgroundColor: const Color(0xFFFF9500),
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
             ),
             elevation: 0,
+            shadowColor: const Color(0xFFFF9500).withValues(alpha: 0.3),
           ),
-          icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
+          icon: const Icon(Icons.picture_as_pdf_rounded, size: 19),
           label: Text(
             hasImage
-                ? 'تصدير المستند الرسمي A4'
-                : 'التقط أو اختر صورة الوثيقة',
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                ? 'تصدير المستند الرسمي A4 (PDF)'
+                : 'التقط أو اختر صورة الوثيقة أولاً',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           ),
           onPressed: hasImage ? _buildCertificatePage : null,
         ),
       ],
+    );
+  }
+
+  // ── Bento Certificate Stage ──
+  Widget _buildCertificateBentoStage(bool isDark, bool hasImage) {
+    final double sheetRatio = _certificateLandscape ? 1.414 : 0.707;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9500).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.card_membership_rounded,
+                  color: Color(0xFFFF9500),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'مسرح الشهادة والمستند',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      _certificateLandscape
+                          ? 'تنسيق عرضي (Landscape) • مقياس A4'
+                          : 'تنسيق طولي (Portrait) • مقياس A4',
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (hasImage)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF34C759).withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF34C759)),
+                      SizedBox(width: 4),
+                      Text(
+                        'مدرج ✓',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF34C759),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Certificate Canvas
+          AspectRatio(
+            aspectRatio: sheetRatio,
+            child: Container(
+              decoration: BoxDecoration(
+                color: hasImage
+                    ? Colors.transparent
+                    : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB)),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: hasImage
+                      ? const Color(0xFFFF9500).withValues(alpha: 0.5)
+                      : (isDark ? Colors.white10 : const Color(0xFFE5E5EA)),
+                  width: hasImage ? 1.4 : 1.0,
+                ),
+              ),
+              child: hasImage
+                  ? Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(13),
+                          child: Center(
+                            child: Image.file(
+                              File(_certificateImagePath!),
+                              cacheWidth: 800,
+                              fit: BoxFit.contain,
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
+                          ),
+                        ),
+                        // Live Gold Border Preview Overlay
+                        if (_certIncludeBorder)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: Container(
+                                margin: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFFD4AF37),
+                                    width: 2.2,
+                                  ),
+                                ),
+                                child: Container(
+                                  margin: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(5),
+                                    border: Border.all(
+                                      color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        // Top label badge
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _certificateLandscape ? 'شهادة عرضية A4' : 'وثيقة طولية A4',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Bottom floating action toolbar
+                        Positioned(
+                          bottom: 8,
+                          left: 8,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildGlassMiniButton(
+                                icon: Icons.rotate_right_rounded,
+                                tooltip: 'تدوير 90°',
+                                onTap: () async {
+                                  if (_certificateImagePath != null) {
+                                    final rot = await _rotateImage(_certificateImagePath!);
+                                    if (rot != null) setState(() => _certificateImagePath = rot);
+                                  }
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              _buildGlassMiniButton(
+                                icon: Icons.refresh_rounded,
+                                tooltip: 'تغيير الصورة',
+                                onTap: () async {
+                                  final p = await _pickImageWithSource(
+                                    context,
+                                    title: 'اختيار الشهادة أو الوثيقة',
+                                    subtitle: 'شهادات التخرج، العقود، أو خطابات التوثيق الرسمية',
+                                  );
+                                  if (p != null) setState(() => _certificateImagePath = p);
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              _buildGlassMiniButton(
+                                icon: Icons.close_rounded,
+                                tooltip: 'حذف',
+                                color: const Color(0xFFFF3B30),
+                                onTap: () => setState(() => _certificateImagePath = null),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : InkWell(
+                      onTap: () async {
+                        final p = await _pickImageWithSource(
+                          context,
+                          title: 'اختيار الشهادة أو الوثيقة',
+                          subtitle: 'شهادات التخرج، العقود، أو خطابات التوثيق الرسمية',
+                        );
+                        if (p != null) setState(() => _certificateImagePath = p);
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF9500).withValues(alpha: 0.12),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.add_a_photo_rounded,
+                                    size: 22,
+                                    color: Color(0xFFFF9500),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'التقاط أو اختيار الشهادة أو الوثيقة',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'شهادات التخرج، التقدير، العقود، أو خطابات التوثيق',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF8E8E93),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── A4 Orientation Bento Selector ──
+  Widget _buildCertificateOrientationSelector(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.aspect_ratio_rounded,
+                  color: Color(0xFF007AFF),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'اتجاه صفحة A4 للشهادة',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'اختر الوضع المناسب لتصميم شهادتك',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _certificateLandscape = true);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: _certificateLandscape
+                          ? const Color(0xFFFF9500).withValues(alpha: isDark ? 0.2 : 0.08)
+                          : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _certificateLandscape
+                            ? const Color(0xFFFF9500)
+                            : (isDark ? Colors.white10 : const Color(0xFFE5E5EA)),
+                        width: _certificateLandscape ? 1.4 : 1.0,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(2.5),
+                            border: Border.all(
+                              color: _certificateLandscape ? const Color(0xFFFF9500) : Colors.black26,
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 28,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0xFFD4AF37),
+                                  width: 0.6,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'عرضي (أفقي)',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: _certificateLandscape ? FontWeight.w700 : FontWeight.w500,
+                            color: _certificateLandscape
+                                ? const Color(0xFFFF9500)
+                                : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                          ),
+                        ),
+                        Text(
+                          'شهادات التخرج والدورات',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF8E8E93),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _certificateLandscape = false);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: !_certificateLandscape
+                          ? const Color(0xFFFF9500).withValues(alpha: isDark ? 0.2 : 0.08)
+                          : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: !_certificateLandscape
+                            ? const Color(0xFFFF9500)
+                            : (isDark ? Colors.white10 : const Color(0xFFE5E5EA)),
+                        width: !_certificateLandscape ? 1.4 : 1.0,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(2.5),
+                            border: Border.all(
+                              color: !_certificateLandscape ? const Color(0xFFFF9500) : Colors.black26,
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 16,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: const Color(0xFFD4AF37),
+                                  width: 0.6,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'طولي (رأسي)',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: !_certificateLandscape ? FontWeight.w700 : FontWeight.w500,
+                            color: !_certificateLandscape
+                                ? const Color(0xFFFF9500)
+                                : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                          ),
+                        ),
+                        Text(
+                          'العقود والخطابات الرسمية',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF8E8E93),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Official Border & Framing Bento Selector ──
+  Widget _buildCertificateFramingSelector(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.filter_frames_rounded,
+                  color: Color(0xFFD4AF37),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'خيارات تأطير الشهادة',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'إضافة الإطار الذهبي الفاخر حول الشهادة في ورقة A4',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _certIncludeBorder = true);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _certIncludeBorder
+                          ? const Color(0xFFD4AF37).withValues(alpha: isDark ? 0.2 : 0.1)
+                          : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _certIncludeBorder
+                            ? const Color(0xFFD4AF37)
+                            : (isDark ? Colors.white10 : const Color(0xFFE5E5EA)),
+                        width: _certIncludeBorder ? 1.5 : 1.0,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _certIncludeBorder ? const Color(0xFFD4AF37) : Colors.transparent,
+                                border: Border.all(
+                                  color: _certIncludeBorder ? const Color(0xFFD4AF37) : Colors.grey,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: _certIncludeBorder
+                                  ? const Icon(Icons.check, size: 9, color: Colors.white)
+                                  : null,
+                            ),
+                            const SizedBox(width: 6),
+                            const Expanded(
+                              child: Text(
+                                'الإطار الذهبي المزدوج',
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'إطار فاخر للشهادات الأكاديمية والمهنية',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF8E8E93),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _certIncludeBorder = false);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: !_certIncludeBorder
+                          ? const Color(0xFF007AFF).withValues(alpha: isDark ? 0.2 : 0.08)
+                          : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: !_certIncludeBorder
+                            ? const Color(0xFF007AFF)
+                            : (isDark ? Colors.white10 : const Color(0xFFE5E5EA)),
+                        width: !_certIncludeBorder ? 1.5 : 1.0,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: !_certIncludeBorder ? const Color(0xFF007AFF) : Colors.transparent,
+                                border: Border.all(
+                                  color: !_certIncludeBorder ? const Color(0xFF007AFF) : Colors.grey,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: !_certIncludeBorder
+                                  ? const Icon(Icons.check, size: 9, color: Colors.white)
+                                  : null,
+                            ),
+                            const SizedBox(width: 6),
+                            const Expanded(
+                              child: Text(
+                                'بدون إطار إضافي',
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'للمستندات ذات الإطار المطبوع مسبقاً',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF8E8E93),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Official Margins & Certification (Apple Inset) ──
+  Widget _buildCertificateCertificationSettings(bool isDark) {
+    return _buildMarginAndHeaderSettings(
+      isDark: isDark,
+      accentColor: const Color(0xFFFF9500),
+      includeHeader: _certIncludeHeader,
+      onHeaderChanged: (val) => setState(() => _certIncludeHeader = val),
+      headerController: _certHeaderController,
+      headerPlaceholder: 'مثال: وثيقة ومستند رسمي معتمد',
+      includeFooter: _certIncludeFooter,
+      onFooterChanged: (val) => setState(() => _certIncludeFooter = val),
+      footerController: _certFooterController,
+      footerPlaceholder: 'مثال: وثيقة رسمية معتمدة - صالحة للجهات الحكومية والجامعات',
+      includeDate: _certIncludeDate,
+      onDateChanged: (val) => setState(() => _certIncludeDate = val),
+    );
+  }
+
+  // ── Live A4 Paper Sheet Preview ──
+  Widget _buildCertificateLiveSheetPreview(bool isDark, bool hasImage) {
+    final isLandscape = _certificateLandscape;
+    final double sheetWidth = isLandscape ? 220 : 160;
+    final double sheetHeight = isLandscape ? 160 : 226;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  Icons.visibility_outlined,
+                  color: Color(0xFF34C759),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'معاينة ورقة A4 قبل الطباعة',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'شكل المستند والإطار والهوامش الحقيقية للورقة',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (hasImage)
+                InkWell(
+                  onTap: _buildCertificatePage,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.fullscreen_rounded, size: 14, color: Color(0xFF007AFF)),
+                        const SizedBox(width: 3),
+                        Text(
+                          'معاينة كاملة',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Paper simulation
+          Center(
+            child: Container(
+              width: sheetWidth,
+              height: sheetHeight,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+                border: Border.all(color: Colors.grey.shade300, width: 0.8),
+              ),
+              child: Column(
+                children: [
+                  // Optional Header
+                  if (_certIncludeHeader) ...[
+                    Container(
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        border: Border(bottom: BorderSide(color: Colors.black26, width: 0.5)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _certHeaderController.text.trim().isNotEmpty
+                                  ? _certHeaderController.text.trim()
+                                  : 'وثيقة ومستند رسمي معتمد',
+                              style: const TextStyle(fontSize: 4, fontWeight: FontWeight.bold, color: Colors.black87),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (_certIncludeDate)
+                            Text(
+                              DateFormat('yyyy/MM/dd').format(DateTime.now()),
+                              style: const TextStyle(fontSize: 3.5, color: Colors.black54),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                  ],
+
+                  // Certificate Center
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: _certIncludeBorder
+                            ? Border.all(color: const Color(0xFFD4AF37), width: 1.5)
+                            : null,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      padding: _certIncludeBorder ? const EdgeInsets.all(2) : EdgeInsets.zero,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: _certIncludeBorder
+                              ? Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5), width: 0.5)
+                              : null,
+                          color: const Color(0xFFF9F9FB),
+                        ),
+                        child: hasImage
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(1.5),
+                                child: Image.file(
+                                  File(_certificateImagePath!),
+                                  fit: BoxFit.contain,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                ),
+                              )
+                            : Center(
+                                child: Text(
+                                  _certificateLandscape ? 'شهادة عرضية A4' : 'وثيقة طولية A4',
+                                  style: const TextStyle(fontSize: 6, color: Colors.grey),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+
+                  // Optional Footer
+                  if (_certIncludeFooter || (_certIncludeDate && !_certIncludeHeader)) ...[
+                    const SizedBox(height: 3),
+                    Container(
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        border: Border(top: BorderSide(color: Colors.black26, width: 0.5)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _certFooterController.text.trim().isNotEmpty
+                                  ? _certFooterController.text.trim()
+                                  : 'وثيقة رسمية معتمدة - صالحة للجهات الحكومية والجامعات',
+                              style: const TextStyle(fontSize: 3.5, color: Colors.black54),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2570,22 +3470,30 @@ class _GovernmentDocumentsScreenState
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: isDark ? 0.12 : 0.08),
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: accentColor.withValues(alpha: isDark ? 0.25 : 0.18),
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.15),
+              color: accentColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: accentColor, size: 22),
+            child: Icon(icon, color: accentColor, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -2598,8 +3506,9 @@ class _GovernmentDocumentsScreenState
                       child: Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ),
@@ -2609,15 +3518,15 @@ class _GovernmentDocumentsScreenState
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: accentColor,
+                        color: accentColor.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         badge,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: accentColor,
                           fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -2627,9 +3536,9 @@ class _GovernmentDocumentsScreenState
                 Text(
                   description,
                   style: TextStyle(
-                    fontSize: 11.5,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                    height: 1.4,
+                    fontSize: 11,
+                    color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF636366),
+                    height: 1.35,
                   ),
                 ),
               ],
@@ -2652,28 +3561,27 @@ class _GovernmentDocumentsScreenState
     final hasImage = imagePath != null && File(imagePath).existsSync();
 
     return AspectRatio(
-      aspectRatio: aspectRatio.clamp(0.9, 1.8),
+      aspectRatio: aspectRatio.clamp(0.65, 1.8),
       child: Container(
         decoration: BoxDecoration(
           color: hasImage
               ? Colors.transparent
               : (isDark
-                  ? Colors.white.withValues(alpha: 0.03)
-                  : Colors.black.withValues(alpha: 0.02)),
+                  ? const Color(0xFF2C2C2E)
+                  : const Color(0xFFF9F9FB)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: hasImage
                 ? const Color(0xFF007AFF)
-                : (isDark ? Colors.white24 : Colors.black26),
-            width: hasImage ? 1.5 : 1,
-            style: hasImage ? BorderStyle.solid : BorderStyle.solid,
+                : (isDark ? Colors.white12 : const Color(0xFFE5E5EA)),
+            width: hasImage ? 1.4 : 1,
           ),
         ),
         child: hasImage
             ? Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(15),
                     child: Center(
                       child: Image.file(
                         File(imagePath),
@@ -2693,18 +3601,18 @@ class _GovernmentDocumentsScreenState
                     right: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 8,
+                        vertical: 3.5,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         label,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -2732,7 +3640,7 @@ class _GovernmentDocumentsScreenState
                         _buildGlassMiniButton(
                           icon: Icons.close_rounded,
                           tooltip: 'حذف',
-                          color: Colors.redAccent,
+                          color: const Color(0xFFFF3B30),
                           onTap: onClear,
                         ),
                       ],
@@ -2741,42 +3649,51 @@ class _GovernmentDocumentsScreenState
                 ],
               )
             : InkWell(
-                onTap: onPick,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onPick();
+                },
                 borderRadius: BorderRadius.circular(16),
                 child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.add_a_photo_rounded,
-                          size: 26,
-                          color: Color(0xFF007AFF),
-                        ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add_a_photo_rounded,
+                              size: 18,
+                              color: Color(0xFF007AFF),
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'اضغط للمسح بالكاميرا أو الاختيار',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isDark ? const Color(0xFFA1A1A6) : const Color(0xFF8E8E93),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.5,
-                          color: Color(0xFF007AFF),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'اضغط للمسح بالكاميرا أو الاختيار',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? Colors.white54 : Colors.black45,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -2791,17 +3708,20 @@ class _GovernmentDocumentsScreenState
     Color? color,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.all(7),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.65),
           shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
-          size: 17,
+          size: 15,
           color: color ?? Colors.white,
         ),
       ),
@@ -2814,60 +3734,165 @@ class _GovernmentDocumentsScreenState
     required bool isDark,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            isLandscape ? Icons.crop_landscape_rounded : Icons.crop_portrait_rounded,
-            color: const Color(0xFF007AFF),
-            size: 22,
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'اتجاه صفحة A4',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                Text(
-                  'تحديد الوضع الأفقي أو الرأسي للمستند',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                child: const Icon(
+                  Icons.aspect_ratio_rounded,
+                  color: Color(0xFF007AFF),
+                  size: 18,
                 ),
-              ],
-            ),
-          ),
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(
-                value: false,
-                label: Text('طولي', style: TextStyle(fontSize: 12)),
               ),
-              ButtonSegment(
-                value: true,
-                label: Text('عرضي', style: TextStyle(fontSize: 12)),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'اتجاه صفحة A4',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'تحديد الوضع الأفقي أو الرأسي للورقة',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
-            selected: {isLandscape},
-            onSelectionChanged: (set) => onChanged(set.first),
-            showSelectedIcon: false,
-            style: ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: WidgetStateProperty.all(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onChanged(true);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: isLandscape
+                          ? const Color(0xFF007AFF).withValues(alpha: isDark ? 0.2 : 0.08)
+                          : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isLandscape
+                            ? const Color(0xFF007AFF)
+                            : (isDark ? Colors.white10 : const Color(0xFFE5E5EA)),
+                        width: isLandscape ? 1.4 : 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.crop_landscape_rounded,
+                          size: 18,
+                          color: isLandscape
+                              ? const Color(0xFF007AFF)
+                              : (isDark ? const Color(0xFFA1A1A6) : const Color(0xFF636366)),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'عرضي (أفقي)',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: isLandscape ? FontWeight.w700 : FontWeight.w500,
+                            color: isLandscape
+                                ? const Color(0xFF007AFF)
+                                : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onChanged(false);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: !isLandscape
+                          ? const Color(0xFF007AFF).withValues(alpha: isDark ? 0.2 : 0.08)
+                          : (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FB)),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: !isLandscape
+                            ? const Color(0xFF007AFF)
+                            : (isDark ? Colors.white10 : const Color(0xFFE5E5EA)),
+                        width: !isLandscape ? 1.4 : 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.crop_portrait_rounded,
+                          size: 18,
+                          color: !isLandscape
+                              ? const Color(0xFF007AFF)
+                              : (isDark ? const Color(0xFFA1A1A6) : const Color(0xFF636366)),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'طولي (رأسي)',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: !isLandscape ? FontWeight.w700 : FontWeight.w500,
+                            color: !isLandscape
+                                ? const Color(0xFF007AFF)
+                                : (isDark ? Colors.white : const Color(0xFF1C1C1E)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

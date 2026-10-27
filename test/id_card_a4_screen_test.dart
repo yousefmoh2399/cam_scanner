@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cam_scanner/core/theme/app_theme.dart';
+import 'package:cam_scanner/features/scanner/presentation/government_documents_screen.dart';
 import 'package:cam_scanner/features/scanner/presentation/id_card_a4_screen.dart';
 
 Widget _buildTestApp(Widget child, {bool isDark = false}) {
@@ -98,6 +99,49 @@ void main() {
       await tester.tap(verticalTab);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('GovernmentDocumentsScreen certificate mode renders with ZERO overflow',
+        (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(_buildTestApp(const GovernmentDocumentsScreen(
+        initialMode: OfficialDocMode.certificate,
+      )));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('الشهادات والمستندات والعقود الرسمية'), findsOneWidget);
+      expect(find.text('مسرح الشهادة والمستند'), findsOneWidget);
+      expect(find.text('عرضي (أفقي)'), findsOneWidget);
+      expect(find.text('طولي (رأسي)'), findsOneWidget);
+      final certListView = find.byKey(const ValueKey('certificate_studio'));
+      expect(certListView, findsOneWidget);
+
+      // Scroll down through certificate studio
+      await tester.fling(certListView, const Offset(0, -300), 1000);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+
+      // Tap on Portrait
+      final portraitBtn = find.text('طولي (رأسي)');
+      if (portraitBtn.evaluate().isNotEmpty) {
+        await tester.tap(portraitBtn, warnIfMissed: false);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
+
+      // Tap on Borderless
+      final borderlessBtn = find.text('بدون إطار إضافي');
+      if (borderlessBtn.evaluate().isNotEmpty) {
+        await tester.tap(borderlessBtn, warnIfMissed: false);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
     });
   });
 }
