@@ -141,28 +141,28 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Government & Official Category ──
     ToolItem(
       id: 'gov_id_card',
-      title: 'تصوير البطاقة وش وضهر',
-      subtitle: 'دمج وجهي بطاقة الرقم القومي أو الرخصة في ورقة A4 واحدة بحجمها الحقيقي 1:1 جاهزة للطباعة',
+      title: 'تصوير البطاقة وش وضهر (A4)',
+      subtitle: 'دمج وجهي بطاقة الرقم القومي أو الرخصة في ورقة A4 واحدة بحجمها الحقيقي 1:1 جاهزة للطباعة فوراً',
       category: ToolCategory.government,
       icon: Icons.badge_rounded,
-      badge: 'طباعة رسمية A4',
+      badge: 'طباعة 1:1 رسمية',
       accentColor: Color(0xFF007AFF),
       keywords: ['بطاقة', 'هوية', 'رخصة', 'قيادة', 'إقامة', 'id', 'وش وضهر', 'رسمي', 'a4', '1:1', 'طباعة'],
     ),
     ToolItem(
       id: 'gov_passport_cert',
       title: 'مسح جواز السفر والشهادات',
-      subtitle: 'تصوير وثائق السفر وشهادات التخرج بجودة عالية وأبعاد واضحة مقبولة في السفارات',
+      subtitle: 'تصوير وثائق السفر وشهادات التخرج بأبعاد واضحة وجودة مقبولة لدى السفارات والجامعات',
       category: ToolCategory.government,
       icon: Icons.menu_book_rounded,
-      badge: 'شروط السفارات',
+      badge: 'معتمد للسفارات',
       accentColor: Color(0xFF5856D6),
       keywords: ['جواز', 'سفر', 'شهادة', 'تخرج', 'عقد', 'رسمي', 'passport'],
     ),
     ToolItem(
       id: 'gov_photo_grid',
-      title: 'تجهيز الصور الشخصية 4×6',
-      subtitle: 'تكرار وتجهيز صورك الشخصية في ورقة A4 للطباعة في الاستوديو لجوازات السفر والتأشيرات',
+      title: 'تجهيز صور شخصية 4×6',
+      subtitle: 'ترتيب وتكرار صورك الشخصية على ورقة A4 جاهزة للطباعة في الاستوديو لجواز السفر والتأشيرات',
       category: ToolCategory.government,
       icon: Icons.photo_camera_front_rounded,
       badge: 'مقاس 4×6 جاهز',
@@ -171,38 +171,38 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'gov_portal_compress',
-      title: 'تصغير حجم الملف للتقديم',
-      subtitle: 'تقليص حجم المستند لأقل من 1 ميجابايت أو 500 ك.ب ليقبله موقع التوظيف أو السفارة',
+      title: 'تصغير المستند للجهات الرسمية',
+      subtitle: 'تقليص حجم الملف لأقل من 500 ك.ب أو 1 ميجابايت لرفعه على بوابات التوظيف ومواقع السفارات',
       category: ToolCategory.government,
       icon: Icons.speed_rounded,
-      badge: 'أقل من 1 ميجا',
+      badge: 'مواقع التوظيف',
       accentColor: Color(0xFFFF2D55),
       keywords: ['ضغط', 'بوابات', 'تقديم', 'سفارات', 'توظيف', 'حجم', 'مستند'],
     ),
     ToolItem(
       id: 'gov_smart_contracts',
-      title: 'كتابة عقود وإيصالات أمانة',
-      subtitle: 'نماذج قانونية جاهزة لعقد إيجار، بيع سيارة، أو إيصال أمانة قانوني مع تفقيط المبالغ',
+      title: 'صيغ العقود وإيصالات الأمانة',
+      subtitle: 'نماذج قانونية موثقة لعقود الإيجار والبيع وإيصالات الأمانة مع تفقيط المبالغ المالية تلقائياً',
       category: ToolCategory.government,
       icon: Icons.gavel_rounded,
-      badge: 'عقود قانونية',
+      badge: 'نماذج قانونية',
       accentColor: Color(0xFF5856D6),
       keywords: ['عقد', 'عقود', 'إيجار', 'بيع', 'أمانة', 'إيصال', 'شقة', 'سيارة', 'قانوني'],
     ),
     ToolItem(
       id: 'gov_smart_id_wallet',
-      title: 'محفظة الكروت والبطاقات',
-      subtitle: 'حفظ بطاقاتك وكروتك في هاتفك بأمان مع إمكانية طباعتها كروت بلاستيك جاهزة',
+      title: 'محفظة الهويات والكروت',
+      subtitle: 'حفظ آمن لبطاقاتك وكروتك داخل هاتفك مع إمكانية تصديرها وطباعتها كروت بلاستيك جاهزة',
       category: ToolCategory.government,
       icon: Icons.credit_card_rounded,
-      badge: 'محفظة الهويات',
+      badge: 'كروت بلاستيك',
       accentColor: Color(0xFF007AFF),
       keywords: ['بطاقة', 'بلاستيك', 'pvc', 'cr80', 'محفظة', 'id', 'رخصة', 'كارنيه', 'طباعة'],
     ),
     ToolItem(
       id: 'gov_lanyard_badge',
-      title: 'طباعة كارنيهات العمل والشركات',
-      subtitle: 'إنشاء وطباعة شارات وكارنيهات الموظفين والزوار بمقاس رسمي مع صورة وباركود',
+      title: 'كارنيهات العمل والشركات',
+      subtitle: 'تصميم وطباعة شارات وكارنيهات الموظفين والزوار بمقاس رسمي مع الصورة والباركود',
       category: ToolCategory.government,
       icon: Icons.contact_page_rounded,
       badge: 'كارنيه معتمد',
@@ -212,19 +212,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
 
     // ── Intelligence & Extraction Category ──
     ToolItem(
-      id: 'three_d_maker_studio',
-      title: 'مسح القطع الحقيقية 3D',
-      subtitle: 'تصوير أي قطعة أو منتج بالهاتف واستخراج مجسم STL صلب جاهز للطباعة 3D',
-      category: ToolCategory.intelligence,
-      icon: Icons.view_in_ar_rounded,
-      badge: 'مجسم 3D STL',
-      accentColor: Color(0xFF00C853),
-      keywords: ['3d', 'stl', 'طباعة ثلاثية', 'مجسم', 'سكانر 3d', 'cura', 'slicer', 'فوتوغرامتري', 'طابعة', '3d printer'],
-    ),
-    ToolItem(
       id: 'ai_interactive_table',
-      title: 'سحب وتعديل الجداول (إكسل)',
-      subtitle: 'تصوير أي جدول أو فاتورة على الورق وتعديل خلاياه وجمع المبالغ وتصديره Excel',
+      title: 'محرر ومستخرج الجداول (إكسل)',
+      subtitle: 'تصوير أي جدول أو فاتورة على الورق وتعديل خلاياه وحساب المجاميع وتصديره Excel',
       category: ToolCategory.intelligence,
       icon: Icons.table_view_rounded,
       badge: 'Excel تفاعلي ∑',
@@ -232,9 +222,19 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       keywords: ['جدول', 'جداول', 'محرر', 'تعديل', 'جمع', 'sum', 'excel', 'xlsx', 'درجات', 'فاتورة'],
     ),
     ToolItem(
+      id: 'three_d_maker_studio',
+      title: 'ماسح المجسمات 3D (STL)',
+      subtitle: 'تصوير أي قطعة أو مجسم بالهاتف وتحويلها لملف مجسم 3D صلب (STL) جاهز للطباعة',
+      category: ToolCategory.intelligence,
+      icon: Icons.view_in_ar_rounded,
+      badge: 'مجسم 3D STL',
+      accentColor: Color(0xFF00C853),
+      keywords: ['3d', 'stl', 'طباعة ثلاثية', 'مجسم', 'سكانر 3d', 'cura', 'slicer', 'فوتوغرامتري', 'طابعة', '3d printer'],
+    ),
+    ToolItem(
       id: 'ai_excel_converter',
       title: 'تحويل المستندات إلى Excel',
-      subtitle: 'استخراج الأرقام والبيانات الورقية وتحويلها مباشرة إلى ملف إكسل منسق جاهز',
+      subtitle: 'استخراج الأرقام والجداول والبيانات الورقية وتحويلها مباشرة لملف إكسل منسق وجاهز',
       category: ToolCategory.intelligence,
       icon: Icons.table_chart_rounded,
       badge: 'ملف XLSX',
@@ -243,8 +243,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'ai_smart_extraction',
-      title: 'استخراج الأرقام وبيانات الاتصال',
-      subtitle: 'قراءة الرقم القومي، أرقام التليفونات، والبريد من الورقة وحفظها في جهات الاتصال',
+      title: 'استخراج النصوص والأرقام (OCR)',
+      subtitle: 'قراءة الأرقام القومية، وأرقام الهواتف، والبريد من الورقة ونسخها أو حفظها فوراً',
       category: ToolCategory.intelligence,
       icon: Icons.psychology_rounded,
       badge: 'نسخ فوري',
@@ -252,19 +252,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       keywords: ['رقم قومي', 'هاتف', 'اتصال', 'vcard', 'تفريغ', 'صوت', 'tts'],
     ),
     ToolItem(
-      id: 'ai_book_split',
-      title: 'تصوير الكتب صفحتين معاً',
-      subtitle: 'صوّر الكتاب مفتوحاً وسيقوم التطبيق بفصل الصفحتين وتعديلهما تلقائياً',
-      category: ToolCategory.intelligence,
-      icon: Icons.menu_book_rounded,
-      badge: 'فصل تلقائي',
-      accentColor: Color(0xFFF59E0B),
-      keywords: ['كتاب', 'صفحتين', 'فصل', 'منحنيات', 'مجلد', 'دراسة'],
-    ),
-    ToolItem(
       id: 'ai_magic_clean',
-      title: 'مسح أصابع اليد وبقع الورق',
-      subtitle: 'حذف أصابع اليد الظاهرة في الصورة، ثقوب الدباسة، وبقع القهوة بلمسة واحدة',
+      title: 'إزالة أصابع اليد وبقع الورق',
+      subtitle: 'مسح أصابع اليد الظاهرة في الصورة، وثقوب الدباسة، وبقع القهوة بلمسة ذكية واحدة',
       category: ToolCategory.intelligence,
       icon: Icons.auto_fix_high_rounded,
       badge: 'تنظيف الورق',
@@ -273,8 +263,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'ai_shadow_remover',
-      title: 'إزالة ظل الهاتف واليد',
-      subtitle: 'التخلص من ظل الموبايل واليد أثناء التصوير لتصبح خلفية الورقة ناصعة البياض',
+      title: 'إزالة ظلال اليد والهاتف',
+      subtitle: 'التخلص التلقائي من ظل الموبايل واليد على الورقة لتصبح الخلفية بيضاء ناصعة ومتساوية',
       category: ToolCategory.intelligence,
       icon: Icons.wb_sunny_rounded,
       badge: 'ورق ناصع',
@@ -282,29 +272,29 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       keywords: ['ظل', 'ظلال', 'إضاءة', 'هاتف', 'نور', 'فلاش', 'shadow', 'glare'],
     ),
     ToolItem(
-      id: 'ai_doc_diff',
-      title: 'مقارنة نسختين من عقد أو ورقة',
-      subtitle: 'اكتشاف أي كلمة أو بند تم تغييره أو إضافته بين نسختين مختلفتين من نفس العقد',
+      id: 'ai_book_split',
+      title: 'تصوير الكتب صفحتين معاً',
+      subtitle: 'تصوير كتاب مفتوح وفصل الصفحتين اليمنى واليسرى تلقائياً لصفحات منفصلة ومستوية',
       category: ToolCategory.intelligence,
-      icon: Icons.splitscreen_rounded,
-      badge: 'كشف التعديلات',
-      accentColor: Color(0xFF8B5CF6),
-      keywords: ['مقارنة', 'فروقات', 'عقود', 'تعديل', 'تزوير', 'diff', 'compare'],
+      icon: Icons.menu_book_rounded,
+      badge: 'فصل الصفحات',
+      accentColor: Color(0xFFF59E0B),
+      keywords: ['كتاب', 'صفحتين', 'فصل', 'منحنيات', 'مجلد', 'دراسة'],
     ),
     ToolItem(
       id: 'ai_book_curve_flattener',
       title: 'فرد تقوس صفحات الكتب',
-      subtitle: 'تعديل انحناء صفحات الكتب السميكة والمجلدات وإزالة سواد كعب الكتاب',
+      subtitle: 'تعديل انحناء صفحات الكتب والمجلدات السميكة وإزالة سواد كعب الكتاب تلقائياً',
       category: ToolCategory.intelligence,
       icon: Icons.auto_stories_rounded,
-      badge: 'فرد الورق',
+      badge: 'فرد التحدب',
       accentColor: Color(0xFFF59E0B),
       keywords: ['كتاب', 'مجلد', 'انحناء', 'تقوس', 'كعب', 'تسوية', 'مسطح', 'dewarp', 'curve', 'book'],
     ),
     ToolItem(
       id: 'ai_notebook_remover',
       title: 'إزالة أسطر الكشكول والدفتر',
-      subtitle: 'حذف خطوط التسطير وشبكة المربعات من الكشكول وترك كتابة يدك فقط بخلفية بيضاء',
+      subtitle: 'حذف خطوط التسطير وشبكة المربعات من الكشكول والاحتفاظ بكتابة يدك فقط بخلفية بيضاء',
       category: ToolCategory.intelligence,
       icon: Icons.border_color_rounded,
       badge: 'حفظ خط يدك',
@@ -313,18 +303,28 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'ai_object_counter',
-      title: 'عدّ الأشياء والبضائع بالصورة',
-      subtitle: 'عدّ الكراتين، الأنابيب، أو البضائع في الصورة تلقائياً وإخراج تقرير جرد PDF',
+      title: 'عدّ المنتجات والبضائع بالصورة',
+      subtitle: 'إحصاء الكراتين أو الأنابيب أو البضائع في الصورة تلقائياً وإصدار تقرير جرد PDF',
       category: ToolCategory.intelligence,
       icon: Icons.pin_rounded,
-      badge: 'عدّ تلقائي',
+      badge: 'جرد فوري',
       accentColor: Color(0xFFFF9500),
       keywords: ['عد', 'عداد', 'أنابيب', 'كراتين', 'بضائع', 'دواء', 'جرد', 'مخزن', 'counter', 'inventory', 'objects'],
     ),
     ToolItem(
+      id: 'ai_doc_diff',
+      title: 'مقارنة نسختين من عقد أو ورقة',
+      subtitle: 'اكتشاف أي كلمة أو بند تم تعديله أو إضافته بين نسختين من نفس العقد أو الورقة',
+      category: ToolCategory.intelligence,
+      icon: Icons.splitscreen_rounded,
+      badge: 'كشف التعديلات',
+      accentColor: Color(0xFF8B5CF6),
+      keywords: ['مقارنة', 'فروقات', 'عقود', 'تعديل', 'تزوير', 'diff', 'compare'],
+    ),
+    ToolItem(
       id: 'ai_anti_moire_glare',
-      title: 'تصوير شاشات الكمبيوتر والسبورة',
-      subtitle: 'إزالة خطوط وتموجات الشاشة ولمعان فلاش السبورة لتظهر كصورة رقمية واضحة',
+      title: 'تصوير الشاشات والسبورة',
+      subtitle: 'إزالة خطوط وتموجات شاشات الكمبيوتر ولمعان فلاش السبورة البيضاء للحصول على صورة نقية',
       category: ToolCategory.intelligence,
       icon: Icons.screenshot_monitor_rounded,
       badge: 'شاشة نقية',
@@ -333,8 +333,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'ai_qr_studio',
-      title: 'صنع باركود ورمز QR مخصص',
-      subtitle: 'إنشاء باركود لشبكة الواي فاي، رقم هاتفك، أو موقعك مع إمكانية وضع شعارك وطباعته',
+      title: 'صانع باركود ورمز QR مخصص',
+      subtitle: 'إنشاء رمز QR للواي فاي، أو رقم هاتفك، أو موقعك مع إمكانية إضافة شعارك وطباعته',
       category: ToolCategory.intelligence,
       icon: Icons.qr_code_2_rounded,
       badge: 'تصميم QR',
@@ -343,11 +343,11 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'ai_qr_scanner',
-      title: 'قراءة ومسح أي باركود أو QR',
-      subtitle: 'مسح أي باركود بالكاميرا أو من الصور وفتح الروابط وشبكات الواي فاي فوراً',
+      title: 'قارئ وماسح الباركود و QR',
+      subtitle: 'مسح فوري لأي باركود بالكاميرا أو من الصور وفتح الروابط وشبكات الواي فاي مباشرة',
       category: ToolCategory.intelligence,
       icon: Icons.qr_code_scanner_rounded,
-      badge: 'مسح بالكاميرا',
+      badge: 'مسح فوري',
       accentColor: Color(0xFF34C759),
       keywords: ['qr', 'باركود', 'مسح', 'scanner', 'كاميرا', 'سيرفر', 'barcode', 'كود', 'شاشة'],
     ),
@@ -356,17 +356,17 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'pdf_merge',
       title: 'تجميع عدة ملفات في ملف واحد',
-      subtitle: 'دمج عدة أوراق وملفات PDF منفصلة في ملف واحد مرتب وسهل المشاركة',
+      subtitle: 'دمج عدة أوراق وملفات PDF منفصلة في ملف واحد مرتب وسهل المشاركة والإرسال',
       category: ToolCategory.pdf,
       icon: Icons.merge_type_rounded,
-      badge: 'ملف واحد',
+      badge: 'دمج ملفات',
       accentColor: Color(0xFF2563EB),
       keywords: ['دمج', 'تجميع', 'pdf', 'ملفات', 'ترتيب'],
     ),
     ToolItem(
       id: 'pdf_split',
       title: 'تقسيم واستخراج صفحات PDF',
-      subtitle: 'فصل صفحات محددة من كتاب أو ملف كبير وحفظها في ملف PDF منفصل',
+      subtitle: 'فصل صفحات معينة من كتاب أو مستند كبير وحفظها كملف PDF مستقل بضغطة زر',
       category: ToolCategory.pdf,
       icon: Icons.call_split_rounded,
       badge: 'استخراج صفحات',
@@ -375,61 +375,61 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'pdf_target_compress',
-      title: 'تصغير حجم ملف PDF',
-      subtitle: 'تقليل حجم الملف إلى 500 ك.ب أو الحجم المطلوب مع الحفاظ على وضوح الخطوط',
+      title: 'تقليص حجم ملفات PDF',
+      subtitle: 'تصغير حجم الملف إلى 500 ك.ب أو الحجم المطلوب مع الحفاظ على وضوح الخطوط ودقة النصوص',
       category: ToolCategory.pdf,
       icon: Icons.compress_rounded,
-      badge: 'حجم أصغر',
+      badge: 'تقليل الحجم',
       accentColor: Color(0xFF4F46E5),
       keywords: ['ضغط', 'حجم', 'pdf', 'تقليل', 'كيلوبايت'],
     ),
     ToolItem(
       id: 'pdf_import',
-      title: 'إضافة مستندات وصور من الهاتف',
-      subtitle: 'جلب ملفات PDF أو صور من ذاكرة هاتفك لحفظها وتعديلها داخل التطبيق',
+      title: 'استيراد مستندات وصور من الهاتف',
+      subtitle: 'جلب ملفات PDF أو صور من ذاكرة هاتفك لحفظها وتعديلها وتحويلها داخل التطبيق',
       category: ToolCategory.pdf,
       icon: Icons.file_download_rounded,
-      badge: 'استيراد سريع',
+      badge: 'استيراد فوري',
       accentColor: Color(0xFF059669),
       keywords: ['استيراد', 'جلب', 'ملف', 'صورة', 'تنزيل'],
     ),
     ToolItem(
       id: 'transfer_web_drop',
       title: 'إرسال الملفات للكمبيوتر بدون كابل',
-      subtitle: 'افتح المتصفح على اللابتوب واستلم وأرسل الملفات مباشرة عبر الواي فاي بسرعة',
+      subtitle: 'فتح رابط فوري في متصفح اللابتوب واستلام وإرسال الملفات مباشرة عبر الواي فاي بسرعة',
       category: ToolCategory.pdf,
       icon: Icons.wifi_tethering_rounded,
-      badge: 'بدون كابل',
+      badge: 'بدون كابل ⚡',
       accentColor: Color(0xFF007AFF),
       keywords: ['كمبيوتر', 'ماك', 'wifi', 'نقل', 'متصفح', 'airdrop', 'drop', 'شير'],
     ),
     ToolItem(
       id: 'transfer_files_hub',
       title: 'الملفات المستلمة من الكمبيوتر',
-      subtitle: 'عرض وتنزيل وإدارة الملفات التي تم نقلها بين الهاتف والكمبيوتر',
+      subtitle: 'عرض وإدارة كافة المستندات والملفات التي تم نقلها بين الهاتف والكمبيوتر بسهولة',
       category: ToolCategory.pdf,
       icon: Icons.folder_shared_rounded,
-      badge: 'الملفات المنقولة',
+      badge: 'ملفات منقولة',
       accentColor: Color(0xFF0D9488),
       keywords: ['ملفات', 'منقولة', 'مستلمة', 'مرسلة', 'كمبيوتر', 'web drop', 'تنزيلات', 'transferred'],
     ),
     ToolItem(
       id: 'pdf_booklet_imposition',
       title: 'طباعة ملازم وكتيبات مطوية',
-      subtitle: 'ترتيب صفحات المذكرات تلقائياً لتطبع وش وضهر وتنثني ككتاب ومذكرة A5',
+      subtitle: 'ترتيب صفحات المذكرات تلقائياً لتطبع وش وضهر وتنثني ككتيب أو مذكرة A5 مرتبة',
       category: ToolCategory.pdf,
       icon: Icons.auto_stories_rounded,
-      badge: 'مذكرة مطوية',
+      badge: 'كتيب مطوي',
       accentColor: Color(0xFF7C3AED),
       keywords: ['كتيب', 'ملزمة', 'booklet', 'طي', 'دوبلكس', 'كتاب', 'طباعة'],
     ),
     ToolItem(
       id: 'pdf_gutter_margin',
       title: 'توسيع هامش التجليد والتخريم',
-      subtitle: 'إزاحة الكلام بعيداً عن حافة الورقة حتى لا تقطعه خرامة التجليد والسلك الحلزوني',
+      subtitle: 'إبعاد النصوص عن حافة الورقة حتى لا تتلفها خرامة الأوراق أو سلك التجليد الحلزوني',
       category: ToolCategory.pdf,
       icon: Icons.margin_rounded,
-      badge: 'حماية الكلام',
+      badge: 'حماية التجليد',
       accentColor: Color(0xFFEA580C),
       keywords: ['هامش', 'تجليد', 'خرامة', 'ثقوب', 'سلك', 'حلزوني', 'gutter', 'تخريم'],
     ),
@@ -448,7 +448,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'sec_vault',
       title: 'الخزنة السرية المقفولة بالبصمة',
-      subtitle: 'مكان سري مشفر لحفظ مستنداتك الهامة مقفول ببصمة إصبعك أو رمز سري',
+      subtitle: 'مساحة خاصة مشفرة لحفظ أوراقك ومستنداتك الحساسة لا تفتح إلا ببصمة إصبعك أو رمزك السري',
       category: ToolCategory.security,
       icon: Icons.enhanced_encryption_rounded,
       badge: 'حماية بالبصمة',
@@ -457,8 +457,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'sec_exif_scrub',
-      title: 'حذف بيانات المكان من الصور',
-      subtitle: 'مسح موقع التقاط الصورة ومعلومات الهاتف قبل إرسالها لأي شخص لحماية خصوصيتك',
+      title: 'حذف موقع وتاريخ التقاط الصور',
+      subtitle: 'مسح بيانات الـ GPS ومعلومات الهاتف من صور المستندات قبل إرسالها لحماية خصوصيتك',
       category: ToolCategory.security,
       icon: Icons.location_off_rounded,
       badge: 'حماية الخصوصية',
@@ -468,17 +468,17 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'sec_signatures',
       title: 'توقيع العقود وإضافة ختمك',
-      subtitle: 'ارسم توقيعك بيدك وضعه على أي عقد أو مستند مع إمكانية حفظه لإعادة استخدامه',
+      subtitle: 'ارسم توقيعك بيدك وضعه على أي عقد أو مستند مع إمكانية حفظه لإعادة استخدامه فوراً',
       category: ToolCategory.security,
       icon: Icons.draw_rounded,
-      badge: 'توقيع بيدك',
+      badge: 'توقيع يدوي',
       accentColor: Color(0xFF6366F1),
       keywords: ['توقيع', 'ختم', 'عقد', 'توقيعات', 'بصمة'],
     ),
     ToolItem(
       id: 'sec_trash',
-      title: 'سلة المهملات والمستندات المحذوفة',
-      subtitle: 'استرجاع أي ورقة حذفتها بالخطأ خلال 30 يوماً قبل مسحها النهائي',
+      title: 'سلة المحذوفات واسترجاع الأوراق',
+      subtitle: 'استعادة أي مستند قمت بحذفه بالخطأ خلال 30 يوماً قبل حذفه النهائي من الهاتف',
       category: ToolCategory.security,
       icon: Icons.delete_sweep_rounded,
       badge: 'استرجاع 30 يوم',
@@ -487,8 +487,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'sec_watermark',
-      title: 'وضع علامة مائية لحماية الورقة',
-      subtitle: 'اكتب اسمك أو كلمة "سري / معتمد" مائلة فوق الورقة لمنع سرقتها أو تزويرها',
+      title: 'إضافة علامة مائية لحماية الورق',
+      subtitle: 'كتابة اسمك أو عبارة "سري / معتمد" مائلة فوق الورقة لحمايتها من السرقة والتزوير',
       category: ToolCategory.security,
       icon: Icons.verified_user_rounded,
       badge: 'منع التزوير',
@@ -497,8 +497,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ),
     ToolItem(
       id: 'sec_smart_redaction',
-      title: 'تسويد وحجب البيانات الحساسة',
-      subtitle: 'إخفاء الرقم القومي، الأرصدة، أو أي كلام سري بمستطيل أسود لا يمكن إزالته',
+      title: 'طمس وحجب البيانات الحساسة',
+      subtitle: 'تسويد نهائي لأرقام الحسابات والبيانات السرية بمستطيل أسود لا يمكن إزالته أو كشفه',
       category: ToolCategory.security,
       icon: Icons.visibility_off_rounded,
       badge: 'تسويد نهائي',
@@ -508,7 +508,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'sec_backup_zip',
       title: 'نسخ احتياطي على جوجل درايف',
-      subtitle: 'حفظ نسخة مشفرة من كل أوراقك على حسابك السحابي حتى لا تضيع أبداً',
+      subtitle: 'حفظ نسخة سحابية مشفرة من كافة مستنداتك على حسابك السحابي حتى لا تفقدها أبداً',
       category: ToolCategory.security,
       icon: Icons.cloud_sync_rounded,
       badge: 'حفظ سحابي',
@@ -518,20 +518,20 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     ToolItem(
       id: 'sec_digital_stamp',
       title: 'استخراج وتفريغ الختم الرسمي',
-      subtitle: 'قص وتفريغ حبر الختم وتنزيله كصورة شفافة لوضعه على أي ورقة رسمية',
+      subtitle: 'قص الختم الرسمي وتفريغ حبره بخلفية شفافة تماماً لوضعه على أي مستند أو ورقة رسمية',
       category: ToolCategory.security,
       icon: Icons.verified_rounded,
-      badge: 'ختم شفاف',
+      badge: 'ختم مفرغ شفاف',
       accentColor: Color(0xFFD62B2B),
       keywords: ['ختم', 'أختام', 'توقيع', 'رسمي', 'معتمد', 'مدفوع', 'شفافية'],
     ),
     ToolItem(
       id: 'sec_pdf_lock',
       title: 'قفل ملف PDF بكلمة سر',
-      subtitle: 'منع أي شخص من فتح أو طباعة ملف PDF إلا بعد كتابة كلمة المرور الخاصة بك',
+      subtitle: 'تشفير المستند بكلمة مرور قوية (AES) لمنع أي شخص من فتحه أو طباعته بدون إذنك',
       category: ToolCategory.security,
       icon: Icons.lock_rounded,
-      badge: 'كلمة سر قوية',
+      badge: 'تشفير قوي',
       accentColor: Color(0xFF059669),
       keywords: ['قفل', 'تشفير', 'كلمة سر', 'باسورد', 'بصمة', 'aes', 'حماية', 'pdf'],
     ),
@@ -2266,6 +2266,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
   // ── UI Build ──
 
   @override
+  // ── UI Build (Apple Minimalist / Bento Paper Design) ──
+
+  @override
   Widget build(BuildContext context) {
     final palette = context.appThemePalette;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2273,12 +2276,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
     final isWideTablet = screenWidth > 900;
+    final isSmallPhone = screenWidth < 360;
+
     final int crossAxisCount = isWideTablet ? 4 : (isTablet ? 3 : 2);
     final double childAspectRatio = isWideTablet
-        ? 1.30
+        ? 1.35
         : (isTablet
-            ? 1.15
-            : (screenWidth < 360 ? 0.90 : 0.96));
+            ? 1.18
+            : (isSmallPhone ? 0.83 : 0.87));
 
     final isDefaultGroupedView =
         _selectedCategory == ToolCategory.all && _searchQuery.trim().isEmpty;
@@ -2299,19 +2304,19 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             const Text(
               'مركز الأدوات',
               style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                fontSize: 21,
                 letterSpacing: -0.4,
               ),
             ),
             Text(
-              '${_allTools.length} أداة احترافية • دقة وسرعة فائقة',
+              '${_allTools.length} أداة ذكية • معالجة وطباعة وحماية فورية',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF8E8E93),
+                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
               ),
             ),
           ],
@@ -2331,7 +2336,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 border: Border.all(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.05),
+                      : Colors.black.withValues(alpha: 0.06),
                   width: 0.5,
                 ),
               ),
@@ -2341,7 +2346,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   _buildViewSegmentItem(
                     icon: Icons.grid_view_rounded,
                     isSelected: _isGridView,
-                    tooltip: 'عرض شبكي',
+                    tooltip: 'عرض بينتو شبكي',
                     onTap: () => _setViewMode(true),
                     isDark: isDark,
                     palette: palette,
@@ -2349,7 +2354,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   _buildViewSegmentItem(
                     icon: Icons.view_agenda_rounded,
                     isSelected: !_isGridView,
-                    tooltip: 'عرض قائمة',
+                    tooltip: 'عرض ورقي مجمع',
                     onTap: () => _setViewMode(false),
                     isDark: isDark,
                     palette: palette,
@@ -2379,10 +2384,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       textAlignVertical: TextAlignVertical.center,
                       style: const TextStyle(fontSize: 13.5),
                       decoration: InputDecoration(
-                        hintText: 'البحث في الأدوات والذكاء الاصطناعي...',
-                        hintStyle: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF8E8E93),
+                        hintText: 'ابحث عن أداة (بطاقة، إكسل، ضغط، بصمة...)...',
+                        hintStyle: TextStyle(
+                          fontSize: 12.5,
+                          color: isDark
+                              ? const Color(0xFF8E8E93)
+                              : const Color(0xFF8E8E93),
                           fontWeight: FontWeight.w400,
                         ),
                         prefixIcon: const Icon(
@@ -2406,31 +2413,31 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         filled: true,
                         fillColor: isDark
                             ? const Color(0xFF1C1C1E)
-                            : const Color(0xFFE5E5EA),
+                            : Colors.white,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 0,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(13),
                           borderSide: BorderSide(
                             color: isDark
                                 ? Colors.white.withValues(alpha: 0.08)
                                 : Colors.black.withValues(alpha: 0.06),
-                            width: 0.5,
+                            width: 0.6,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(13),
                           borderSide: BorderSide(
                             color: isDark
                                 ? Colors.white.withValues(alpha: 0.08)
                                 : Colors.black.withValues(alpha: 0.06),
-                            width: 0.5,
+                            width: 0.6,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(13),
                           borderSide: BorderSide(
                             color: palette.accent,
                             width: 1.2,
@@ -2447,7 +2454,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
                   child: Row(
                     children: ToolCategory.values.map((cat) {
                       final isSelected = _selectedCategory == cat;
@@ -2484,12 +2491,13 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                                       : (isDark
                                           ? Colors.white.withValues(alpha: 0.08)
                                           : Colors.black.withValues(alpha: 0.06)),
-                                  width: 0.5,
+                                  width: 0.6,
                                 ),
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: palette.accent.withValues(alpha: 0.25),
+                                          color: palette.accent
+                                              .withValues(alpha: 0.28),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -2497,7 +2505,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                                     : [
                                         BoxShadow(
                                           color: Colors.black.withValues(
-                                              alpha: isDark ? 0.2 : 0.02),
+                                              alpha: isDark ? 0.2 : 0.025),
                                           blurRadius: 4,
                                           offset: const Offset(0, 1),
                                         ),
@@ -2522,7 +2530,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                                       fontWeight: isSelected
                                           ? FontWeight.w700
                                           : FontWeight.w600,
-                                      fontSize: 12.5,
+                                      fontSize: 12,
                                       color: isSelected
                                           ? Colors.white
                                           : (isDark
@@ -2530,7 +2538,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                                               : const Color(0xFF1C1C1E)),
                                     ),
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: 5),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 5,
@@ -2566,64 +2574,6 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 ),
               ),
 
-              // Section Header / Quick Summary Bar
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _searchQuery.trim().isNotEmpty
-                              ? 'نتائج البحث (${tools.length} أداة)'
-                              : (_selectedCategory == ToolCategory.all
-                                  ? 'جميع الأقسام المنظمة (${_allTools.length} أداة)'
-                                  : '${_selectedCategory.sectionTitle} (${tools.length})'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF8E8E93),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Layout indication pill
-                      InkWell(
-                        onTap: () => _setViewMode(!_isGridView),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _isGridView
-                                    ? Icons.grid_view_rounded
-                                    : Icons.view_agenda_rounded,
-                                size: 14,
-                                color: palette.accent,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _isGridView ? 'عرض شبكي' : 'عرض قائمة',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: palette.accent,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
               // Tool Items Content
               if (tools.isEmpty)
                 SliverFillRemaining(
@@ -2637,36 +2587,38 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest
-                                  .withValues(alpha: 0.5),
+                              color: isDark
+                                  ? const Color(0xFF1C1C1E)
+                                  : Colors.white,
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.05),
+                              ),
                             ),
-                            child: Icon(
+                            child: const Icon(
                               Icons.search_off_rounded,
-                              size: 48,
-                              color:
-                                  Theme.of(context).colorScheme.outlineVariant,
+                              size: 44,
+                              color: Color(0xFF8E8E93),
                             ),
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'لا توجد أداة مطابقة لكلمات البحث',
+                            'لا توجد أداة مطابقة لبحثك',
                             style: TextStyle(
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
-                            'جرب البحث بكلمات أخرى مثل: بطاقة، إكسل، PDF، خزنة',
+                            'جرب كلمات أخرى مثل: بطاقة، إكسل، ضغط، بصمة، توقيع',
                             style: TextStyle(
-                              fontSize: 12.5,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.6),
+                              fontSize: 12,
+                              color: isDark
+                                  ? const Color(0xFF8E8E93)
+                                  : const Color(0xFF6C6C70),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -2678,8 +2630,11 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                                 _selectedCategory = ToolCategory.all;
                               });
                             },
-                            icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: const Text('عرض جميع الأدوات'),
+                            icon: const Icon(Icons.refresh_rounded, size: 16),
+                            label: const Text(
+                              'عرض كافة الأدوات',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ],
                       ),
@@ -2687,14 +2642,31 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   ),
                 )
               else if (isDefaultGroupedView)
-                // Grouped by Category when viewing All and no search query
+                // Default View: Bento Hero Card + Bento Quick Action Spotlight + Inset Categorized Groups
                 ...[
-                  // 1. Apple Bento Hero Card & Bento Paper Hub
+                  // 1. Flagship Apple Bento Hero Card
                   SliverToBoxAdapter(
-                    child: _buildBentoPaperHub(isDark, palette, screenWidth),
+                    child: _buildAppleBentoHeroCard(
+                      heroTool: _allTools.firstWhere(
+                        (t) => t.id == 'gov_id_card',
+                        orElse: () => _allTools.first,
+                      ),
+                      isDark: isDark,
+                      palette: palette,
+                      screenWidth: screenWidth,
+                    ),
                   ),
 
-                  // 2. Inset Grouped Categories
+                  // 2. Bento Asymmetric Spotlight Dual Cards
+                  SliverToBoxAdapter(
+                    child: _buildBentoSpotlightRow(
+                      isDark: isDark,
+                      palette: palette,
+                      screenWidth: screenWidth,
+                    ),
+                  ),
+
+                  // 3. Inset Grouped Categories
                   for (final cat in [
                     ToolCategory.government,
                     ToolCategory.intelligence,
@@ -2763,8 +2735,15 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   ],
                 ]
               else
-                // Filtered or Search Mode: Flat list/grid
+                // Filtered or Search Mode: Flat list/grid with Header
                 ...[
+                  SliverToBoxAdapter(
+                    child: _buildFilteredHeader(
+                      toolsCount: tools.length,
+                      isDark: isDark,
+                      palette: palette,
+                    ),
+                  ),
                   if (_isGridView)
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2818,7 +2797,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         SizedBox(height: 16),
                         Text(
                           'جارٍ معالجة الأداة محلياً 100%...',
-                          style: TextStyle(fontWeight: FontWeight.w800),
+                          style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -2882,50 +2861,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
-  // ── Apple Bento Hero Card & Bento Paper Hub ──
-
-  Widget _buildBentoPaperHub(
-    bool isDark,
-    AppThemePalette palette,
-    double screenWidth,
-  ) {
-    final heroTool = _allTools.firstWhere(
-      (t) => t.id == 'gov_id_card',
-      orElse: () => _allTools.first,
-    );
-
-    final companionToolIds = [
-      'ai_interactive_table',
-      'transfer_web_drop',
-      'ai_qr_studio',
-      'sec_vault',
-    ];
-    final companionTools = companionToolIds
-        .map((id) => _allTools.firstWhere((t) => t.id == id))
-        .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 1. Apple Bento Hero Card (Flagship Spotlight)
-        _buildAppleBentoHeroCard(
-          heroTool: heroTool,
-          isDark: isDark,
-          palette: palette,
-          screenWidth: screenWidth,
-        ),
-
-        // 2. Bento Paper Companion Grid (4 Asymmetric Modules)
-        _buildBentoCompanionSection(
-          companionTools: companionTools,
-          isDark: isDark,
-          palette: palette,
-          screenWidth: screenWidth,
-        ),
-      ],
-    );
-  }
+  // ── Apple Bento Hero Card ──
 
   Widget _buildAppleBentoHeroCard({
     required ToolItem heroTool,
@@ -2940,30 +2876,30 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
               : Colors.black.withValues(alpha: 0.06),
-          width: 0.6,
+          width: 0.7,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.04),
-            blurRadius: 18,
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         child: InkWell(
           onTap: () {
             HapticFeedback.lightImpact();
             _onToolSelected(heroTool);
           },
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
           child: Padding(
             padding: EdgeInsets.all(isSmallPhone ? 14 : (isTablet ? 20 : 16)),
             child: Column(
@@ -2977,15 +2913,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
-                    // Apple Bento Eyebrow Pill
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 9,
+                        vertical: 3.5,
                       ),
                       decoration: BoxDecoration(
                         color: palette.accent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
@@ -2994,12 +2929,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           children: [
                             Icon(
                               Icons.auto_awesome_rounded,
-                              size: 13,
+                              size: 12.5,
                               color: palette.accent,
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              'الأداة الأكثر استخداماً • طباعة فورية',
+                              'الأداة الأكثر طلباً ✦ طباعة فورية',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -3010,8 +2945,6 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         ),
                       ),
                     ),
-
-                    // Status Indicator
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Row(
@@ -3027,7 +2960,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            'دقة معتمدة 100%',
+                            'دقة 100% بحجم 1:1',
                             style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w600,
@@ -3055,21 +2988,21 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           Text(
                             heroTool.title,
                             style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: isSmallPhone ? 15.5 : (isTablet ? 19 : 17),
-                              letterSpacing: -0.4,
+                              fontWeight: FontWeight.w700,
+                              fontSize: isSmallPhone ? 15 : (isTablet ? 18 : 16.5),
+                              letterSpacing: -0.3,
                               height: 1.25,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 5),
+                          const SizedBox(height: 4),
                           Text(
                             heroTool.subtitle,
                             style: TextStyle(
                               fontSize: isSmallPhone ? 11 : 12,
                               color: isDark
-                                  ? const Color(0xFF98989D)
+                                  ? const Color(0xFFA1A1A6)
                                   : const Color(0xFF636366),
                               height: 1.35,
                             ),
@@ -3082,13 +3015,13 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     const SizedBox(width: 12),
                     // Paper Squircle Icon
                     Container(
-                      width: isSmallPhone ? 46 : (isTablet ? 56 : 50),
-                      height: isSmallPhone ? 46 : (isTablet ? 56 : 50),
+                      width: isSmallPhone ? 46 : (isTablet ? 54 : 48),
+                      height: isSmallPhone ? 46 : (isTablet ? 54 : 48),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
                             palette.accent,
-                            palette.accent.withValues(alpha: 0.8),
+                            palette.accent.withValues(alpha: 0.82),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -3106,7 +3039,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         child: Icon(
                           heroTool.icon,
                           color: Colors.white,
-                          size: isSmallPhone ? 24 : (isTablet ? 30 : 26),
+                          size: isSmallPhone ? 24 : (isTablet ? 28 : 26),
                         ),
                       ),
                     ),
@@ -3114,24 +3047,24 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // 3. Mini Bento Feature Pills
+                // 3. Bento Feature Pills
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
                     _buildBentoMiniPill(
-                      icon: Icons.print_rounded,
+                      icon: Icons.straighten_rounded,
                       label: 'مقياس 1:1 حقيقي',
                       isDark: isDark,
                     ),
                     _buildBentoMiniPill(
-                      icon: Icons.filter_none_rounded,
-                      label: 'ورقة A4 واحدة',
+                      icon: Icons.description_rounded,
+                      label: 'ورقة A4 رسمية',
                       isDark: isDark,
                     ),
                     _buildBentoMiniPill(
-                      icon: Icons.verified_user_rounded,
-                      label: 'علامة حماية أمنية',
+                      icon: Icons.security_rounded,
+                      label: 'حماية وعلامة مائية',
                       isDark: isDark,
                     ),
                   ],
@@ -3147,12 +3080,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   children: [
                     Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: isSmallPhone ? 12 : 16,
-                        vertical: 9,
+                        horizontal: isSmallPhone ? 12 : 15,
+                        vertical: 8.5,
                       ),
                       decoration: BoxDecoration(
                         color: palette.accent,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(13),
                       ),
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
@@ -3162,7 +3095,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                             Text(
                               'ابدأ تصوير البطاقة الآن',
                               style: TextStyle(
-                                fontSize: isSmallPhone ? 11.5 : 12.5,
+                                fontSize: isSmallPhone ? 11.5 : 12,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
                               ),
@@ -3178,9 +3111,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       ),
                     ),
                     Text(
-                      'جاهز للطباعة والتقديم المباشر ⚡',
+                      'جاهز للطباعة والجهات الرسمية ⚡',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                         color: isDark
                             ? const Color(0xFFA1A1A6)
@@ -3197,50 +3130,55 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
-  Widget _buildBentoCompanionSection({
-    required List<ToolItem> companionTools,
+  // ── Bento Spotlight Dual Row (Fast Quick Tools) ──
+
+  Widget _buildBentoSpotlightRow({
     required bool isDark,
     required AppThemePalette palette,
     required double screenWidth,
   }) {
-    final isTablet = screenWidth > 600;
-    final isSmallPhone = screenWidth < 360;
+    final toolExcel = _allTools.firstWhere(
+      (t) => t.id == 'ai_interactive_table',
+      orElse: () => _allTools.first,
+    );
+    final toolWebDrop = _allTools.firstWhere(
+      (t) => t.id == 'transfer_web_drop',
+      orElse: () => _allTools.first,
+    );
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Section mini header
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(4.5),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFF9500).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(7),
                 ),
                 child: const Icon(
                   Icons.bolt_rounded,
-                  size: 15,
+                  size: 14,
                   color: Color(0xFFFF9500),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 7),
               const Expanded(
                 child: Text(
-                  'الوصول السريع ومربعات بينتو (Bento)',
+                  'أدوات بينتو الذكية السريعة',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     fontSize: 14,
                     letterSpacing: -0.2,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
@@ -3248,7 +3186,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
-                  'أدوات فورية ⚡',
+                  'فوري ⚡',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -3258,80 +3196,35 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-
-          // Bento Companion Cards Row(s)
-          if (isTablet)
-            Row(
-              children: [
-                for (int i = 0; i < companionTools.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildBentoCompanionCard(
-                      tool: companionTools[i],
-                      isDark: isDark,
-                      palette: palette,
-                      isSmallPhone: false,
-                    ),
-                  ),
-                ],
-              ],
-            )
-          else ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _buildBentoCompanionCard(
-                    tool: companionTools[0],
-                    isDark: isDark,
-                    palette: palette,
-                    isSmallPhone: isSmallPhone,
-                  ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSpotlightCard(
+                  tool: toolExcel,
+                  isDark: isDark,
+                  palette: palette,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildBentoCompanionCard(
-                    tool: companionTools[1],
-                    isDark: isDark,
-                    palette: palette,
-                    isSmallPhone: isSmallPhone,
-                  ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSpotlightCard(
+                  tool: toolWebDrop,
+                  isDark: isDark,
+                  palette: palette,
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildBentoCompanionCard(
-                    tool: companionTools[2],
-                    isDark: isDark,
-                    palette: palette,
-                    isSmallPhone: isSmallPhone,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildBentoCompanionCard(
-                    tool: companionTools[3],
-                    isDark: isDark,
-                    palette: palette,
-                    isSmallPhone: isSmallPhone,
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBentoCompanionCard({
+  Widget _buildSpotlightCard({
     required ToolItem tool,
     required bool isDark,
     required AppThemePalette palette,
-    required bool isSmallPhone,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -3361,12 +3254,11 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
           },
           borderRadius: BorderRadius.circular(18),
           child: Padding(
-            padding: EdgeInsets.all(isSmallPhone ? 10 : 12),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Top Row: App squircle icon + discrete badge
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -3401,7 +3293,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w700,
                             color: tool.accentColor,
                           ),
@@ -3411,31 +3303,27 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-
-                // Title
                 Text(
                   tool.title,
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
                     height: 1.25,
                     color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                     letterSpacing: -0.2,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 3),
-
-                // Subtitle
                 Text(
                   tool.subtitle,
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 11,
                     color: isDark
                         ? const Color(0xFFA1A1A6)
                         : const Color(0xFF48484A),
-                    height: 1.3,
+                    height: 1.35,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -3492,6 +3380,109 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
+  // ── Filtered Search & Category Banner ──
+
+  Widget _buildFilteredHeader({
+    required int toolsCount,
+    required bool isDark,
+    required AppThemePalette palette,
+  }) {
+    final title = _searchQuery.trim().isNotEmpty
+        ? 'نتائج البحث عن "$_searchQuery"'
+        : _selectedCategory.sectionTitle;
+    final subtitle = _searchQuery.trim().isNotEmpty
+        ? 'تم العثور على $toolsCount نتيجة مطابقة'
+        : _selectedCategory.sectionSubtitle;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
+            width: 0.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.025),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: palette.accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                _searchQuery.trim().isNotEmpty
+                    ? Icons.search_rounded
+                    : _selectedCategory.icon,
+                size: 18,
+                color: palette.accent,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      letterSpacing: -0.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark
+                          ? const Color(0xFFA1A1A6)
+                          : const Color(0xFF636366),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+              decoration: BoxDecoration(
+                color: palette.accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$toolsCount أداة',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: palette.accent,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Section Header ──
 
   Widget _buildSectionHeader({
@@ -3501,7 +3492,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     required AppThemePalette palette,
   }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
           Container(
@@ -3512,7 +3503,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             ),
             child: Icon(
               category.icon,
-              size: 16,
+              size: 15,
               color: palette.accent,
             ),
           ),
@@ -3524,22 +3515,22 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 Text(
                   category.sectionTitle,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    letterSpacing: -0.3,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 1),
                 Text(
                   category.sectionSubtitle,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: isDark
                         ? const Color(0xFFA1A1A6)
                         : const Color(0xFF636366),
                     height: 1.3,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -3556,10 +3547,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             ),
             child: Text(
               '$count أدوات',
-              style: const TextStyle(
-                fontSize: 10.5,
+              style: TextStyle(
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF8E8E93),
+                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70),
               ),
             ),
           ),
@@ -3642,8 +3633,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             children: [
               // Squircle App Icon
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: tool.accentColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
@@ -3651,7 +3642,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 child: Icon(
                   tool.icon,
                   color: tool.accentColor,
-                  size: 22,
+                  size: 21,
                 ),
               ),
               const SizedBox(width: 12),
@@ -3667,8 +3658,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           child: Text(
                             tool.title,
                             style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
                               color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                               letterSpacing: -0.2,
                             ),
@@ -3679,8 +3670,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 2.5,
+                            horizontal: 6.5,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
                             color: tool.accentColor.withValues(alpha: 0.10),
@@ -3689,7 +3680,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           child: Text(
                             tool.badge,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9.5,
                               fontWeight: FontWeight.w700,
                               color: tool.accentColor,
                             ),
@@ -3701,7 +3692,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     Text(
                       tool.subtitle,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
                         color: isDark
                             ? const Color(0xFFA1A1A6)
                             : const Color(0xFF48484A),
@@ -3716,7 +3707,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               const SizedBox(width: 8),
               const Icon(
                 Icons.arrow_forward_ios_rounded,
-                size: 13,
+                size: 12,
                 color: Color(0xFF8E8E93),
               ),
             ],
@@ -3726,7 +3717,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
-  // ── Grid Card Design (Apple Shortcuts Grid Style) ──
+  // ── Grid Card Design (Apple Bento Paper Grid Style) ──
 
   Widget _buildGridCard({
     required BuildContext context,
@@ -3737,7 +3728,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
@@ -3746,7 +3737,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -3754,9 +3745,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           onTap: () {
             HapticFeedback.lightImpact();
             _onToolSelected(tool);
@@ -3772,17 +3763,17 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 38,
+                      height: 38,
                       decoration: BoxDecoration(
                         color: tool.accentColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(11),
                       ),
                       child: Center(
                         child: Icon(
                           tool.icon,
                           color: tool.accentColor,
-                          size: 21,
+                          size: 20,
                         ),
                       ),
                     ),
@@ -3790,8 +3781,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     Flexible(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2.5,
+                          horizontal: 6.5,
+                          vertical: 2,
                         ),
                         decoration: BoxDecoration(
                           color: tool.accentColor.withValues(alpha: 0.10),
@@ -3802,7 +3793,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w700,
                             color: tool.accentColor,
                           ),
@@ -3817,8 +3808,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 Text(
                   tool.title,
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
                     height: 1.25,
                     color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                     letterSpacing: -0.2,
@@ -3826,14 +3817,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
 
                 // Subtitle
                 Expanded(
                   child: Text(
                     tool.subtitle,
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 11,
                       color: isDark
                           ? const Color(0xFFA1A1A6)
                           : const Color(0xFF48484A),
