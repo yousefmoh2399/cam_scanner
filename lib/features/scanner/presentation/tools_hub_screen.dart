@@ -2272,8 +2272,13 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     final tools = _filteredTools;
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
-    final childAspectRatio =
-        isTablet ? 1.38 : (screenWidth < 370 ? 1.05 : 1.16);
+    final isWideTablet = screenWidth > 900;
+    final int crossAxisCount = isWideTablet ? 4 : (isTablet ? 3 : 2);
+    final double childAspectRatio = isWideTablet
+        ? 1.35
+        : (isTablet
+            ? 1.28
+            : (screenWidth < 360 ? 1.02 : 1.18));
 
     final isDefaultGroupedView =
         _selectedCategory == ToolCategory.all && _searchQuery.trim().isEmpty;
@@ -2684,9 +2689,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               else if (isDefaultGroupedView)
                 // Grouped by Category when viewing All and no search query
                 ...[
-                  // 1. Featured Quick Access / Shortcuts Section (Top 4 Tools)
+                  // 1. Apple Bento Hero Card & Bento Paper Hub
                   SliverToBoxAdapter(
-                    child: _buildQuickAccessSection(isDark, palette),
+                    child: _buildBentoPaperHub(isDark, palette, screenWidth),
                   ),
 
                   // 2. Inset Grouped Categories
@@ -2722,7 +2727,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                               sliver: SliverGrid(
                                 gridDelegate:
                                     SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: isTablet ? 3 : 2,
+                                  crossAxisCount: crossAxisCount,
                                   childAspectRatio: childAspectRatio,
                                   crossAxisSpacing: 10,
                                   mainAxisSpacing: 10,
@@ -2766,7 +2771,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       sliver: SliverGrid(
                         gridDelegate:
                             SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: isTablet ? 3 : 2,
+                          crossAxisCount: crossAxisCount,
                           childAspectRatio: childAspectRatio,
                           crossAxisSpacing: 10,
                           mainAxisSpacing: 10,
@@ -2846,7 +2851,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         },
         borderRadius: BorderRadius.circular(8),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: MotionTokens.chipSelection,
+          curve: MotionTokens.easeOutStrong,
           width: 32,
           height: 28,
           decoration: BoxDecoration(
@@ -2876,24 +2882,337 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     );
   }
 
-  // ── Featured Quick Access Section ──
+  // ── Apple Bento Hero Card & Bento Paper Hub ──
 
-  Widget _buildQuickAccessSection(bool isDark, AppThemePalette palette) {
-    final quickToolIds = [
-      'gov_id_card',
-      'ai_excel_converter',
+  Widget _buildBentoPaperHub(
+    bool isDark,
+    AppThemePalette palette,
+    double screenWidth,
+  ) {
+    final heroTool = _allTools.firstWhere(
+      (t) => t.id == 'gov_id_card',
+      orElse: () => _allTools.first,
+    );
+
+    final companionToolIds = [
+      'ai_interactive_table',
       'transfer_web_drop',
       'ai_qr_studio',
+      'sec_vault',
     ];
-    final quickTools = quickToolIds
+    final companionTools = companionToolIds
         .map((id) => _allTools.firstWhere((t) => t.id == id))
         .toList();
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 1. Apple Bento Hero Card (Flagship Spotlight)
+        _buildAppleBentoHeroCard(
+          heroTool: heroTool,
+          isDark: isDark,
+          palette: palette,
+          screenWidth: screenWidth,
+        ),
+
+        // 2. Bento Paper Companion Grid (4 Asymmetric Modules)
+        _buildBentoCompanionSection(
+          companionTools: companionTools,
+          isDark: isDark,
+          palette: palette,
+          screenWidth: screenWidth,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppleBentoHeroCard({
+    required ToolItem heroTool,
+    required bool isDark,
+    required AppThemePalette palette,
+    required double screenWidth,
+  }) {
+    final isSmallPhone = screenWidth < 360;
+    final isTablet = screenWidth > 600;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _onToolSelected(heroTool);
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: EdgeInsets.all(isSmallPhone ? 14 : (isTablet ? 20 : 16)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 1. Eyebrow & Status Row
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    // Apple Bento Eyebrow Pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: palette.accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.auto_awesome_rounded,
+                              size: 13,
+                              color: palette.accent,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'الأداة الأبرز • مقياس 1:1',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: palette.accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Status Indicator
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF34C759),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'دقة معتمدة 100%',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? const Color(0xFF98989D)
+                                  : const Color(0xFF8E8E93),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // 2. Headline & Squircle Icon
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            heroTool.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: isSmallPhone ? 15.5 : (isTablet ? 19 : 17),
+                              letterSpacing: -0.4,
+                              height: 1.25,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            heroTool.subtitle,
+                            style: TextStyle(
+                              fontSize: isSmallPhone ? 11 : 12,
+                              color: isDark
+                                  ? const Color(0xFF98989D)
+                                  : const Color(0xFF636366),
+                              height: 1.35,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Paper Squircle Icon
+                    Container(
+                      width: isSmallPhone ? 46 : (isTablet ? 56 : 50),
+                      height: isSmallPhone ? 46 : (isTablet ? 56 : 50),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            palette.accent,
+                            palette.accent.withValues(alpha: 0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: palette.accent.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Icon(
+                          heroTool.icon,
+                          color: Colors.white,
+                          size: isSmallPhone ? 24 : (isTablet ? 30 : 26),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // 3. Mini Bento Feature Pills
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _buildBentoMiniPill(
+                      icon: Icons.print_rounded,
+                      label: 'طباعة 1:1',
+                      isDark: isDark,
+                    ),
+                    _buildBentoMiniPill(
+                      icon: Icons.verified_user_rounded,
+                      label: 'علامة أمنية',
+                      isDark: isDark,
+                    ),
+                    _buildBentoMiniPill(
+                      icon: Icons.straighten_rounded,
+                      label: 'أبعاد ISO',
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // 4. Bottom Action Row
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSmallPhone ? 12 : 16,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: palette.accent,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'استخدام الأداة',
+                              style: TextStyle(
+                                fontSize: isSmallPhone ? 11.5 : 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'جاهز للطباعة والتصدير ⚡',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? const Color(0xFF98989D)
+                            : const Color(0xFF8E8E93),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBentoCompanionSection({
+    required List<ToolItem> companionTools,
+    required bool isDark,
+    required AppThemePalette palette,
+    required double screenWidth,
+  }) {
+    final isTablet = screenWidth > 600;
+    final isSmallPhone = screenWidth < 360;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Section mini header
           Row(
             children: [
               Container(
@@ -2911,12 +3230,12 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'الوصول السريع',
+                  'الوصول السريع ومربعات بينتو (Bento)',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
+                    fontSize: 14,
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -2929,7 +3248,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
-                  'الأكثر طلباً ⚡',
+                  'أدوات فورية ⚡',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -2940,144 +3259,232 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickAccessCard(
-                  tool: quickTools[0],
-                  isDark: isDark,
-                  palette: palette,
-                  gradient: const [Color(0xFF007AFF), Color(0xFF0051A8)],
+
+          // Bento Companion Cards Row(s)
+          if (isTablet)
+            Row(
+              children: [
+                for (int i = 0; i < companionTools.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildBentoCompanionCard(
+                      tool: companionTools[i],
+                      isDark: isDark,
+                      palette: palette,
+                      isSmallPhone: false,
+                    ),
+                  ),
+                ],
+              ],
+            )
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildBentoCompanionCard(
+                    tool: companionTools[0],
+                    isDark: isDark,
+                    palette: palette,
+                    isSmallPhone: isSmallPhone,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildQuickAccessCard(
-                  tool: quickTools[1],
-                  isDark: isDark,
-                  palette: palette,
-                  gradient: const [Color(0xFF10B981), Color(0xFF047857)],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildBentoCompanionCard(
+                    tool: companionTools[1],
+                    isDark: isDark,
+                    palette: palette,
+                    isSmallPhone: isSmallPhone,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildQuickAccessCard(
-                  tool: quickTools[2],
-                  isDark: isDark,
-                  palette: palette,
-                  gradient: const [Color(0xFF5856D6), Color(0xFF3B39A3)],
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildBentoCompanionCard(
+                    tool: companionTools[2],
+                    isDark: isDark,
+                    palette: palette,
+                    isSmallPhone: isSmallPhone,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildQuickAccessCard(
-                  tool: quickTools[3],
-                  isDark: isDark,
-                  palette: palette,
-                  gradient: const [Color(0xFFFF9500), Color(0xFFD97706)],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildBentoCompanionCard(
+                    tool: companionTools[3],
+                    isDark: isDark,
+                    palette: palette,
+                    isSmallPhone: isSmallPhone,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildQuickAccessCard({
+  Widget _buildBentoCompanionCard({
     required ToolItem tool,
     required bool isDark,
     required AppThemePalette palette,
-    required List<Color> gradient,
+    required bool isSmallPhone,
   }) {
-    return Material(
-      color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          _onToolSelected(tool);
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 66,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.06),
-              width: 0.6,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: gradient,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(11),
-                  boxShadow: [
-                    BoxShadow(
-                      color: gradient.first.withValues(alpha: 0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(tool.icon, color: Colors.white, size: 20),
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _onToolSelected(tool);
+          },
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: EdgeInsets.all(isSmallPhone ? 10 : 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top Row: App squircle icon + discrete badge
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      tool.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        letterSpacing: -0.2,
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: tool.accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(11),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: Center(
+                        child: Icon(
+                          tool.icon,
+                          color: tool.accentColor,
+                          size: 19,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      tool.badge,
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                        color: gradient.first,
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: tool.accentColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          tool.badge,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: tool.accentColor,
+                          ),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+
+                // Title
+                Text(
+                  tool.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12.5,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+
+                // Subtitle
+                Text(
+                  tool.subtitle,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isDark
+                        ? const Color(0xFF98989D)
+                        : const Color(0xFF8E8E93),
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBentoMiniPill({
+    required IconData icon,
+    required String label,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.04),
+          width: 0.5,
+        ),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 11.5,
+              color: isDark ? const Color(0xFF98989D) : const Color(0xFF636366),
+            ),
+            const SizedBox(width: 4.5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFD1D1D6) : const Color(0xFF3A3A3C),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -3167,7 +3574,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
@@ -3176,14 +3583,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           children: [
             for (int i = 0; i < tools.length; i++) ...[
@@ -3320,7 +3727,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
@@ -3329,23 +3736,23 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.035),
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           onTap: () {
             HapticFeedback.lightImpact();
             _onToolSelected(tool);
           },
           child: Padding(
-            padding: const EdgeInsets.all(13),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -3359,12 +3766,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       height: 38,
                       decoration: BoxDecoration(
                         color: tool.accentColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
-                        tool.icon,
-                        color: tool.accentColor,
-                        size: 20,
+                      child: Center(
+                        child: Icon(
+                          tool.icon,
+                          color: tool.accentColor,
+                          size: 20,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -3392,7 +3801,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
                 // Title
                 Text(
@@ -3406,15 +3815,17 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
 
                 // Subtitle
                 Expanded(
                   child: Text(
                     tool.subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
-                      color: Color(0xFF8E8E93),
+                      color: isDark
+                          ? const Color(0xFF98989D)
+                          : const Color(0xFF8E8E93),
                       height: 1.3,
                     ),
                     maxLines: 2,
