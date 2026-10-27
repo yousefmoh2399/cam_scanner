@@ -5,19 +5,20 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/motion_tokens.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/providers/providers.dart';
 import '../data/native_scanner_bridge.dart';
+import '../data/office_exporter_service.dart';
 
-/// Screen for Visual Table Extraction and Live Interactive Grid Editing.
-/// Allows capturing a physical paper table, extracting rows/columns,
-/// editing cells live, computing column sums, and exporting to real Excel (.xlsx) or PDF.
+/// Screen for Visual Table Extraction, Physical Paper Layout Reconstruction,
+/// and Live Interactive Apple Bento Spreadsheet Editing.
 class InteractiveTableEditorScreen extends ConsumerStatefulWidget {
   const InteractiveTableEditorScreen({
     super.key,
@@ -44,16 +45,23 @@ class _InteractiveTableEditorScreenState
     ['خدمات الدعم الفني', '1', '1200', '1200'],
   ];
 
+  bool _isRtl = true;
   bool _isProcessing = false;
   String _statusMessage = '';
   String? _sourceImagePath;
+  bool _showPaperInspector = false;
+
+  int? _selectedRow;
+  int? _selectedCol;
 
   @override
   void initState() {
     super.initState();
     _sourceImagePath = widget.initialImagePath;
     if (_sourceImagePath != null) {
-      _extractTableFromImage(_sourceImagePath!);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _extractTableFromImage(_sourceImagePath!);
+      });
     }
   }
 
@@ -64,26 +72,29 @@ class _InteractiveTableEditorScreenState
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Table Extraction Engine
+  // Table Extraction Engine (Physical Layout Reconstruction)
   // ───────────────────────────────────────────────────────────────────────────
 
   Future<void> _extractTableFromImage(String imagePath) async {
     setState(() {
       _isProcessing = true;
-      _statusMessage = 'جارٍ تحليل هيكل الجدول واستخراج البيانات...';
+      _sourceImagePath = imagePath;
+      _statusMessage = 'جارٍ مسح الورقة بدقة الذكاء الاصطناعي وبناء هيكل الجدول...';
     });
 
     try {
-      final inputImage = InputImage.fromFilePath(imagePath);
-      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-      final recognizedText = await textRecognizer.processImage(inputImage);
-      await textRecognizer.close();
+      final extractionService = ref.read(tableExtractionServiceProvider);
+      final result = await extractionService.extractTableFromImage(
+        imagePath: imagePath,
+      );
 
-      if (recognizedText.blocks.isEmpty) {
+      if (result.rows.isEmpty && result.headers.length <= 1) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('لم يتم العثور على نصوص واضحة في الصورة، تم الإبقاء على الجدول الحالي.'),
+              content: Text(
+                'لم يتم العثور على أعمدة جدول واضحة بالورقة. تم الإبقاء على البيانات الحالية.',
+              ),
             ),
           );
         }
@@ -91,72 +102,49 @@ class _InteractiveTableEditorScreenState
         return;
       }
 
-      // Group text blocks by vertical Y positions to find rows
-      final lines = <_DetectedLine>[];
-      for (final block in recognizedText.blocks) {
-        for (final line in block.lines) {
-          final top = line.boundingBox.top;
-          final left = line.boundingBox.left;
-          lines.add(_DetectedLine(text: line.text.trim(), top: top, left: left));
-        }
-      }
+      setState(() {
+        _tableTitleController.text = result.title;
+        _headers = List<String>.from(result.headers);
+        _rows = result.rows.map((r) => List<String>.from(r)).toList();
+        _isRtl = result.isRtl;
+        _sourceImagePath = imagePath;
+        _selectedRow = null;
+        _selectedCol = null;
+      });
 
-      // Sort by top Y to separate into row bands
-      lines.sort((a, b) => a.top.compareTo(b.top));
+      HapticFeedback.mediumImpact();
 
-      final rowBands = <List<_DetectedLine>>[];
-      for (final line in lines) {
-        bool added = false;
-        for (final band in rowBands) {
-          if ((band.first.top - line.top).abs() < 24) {
-            band.add(line);
-            added = true;
-            break;
-          }
-        }
-        if (!added) {
-          rowBands.add([line]);
-        }
-      }
-
-      // Format row bands into grid
-      if (rowBands.length >= 2) {
-        // Sort items inside each band horizontally (left to right)
-        for (final band in rowBands) {
-          band.sort((a, b) => a.left.compareTo(b.left));
-        }
-
-        final extractedHeaders =
-            rowBands.first.map((e) => e.text).where((s) => s.isNotEmpty).toList();
-
-        final extractedRows = <List<String>>[];
-        final colCount = extractedHeaders.length;
-
-        for (int i = 1; i < rowBands.length; i++) {
-          final band = rowBands[i];
-          final rowData = <String>[];
-          for (int c = 0; c < colCount; c++) {
-            if (c < band.length) {
-              rowData.add(band[c].text);
-            } else {
-              rowData.add('');
-            }
-          }
-          if (rowData.any((cell) => cell.isNotEmpty)) {
-            extractedRows.add(rowData);
-          }
-        }
-
-        if (extractedHeaders.isNotEmpty && extractedRows.isNotEmpty) {
-          setState(() {
-            _headers = extractedHeaders;
-            _rows = extractedRows;
-          });
-          HapticFeedback.lightImpact();
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF107C41),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'تم استخراج ومطابقة الجدول بنجاح (${_rows.length} صفوف • ${_headers.length} أعمدة)',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       }
     } catch (e) {
-      debugPrint('Error extracting table: $e');
+      debugPrint('[InteractiveTableEditorScreen] extraction error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade700,
+            content: Text('تعذر استخراج الجدول من الصورة: $e'),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -171,8 +159,7 @@ class _InteractiveTableEditorScreenState
       allowMultiple: false,
     );
     if (result != null && result.files.single.path != null) {
-      _sourceImagePath = result.files.single.path!;
-      await _extractTableFromImage(_sourceImagePath!);
+      await _extractTableFromImage(result.files.single.path!);
     }
   }
 
@@ -181,8 +168,7 @@ class _InteractiveTableEditorScreenState
     try {
       final scannedResults = await NativeScannerBridge.startScan();
       if (scannedResults.isNotEmpty) {
-        _sourceImagePath = scannedResults.first.path;
-        await _extractTableFromImage(_sourceImagePath!);
+        await _extractTableFromImage(scannedResults.first.path);
       }
     } catch (_) {
       await _pickImageAndExtract();
@@ -192,8 +178,13 @@ class _InteractiveTableEditorScreenState
   void _loadTemplate(String type) {
     HapticFeedback.selectionClick();
     setState(() {
+      _sourceImagePath = null;
+      _showPaperInspector = false;
+      _selectedRow = null;
+      _selectedCol = null;
+
       if (type == 'grades') {
-        _tableTitleController.text = 'كشف درجات الطلاب';
+        _tableTitleController.text = 'كشف درجات الطلاب الشهري';
         _headers = ['اسم الطالب', 'الشهر الأول', 'الشهر الثاني', 'النهائي', 'المجموع'];
         _rows = [
           ['أحمد محمود', '20', '19', '58', '97'],
@@ -201,101 +192,291 @@ class _InteractiveTableEditorScreenState
           ['عمر فاروق', '17', '18', '52', '87'],
           ['مريم يوسف', '20', '20', '59', '99'],
         ];
+        _isRtl = true;
       } else if (type == 'invoice') {
-        _tableTitleController.text = 'فاتورة مشتريات وتوريد';
-        _headers = ['البند', 'الكمية', 'السعر', 'الإجمالي'];
+        _tableTitleController.text = 'فاتورة مشتريات وتوريدات رقم 104';
+        _headers = ['البند / التوصيف', 'الكمية', 'السعر', 'الإجمالي'];
         _rows = [
-          ['شاشات حاسوب 27 بوصة', '4', '1850', '7400'],
-          ['طابعة ليزر ملونة', '1', '4200', '4200'],
-          ['أحبار وطباعة', '6', '350', '2100'],
-          ['كابلات شبكة CAT6', '50', '12', '600'],
+          ['شاشات حاسوب 27 بوصة 4K', '4', '1850', '7400'],
+          ['طابعة ليزر ملونة متعددة المهام', '1', '4200', '4200'],
+          ['أحبار وطباعة أوفست', '6', '350', '2100'],
+          ['كابلات شبكة CAT6 معتمدة', '50', '12', '600'],
         ];
+        _isRtl = true;
       } else {
-        _tableTitleController.text = 'جدول المصاريف الشهرية';
+        _tableTitleController.text = 'جدول المصاريف والتشغيل الشهري';
         _headers = ['البيان', 'التاريخ', 'الفئة', 'المبلغ'];
         _rows = [
-          ['إيجار المكتب', '01/10', 'ثابت', '4500'],
-          ['فواتير كهرباء وإنترنت', '05/10', 'خدمات', '850'],
-          ['مستلزمات مكتبية', '12/10', 'نثريات', '620'],
-          ['صيانة أجهزة', '18/10', 'تشغيل', '1100'],
+          ['إيجار المقر والمستودع', '01/10', 'ثابت', '4500'],
+          ['فواتير كهرباء وإنترنت فايبر', '05/10', 'خدمات', '850'],
+          ['مستلزمات مكتبية وطباعة', '12/10', 'نثريات', '620'],
+          ['صيانة دورية للأجهزة', '18/10', 'تشغيل', '1100'],
         ];
+        _isRtl = true;
       }
     });
   }
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Row / Column Editing
-  // ───────────────────────────────────────────────────────────────────────────
+  void _reverseTableDirection() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _isRtl = !_isRtl;
+      _headers = _headers.reversed.toList();
+      _rows = _rows.map((r) => r.reversed.toList()).toList();
+      if (_selectedCol != null) {
+        _selectedCol = _headers.length - 1 - _selectedCol!;
+      }
+    });
 
-  void _editCell(int rowIndex, int colIndex) {
-    HapticFeedback.lightImpact();
-    final isHeader = rowIndex == -1;
-    final currentText = isHeader ? _headers[colIndex] : _rows[rowIndex][colIndex];
-    final controller = TextEditingController(text: currentText);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(
-              isHeader ? Icons.view_column_rounded : Icons.edit_note_rounded,
-              color: const Color(0xFF007AFF),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              isHeader ? 'تعديل عنوان العمود' : 'تعديل الخلية',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-          ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: Text(
+          _isRtl ? 'تم عكس اتجاه الجدول: من اليمين لليسار (RTL)' : 'تم عكس اتجاه الجدول: من اليسار لليمين (LTR)',
         ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: isHeader ? 'اسم العمود' : 'القيمة',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () {
-              setState(() {
-                if (isHeader) {
-                  _headers[colIndex] = controller.text.trim();
-                } else {
-                  _rows[rowIndex][colIndex] = controller.text.trim();
-                }
-              });
-              Navigator.pop(ctx);
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
       ),
     );
   }
 
-  void _addNewRow() {
+  // ───────────────────────────────────────────────────────────────────────────
+  // Row / Column Editing Operations
+  // ───────────────────────────────────────────────────────────────────────────
+
+  void _showCellEditorSheet(int rowIndex, int colIndex) {
+    HapticFeedback.lightImpact();
+    final isHeader = rowIndex == -1;
+    final currentVal = isHeader ? _headers[colIndex] : _rows[rowIndex][colIndex];
+    final controller = TextEditingController(text: currentVal);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+                width: 0.6,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // iOS Grabber
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Header Info
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        isHeader ? Icons.view_column_rounded : Icons.edit_note_rounded,
+                        color: const Color(0xFF007AFF),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isHeader
+                                ? 'تعديل عنوان العمود (${_getColumnLetter(colIndex)})'
+                                : 'تعديل الخلية [صف ${rowIndex + 1} • ${_headers[colIndex]}]',
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                          ),
+                          Text(
+                            isHeader
+                                ? 'اسم العمود يظهر في رأس كل تقرير وملف Excel'
+                                : 'أدخل نصاً أو قيمة رقمية لحساب المجموع التلقائي',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Main Input
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  decoration: InputDecoration(
+                    hintText: isHeader ? 'اسم العمود...' : 'محتوى الخلية...',
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    suffixIcon: controller.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () => controller.clear(),
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Quick Values Chips
+                if (!isHeader)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _buildQuickValueChip('0', controller),
+                      _buildQuickValueChip('1', controller),
+                      _buildQuickValueChip('+10', controller, isAppend: true),
+                      _buildQuickValueChip('ج.م', controller, isAppend: true),
+                      _buildQuickValueChip('ر.س', controller, isAppend: true),
+                      _buildQuickValueChip('\$', controller, isAppend: true),
+                      _buildQuickValueChip('%', controller, isAppend: true),
+                      _buildQuickValueChip('مسح', controller, isClear: true),
+                    ],
+                  ),
+                const SizedBox(height: 18),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('إلغاء', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: () {
+                          final newVal = controller.text.trim();
+                          setState(() {
+                            if (isHeader) {
+                              _headers[colIndex] = newVal.isNotEmpty ? newVal : 'عمود ${colIndex + 1}';
+                            } else {
+                              _rows[rowIndex][colIndex] = newVal;
+                            }
+                          });
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(ctx);
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF007AFF),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('حفظ التعديل', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQuickValueChip(
+    String label,
+    TextEditingController controller, {
+    bool isAppend = false,
+    bool isClear = false,
+  }) {
+    return ActionChip(
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      label: Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+      onPressed: () {
+        HapticFeedback.selectionClick();
+        if (isClear) {
+          controller.clear();
+        } else if (isAppend) {
+          controller.text = '${controller.text.trim()} $label'.trim();
+        } else {
+          controller.text = label;
+        }
+      },
+    );
+  }
+
+  String _getColumnLetter(int index) {
+    return String.fromCharCode(65 + (index % 26));
+  }
+
+  void _addNewRow({int? atIndex}) {
     HapticFeedback.lightImpact();
     setState(() {
-      _rows.add(List.generate(_headers.length, (_) => ''));
+      final newRow = List.generate(_headers.length, (_) => '');
+      if (atIndex != null && atIndex >= 0 && atIndex <= _rows.length) {
+        _rows.insert(atIndex, newRow);
+        _selectedRow = atIndex;
+      } else {
+        _rows.add(newRow);
+        _selectedRow = _rows.length - 1;
+      }
     });
   }
 
-  void _addNewColumn() {
+  void _addNewColumn({int? atIndex}) {
     HapticFeedback.lightImpact();
-    final controller = TextEditingController(text: 'عمود ${_headers.length + 1}');
-    showDialog(
+    final defaultName = 'عمود ${_headers.length + 1}';
+    final controller = TextEditingController(text: defaultName);
+
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('إضافة عمود جديد', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('إضافة عمود جديد', style: TextStyle(fontWeight: FontWeight.w800)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -308,14 +489,16 @@ class _InteractiveTableEditorScreenState
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           FilledButton(
             onPressed: () {
-              final name = controller.text.trim().isNotEmpty
-                  ? controller.text.trim()
-                  : 'عمود ${_headers.length + 1}';
+              final name = controller.text.trim().isNotEmpty ? controller.text.trim() : defaultName;
               setState(() {
-                _headers.add(name);
+                final insertIdx = (atIndex != null && atIndex >= 0 && atIndex <= _headers.length)
+                    ? atIndex
+                    : _headers.length;
+                _headers.insert(insertIdx, name);
                 for (final row in _rows) {
-                  row.add('');
+                  row.insert(insertIdx, '');
                 }
+                _selectedCol = insertIdx;
               });
               Navigator.pop(ctx);
             },
@@ -327,41 +510,116 @@ class _InteractiveTableEditorScreenState
   }
 
   void _deleteRow(int index) {
-    if (_rows.length <= 1) return;
+    if (_rows.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكن حذف الصف الأخير في الجدول.')),
+      );
+      return;
+    }
     HapticFeedback.mediumImpact();
     setState(() {
       _rows.removeAt(index);
+      if (_selectedRow == index) {
+        _selectedRow = null;
+      }
+    });
+  }
+
+  void _deleteColumn(int index) {
+    if (_headers.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكن حذف العمود الأخير في الجدول.')),
+      );
+      return;
+    }
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _headers.removeAt(index);
+      for (final row in _rows) {
+        if (index < row.length) {
+          row.removeAt(index);
+        }
+      }
+      if (_selectedCol == index) {
+        _selectedCol = null;
+      }
     });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Auto-Sum Calculation
+  // Auto-Sum Calculations
   // ───────────────────────────────────────────────────────────────────────────
 
   List<String> _calculateColumnSums() {
     return List.generate(_headers.length, (colIdx) {
       double sum = 0.0;
       bool hasNumbers = false;
+
       for (final row in _rows) {
         if (colIdx < row.length) {
-          final val = double.tryParse(row[colIdx].replaceAll(',', '').trim());
-          if (val != null) {
-            sum += val;
+          final cellText = row[colIdx].trim();
+          final parsed = OfficeExporterService.parseFlexibleNumber(cellText);
+          if (parsed != null) {
+            sum += parsed;
             hasNumbers = true;
           }
         }
       }
+
       if (hasNumbers) {
         return sum == sum.roundToDouble()
             ? sum.toInt().toString()
             : sum.toStringAsFixed(2);
       }
-      return colIdx == 0 ? 'المجموع ∑' : '-';
+      return colIdx == 0 ? 'المجموع ∑' : '—';
     });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Export Engines (Excel .xlsx & PDF)
+  // Clipboard TSV Export
+  // ───────────────────────────────────────────────────────────────────────────
+
+  void _copyTableToClipboard() {
+    HapticFeedback.mediumImpact();
+    final buffer = StringBuffer();
+
+    // Headers
+    buffer.writeln(_headers.join('\t'));
+
+    // Rows
+    for (final row in _rows) {
+      buffer.writeln(row.join('\t'));
+    }
+
+    // Totals
+    final sums = _calculateColumnSums();
+    buffer.writeln(sums.join('\t'));
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF007AFF),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: const Row(
+          children: [
+            Icon(Icons.copy_all_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'تم نسخ الجدول إلى الحافظة! يمكنك لصقه مباشرة في Excel أو WhatsApp أو Notes.',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Export Engines (Excel & PDF)
   // ───────────────────────────────────────────────────────────────────────────
 
   Future<void> _exportExcel() async {
@@ -375,63 +633,117 @@ class _InteractiveTableEditorScreenState
       final excel = xl.Excel.createExcel();
       final sheetName = excel.sheets.keys.first;
       final sheet = excel[sheetName];
+      sheet.isRTL = _isRtl;
 
-      // Title Banner
+      final headerBg = xl.ExcelColor.fromHexString('#1B5E20');
+      final whiteColor = xl.ExcelColor.fromHexString('#FFFFFF');
+      final gridBorder = xl.Border(
+        borderStyle: xl.BorderStyle.Thin,
+        borderColorHex: xl.ExcelColor.fromHexString('#CBD5E1'),
+      );
+      final doubleBottomBorder = xl.Border(
+        borderStyle: xl.BorderStyle.Double,
+        borderColorHex: xl.ExcelColor.fromHexString('#1B5E20'),
+      );
+
+      // 1. Title Banner
       final titleCell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0));
       titleCell.value = xl.TextCellValue(_tableTitleController.text.trim());
       titleCell.cellStyle = xl.CellStyle(
         bold: true,
-        fontSize: 14,
-        fontColorHex: xl.ExcelColor.fromHexString('#FFFFFF'),
-        backgroundColorHex: xl.ExcelColor.fromHexString('#107C41'),
+        fontSize: 13,
+        fontFamily: 'Cairo',
+        fontColorHex: whiteColor,
+        backgroundColorHex: headerBg,
         horizontalAlign: xl.HorizontalAlign.Center,
       );
 
-      // Headers
+      if (_headers.length > 1) {
+        sheet.merge(
+          xl.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
+          xl.CellIndex.indexByColumnRow(columnIndex: _headers.length - 1, rowIndex: 0),
+        );
+      }
+
+      // 2. Headers
       for (int c = 0; c < _headers.length; c++) {
         final cell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 2));
         cell.value = xl.TextCellValue(_headers[c]);
         cell.cellStyle = xl.CellStyle(
           bold: true,
-          fontColorHex: xl.ExcelColor.fromHexString('#FFFFFF'),
-          backgroundColorHex: xl.ExcelColor.fromHexString('#2B579A'),
+          fontFamily: 'Cairo',
+          fontColorHex: whiteColor,
+          backgroundColorHex: xl.ExcelColor.fromHexString('#2563EB'),
           horizontalAlign: xl.HorizontalAlign.Center,
+          leftBorder: gridBorder,
+          rightBorder: gridBorder,
+          topBorder: gridBorder,
+          bottomBorder: gridBorder,
         );
       }
 
-      // Rows
+      // 3. Data Rows
       for (int r = 0; r < _rows.length; r++) {
         final row = _rows[r];
         for (int c = 0; c < _headers.length; c++) {
           final cell = sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r + 3));
-          final val = c < row.length ? row[c] : '';
-          final numVal = double.tryParse(val.replaceAll(',', '').trim());
+          final val = c < row.length ? row[c].trim() : '';
+          final numVal = OfficeExporterService.parseFlexibleNumber(val);
+
           if (numVal != null) {
-            cell.value = xl.DoubleCellValue(numVal);
+            cell.value = xl.DoubleCellValue(numVal.toDouble());
           } else {
             cell.value = xl.TextCellValue(val);
           }
+
+          cell.cellStyle = xl.CellStyle(
+            fontFamily: 'Cairo',
+            horizontalAlign: numVal != null ? xl.HorizontalAlign.Right : xl.HorizontalAlign.Center,
+            leftBorder: gridBorder,
+            rightBorder: gridBorder,
+            topBorder: gridBorder,
+            bottomBorder: gridBorder,
+            backgroundColorHex: r.isEven
+                ? xl.ExcelColor.fromHexString('#FFFFFF')
+                : xl.ExcelColor.fromHexString('#F8FAFC'),
+          );
         }
       }
 
-      // Sums Row
+      // 4. Auto-Sum Summary Row
       final sums = _calculateColumnSums();
       for (int c = 0; c < sums.length; c++) {
-        final cell =
-            sheet.cell(xl.CellIndex.indexByColumnRow(columnIndex: c, rowIndex: _rows.length + 4));
-        cell.value = xl.TextCellValue(sums[c]);
+        final cell = sheet.cell(
+          xl.CellIndex.indexByColumnRow(columnIndex: c, rowIndex: _rows.length + 4),
+        );
+        final sumVal = sums[c];
+        final numSum = OfficeExporterService.parseFlexibleNumber(sumVal);
+
+        if (numSum != null) {
+          cell.value = xl.DoubleCellValue(numSum.toDouble());
+        } else {
+          cell.value = xl.TextCellValue(sumVal);
+        }
+
         cell.cellStyle = xl.CellStyle(
           bold: true,
-          backgroundColorHex: xl.ExcelColor.fromHexString('#E2E8F0'),
+          fontFamily: 'Cairo',
+          fontColorHex: xl.ExcelColor.fromHexString('#1B5E20'),
+          backgroundColorHex: xl.ExcelColor.fromHexString('#E8F5E9'),
           horizontalAlign: xl.HorizontalAlign.Center,
+          leftBorder: gridBorder,
+          rightBorder: gridBorder,
+          topBorder: gridBorder,
+          bottomBorder: doubleBottomBorder,
         );
       }
 
       final dir = await getApplicationDocumentsDirectory();
-      final fileName =
-          '${_tableTitleController.text.trim().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final cleanTitle = _tableTitleController.text.trim().replaceAll(' ', '_');
+      final fileName = '${cleanTitle}_${DateTime.now().millisecondsSinceEpoch}.xlsx';
       final file = File('${dir.path}/$fileName');
       final bytes = excel.encode();
+
       if (bytes != null) {
         await file.writeAsBytes(bytes);
         HapticFeedback.lightImpact();
@@ -472,7 +784,7 @@ class _InteractiveTableEditorScreenState
           theme: pw.ThemeData.withFont(base: ttf, bold: ttf),
           build: (pw.Context context) {
             return pw.Directionality(
-              textDirection: pw.TextDirection.rtl,
+              textDirection: _isRtl ? pw.TextDirection.rtl : pw.TextDirection.ltr,
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                 children: [
@@ -521,7 +833,7 @@ class _InteractiveTableEditorScreenState
                   pw.Align(
                     alignment: pw.Alignment.centerLeft,
                     child: pw.Text(
-                      'تم الاستخراج والتوثيق بواسطة تطبيق لقطة (Laqta Scanner)',
+                      'تم الاستخراج والتوثيق بواسطة تطبيق لقطة (Laqta Scanner) • محرر الجداول الذكي',
                       style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
                     ),
                   ),
@@ -533,8 +845,8 @@ class _InteractiveTableEditorScreenState
       );
 
       final dir = await getApplicationDocumentsDirectory();
-      final fileName =
-          '${_tableTitleController.text.trim().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final cleanTitle = _tableTitleController.text.trim().replaceAll(' ', '_');
+      final fileName = '${cleanTitle}_${DateTime.now().millisecondsSinceEpoch}.pdf';
       final file = File('${dir.path}/$fileName');
       await file.writeAsBytes(await doc.save());
 
@@ -556,7 +868,7 @@ class _InteractiveTableEditorScreenState
   }
 
   void _showExportSuccessDialog(String filePath, String formatName) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -592,26 +904,34 @@ class _InteractiveTableEditorScreenState
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // UI Build
+  // UI Build (Apple Minimalist / Bento Paper Layout)
   // ───────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final sums = _calculateColumnSums();
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isSmallPhone = screenWidth < 360;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
       appBar: AppBar(
-        title: const Column(
+        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'مستخرج ومحرر الجداول التفاعلي',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              'مستخرج ومحرر الجداول الذكي',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: isSmallPhone ? 14 : 16,
+              ),
             ),
-            Text(
-              'استخراج ذكي، تحرير حي، وحساب المجموع التلقائي',
+            const Text(
+              'Apple Numbers • مطابقة دقيقة للورقة الأصلية',
               style: TextStyle(fontSize: 10.5, color: Colors.grey),
             ),
           ],
@@ -653,268 +973,26 @@ class _InteractiveTableEditorScreenState
           SafeArea(
             child: Column(
               children: [
-                // Top Settings & Title Card
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _tableTitleController,
-                          decoration: InputDecoration(
-                            isDense: true,
-                            prefixIcon: const Icon(Icons.table_chart_rounded, size: 20),
-                            labelText: 'عنوان الجدول',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
-                        label: const Text('عمود', style: TextStyle(fontSize: 12)),
-                        onPressed: _addNewColumn,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      FilledButton.tonalIcon(
-                        icon: const Icon(Icons.playlist_add_rounded, size: 18),
-                        label: const Text('صف', style: TextStyle(fontSize: 12)),
-                        onPressed: _addNewRow,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Table Stats Chip
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${_rows.length} صفوف • ${_headers.length} أعمدة',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF007AFF),
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      const Text(
-                        'انقر على أي خلية لتعديلها مباشرة ✏️',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Scrollable Live Data Grid
                 Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    padding: const EdgeInsets.all(16),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isDark ? Colors.white12 : Colors.black12,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(
-                            const Color(0xFF007AFF).withValues(alpha: 0.12),
-                          ),
-                          headingRowHeight: 46,
-                          dataRowMinHeight: 44,
-                          dataRowMaxHeight: 52,
-                          columnSpacing: 24,
-                          columns: [
-                            ...List.generate(_headers.length, (index) {
-                              return DataColumn(
-                                label: InkWell(
-                                  onTap: () => _editCell(-1, index),
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          _headers[index],
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const Icon(Icons.edit_rounded, size: 12, color: Colors.grey),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                            const DataColumn(
-                              label: Text(
-                                'إجراء',
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                              ),
-                            ),
-                          ],
-                          rows: [
-                            ...List.generate(_rows.length, (rIdx) {
-                              final row = _rows[rIdx];
-                              return DataRow(
-                                color: WidgetStateProperty.resolveWith((states) {
-                                  if (rIdx.isOdd) {
-                                    return isDark
-                                        ? Colors.white.withValues(alpha: 0.02)
-                                        : Colors.grey.withValues(alpha: 0.04);
-                                  }
-                                  return null;
-                                }),
-                                cells: [
-                                  ...List.generate(_headers.length, (cIdx) {
-                                    final val = cIdx < row.length ? row[cIdx] : '';
-                                    return DataCell(
-                                      InkWell(
-                                        onTap: () => _editCell(rIdx, cIdx),
-                                        child: Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Text(
-                                            val.isEmpty ? '—' : val,
-                                            style: TextStyle(
-                                              fontSize: 12.5,
-                                              color: val.isEmpty ? Colors.grey : null,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                  DataCell(
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                      color: Colors.redAccent,
-                                      tooltip: 'حذف الصف',
-                                      onPressed: () => _deleteRow(rIdx),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }),
-                            // Summary / Auto-Sum Row
-                            DataRow(
-                              color: WidgetStateProperty.all(
-                                const Color(0xFF10B981).withValues(alpha: 0.12),
-                              ),
-                              cells: [
-                                ...List.generate(_headers.length, (cIdx) {
-                                  return DataCell(
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Text(
-                                        sums[cIdx],
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13,
-                                          color: Color(0xFF10B981),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                                const DataCell(
-                                  Icon(Icons.functions_rounded, color: Color(0xFF10B981), size: 18),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Bottom Export Bar
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                    border: Border(
-                      top: BorderSide(
-                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06),
-                      ),
-                    ),
-                  ),
-                  child: Row(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFDC2626)),
-                          label: const Text(
-                            'تصدير PDF',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          onPressed: _exportPdf,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            side: const BorderSide(color: Color(0xFFDC2626)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.icon(
-                          icon: const Icon(Icons.table_view_rounded),
-                          label: const Text(
-                            'تصدير Excel (.xlsx)',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          onPressed: _exportExcel,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF107C41),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
+                      // 1. Apple Bento Hero Card
+                      _buildAppleBentoHeaderCard(isDark: isDark, isSmallPhone: isSmallPhone),
+                      const SizedBox(height: 12),
+
+                      // 2. Physical Paper Inspector (if photo is loaded)
+                      if (_sourceImagePath != null && _showPaperInspector) ...[
+                        _buildPhysicalPaperInspector(isDark: isDark),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // 3. Bento Quick Action Toolbar
+                      _buildBentoActionIsland(isDark: isDark, isSmallPhone: isSmallPhone),
+                      const SizedBox(height: 14),
+
+                      // 4. Apple Bento Spreadsheet Grid
+                      _buildBentoPaperGrid(isDark: isDark),
                     ],
                   ),
                 ),
@@ -922,16 +1000,24 @@ class _InteractiveTableEditorScreenState
             ),
           ),
 
-          // Processing Overlay
+          // Pinned Bottom Bento Export Bar
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBentoExportBar(isDark: isDark),
+          ),
+
+          // Processing Loading Overlay
           if (_isProcessing)
             Container(
-              color: Colors.black54,
+              color: Colors.black.withValues(alpha: 0.5),
               child: Center(
                 child: Card(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 12,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -939,7 +1025,8 @@ class _InteractiveTableEditorScreenState
                         const SizedBox(height: 16),
                         Text(
                           _statusMessage,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
                         ),
                       ],
                     ),
@@ -951,11 +1038,775 @@ class _InteractiveTableEditorScreenState
       ),
     );
   }
-}
 
-class _DetectedLine {
-  _DetectedLine({required this.text, required this.top, required this.left});
-  final String text;
-  final double top;
-  final double left;
+  // ───────────────────────────────────────────────────────────────────────────
+  // Component: Apple Bento Header Card
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Widget _buildAppleBentoHeaderCard({
+    required bool isDark,
+    required bool isSmallPhone,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isSmallPhone ? 12 : 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.06),
+          width: 0.6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Eyebrow & Status
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF007AFF).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome_rounded, color: Color(0xFF007AFF), size: 14),
+                      SizedBox(width: 5),
+                      Text(
+                        'الأداة الذكية • محرر الجداول الورقية',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF007AFF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF34C759).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF34C759),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      const Text(
+                        'مطابقة دقيقة للورقة 100%',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF34C759),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Title & Icon
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.table_chart_rounded, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _tableTitleController,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                    hintText: 'عنوان المستند أو الجدول...',
+                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Bento Metrics Row
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _buildMetricChip(
+                icon: Icons.table_rows_rounded,
+                label: '${_rows.length} صفوف',
+                color: const Color(0xFF007AFF),
+                isDark: isDark,
+              ),
+              _buildMetricChip(
+                icon: Icons.view_column_rounded,
+                label: '${_headers.length} أعمدة',
+                color: const Color(0xFF5856D6),
+                isDark: isDark,
+              ),
+              GestureDetector(
+                onTap: _reverseTableDirection,
+                child: _buildMetricChip(
+                  icon: Icons.swap_horiz_rounded,
+                  label: _isRtl ? 'عربي (RTL)' : 'إنجليزي (LTR)',
+                  color: const Color(0xFFFF9500),
+                  isDark: isDark,
+                ),
+              ),
+              if (_sourceImagePath != null)
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() => _showPaperInspector = !_showPaperInspector);
+                  },
+                  child: _buildMetricChip(
+                    icon: _showPaperInspector
+                        ? Icons.visibility_off_rounded
+                        : Icons.image_search_rounded,
+                    label: _showPaperInspector ? 'إخفاء الورقة' : 'معاينة الورقة الأصلية',
+                    color: const Color(0xFF34C759),
+                    isDark: isDark,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.16 : 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Component: Physical Paper Inspector (Zoomable Comparison Viewer)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Widget _buildPhysicalPaperInspector({required bool isDark}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF34C759).withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            color: const Color(0xFF34C759).withValues(alpha: 0.12),
+            child: Row(
+              children: [
+                const Icon(Icons.document_scanner_rounded, color: Color(0xFF34C759), size: 16),
+                const SizedBox(width: 8),
+                const Text(
+                  'الورقة الأصلية الممسوحة (اسحب وكبّر للتطابق)',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF34C759),
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  onPressed: () => setState(() => _showPaperInspector = false),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 220,
+            child: InteractiveViewer(
+              minScale: 1.0,
+              maxScale: 4.0,
+              child: Image.file(
+                File(_sourceImagePath!),
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Component: Bento Action Island
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Widget _buildBentoActionIsland({
+    required bool isDark,
+    required bool isSmallPhone,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+          width: 0.6,
+        ),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        alignment: WrapAlignment.spaceEvenly,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: TextButton.icon(
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('صف جديد', style: TextStyle(fontSize: 12)),
+              onPressed: () => _addNewRow(),
+            ),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: TextButton.icon(
+              icon: const Icon(Icons.view_column_rounded, size: 16),
+              label: const Text('عمود جديد', style: TextStyle(fontSize: 12)),
+              onPressed: () => _addNewColumn(),
+            ),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: TextButton.icon(
+              icon: const Icon(Icons.copy_rounded, size: 15),
+              label: const Text('نسخ كـ جدول', style: TextStyle(fontSize: 12)),
+              onPressed: _copyTableToClipboard,
+            ),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: TextButton.icon(
+              icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+              label: const Text('عكس الاتجاه', style: TextStyle(fontSize: 12)),
+              onPressed: _reverseTableDirection,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Component: Apple Numbers Bento Paper Grid
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Widget _buildBentoPaperGrid({required bool isDark}) {
+    final sums = _calculateColumnSums();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.08),
+          width: 0.6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row (A, B, C... / Custom Header Titles)
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF007AFF).withValues(alpha: isDark ? 0.16 : 0.08),
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                    width: 0.8,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Corner Cell
+                  Container(
+                    width: 46,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: isDark ? Colors.white10 : Colors.black12,
+                          width: 0.5,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      '#',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ),
+
+                  // Column Header Cells
+                  ...List.generate(_headers.length, (colIdx) {
+                    final colLetter = _getColumnLetter(colIdx);
+                    final isSelected = _selectedCol == colIdx;
+
+                    return InkWell(
+                      onTap: () => _showCellEditorSheet(-1, colIdx),
+                      onLongPress: () => _showColumnContextMenu(colIdx),
+                      child: Container(
+                        width: 140,
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF007AFF).withValues(alpha: 0.18)
+                              : null,
+                          border: Border(
+                            left: BorderSide(
+                              color: isDark ? Colors.white10 : Colors.black12,
+                              width: 0.5,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              colLetter,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF007AFF),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _headers[colIdx],
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.edit_rounded, size: 12, color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+
+            // Data Rows
+            ...List.generate(_rows.length, (rowIdx) {
+              final row = _rows[rowIdx];
+              final isRowSelected = _selectedRow == rowIdx;
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: isRowSelected
+                      ? const Color(0xFF007AFF).withValues(alpha: isDark ? 0.12 : 0.05)
+                      : (rowIdx.isOdd
+                          ? (isDark
+                              ? Colors.white.withValues(alpha: 0.02)
+                              : Colors.grey.withValues(alpha: 0.03))
+                          : null),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Row Number Index Cell
+                    InkWell(
+                      onTap: () => _showRowContextMenu(rowIdx),
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : Colors.grey.withValues(alpha: 0.06),
+                          border: Border(
+                            left: BorderSide(
+                              color: isDark ? Colors.white10 : Colors.black12,
+                              width: 0.5,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          '${rowIdx + 1}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Data Cells
+                    ...List.generate(_headers.length, (colIdx) {
+                      final cellVal = colIdx < row.length ? row[colIdx] : '';
+                      final isCellSelected = _selectedRow == rowIdx && _selectedCol == colIdx;
+
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            _selectedRow = rowIdx;
+                            _selectedCol = colIdx;
+                          });
+                          _showCellEditorSheet(rowIdx, colIdx);
+                        },
+                        child: Container(
+                          width: 140,
+                          height: 46,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          alignment: _isRtl ? Alignment.centerRight : Alignment.centerLeft,
+                          decoration: BoxDecoration(
+                            border: isCellSelected
+                                ? Border.all(color: const Color(0xFF007AFF), width: 1.5)
+                                : Border(
+                                    left: BorderSide(
+                                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                                      width: 0.5,
+                                    ),
+                                  ),
+                          ),
+                          child: Text(
+                            cellVal.isEmpty ? '—' : cellVal,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: cellVal.isEmpty
+                                  ? (isDark ? Colors.white30 : Colors.black26)
+                                  : null,
+                              fontWeight: cellVal.isNotEmpty ? FontWeight.w500 : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              );
+            }),
+
+            // Auto-Sum Summary Row
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF34C759).withValues(alpha: isDark ? 0.16 : 0.10),
+                border: Border(
+                  top: const BorderSide(color: Color(0xFF34C759), width: 1.5),
+                  bottom: BorderSide(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: isDark ? Colors.white10 : Colors.black12,
+                          width: 0.5,
+                        ),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.functions_rounded,
+                      color: Color(0xFF34C759),
+                      size: 18,
+                    ),
+                  ),
+                  ...List.generate(_headers.length, (colIdx) {
+                    final sumVal = sums[colIdx];
+                    return Container(
+                      width: 140,
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      alignment: _isRtl ? Alignment.centerRight : Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          left: BorderSide(
+                            color: isDark ? Colors.white10 : Colors.black12,
+                            width: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        sumVal,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: Color(0xFF34C759),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showColumnContextMenu(int colIndex) {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).brightness == Brightness.dark
+                ? const Color(0xFF1C1C1E)
+                : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_rounded, color: Color(0xFF007AFF)),
+                title: Text('تعديل اسم العمود (${_headers[colIndex]})'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showCellEditorSheet(-1, colIndex);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF34C759)),
+                title: const Text('إدراج عمود إلى اليسار'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _addNewColumn(atIndex: colIndex + 1);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                title: const Text('حذف هذا العمود'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteColumn(colIndex);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRowContextMenu(int rowIndex) {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      sheetAnimationStyle: MotionTokens.sheetAnimationStyle(context),
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(ctx).brightness == Brightness.dark
+                ? const Color(0xFF1C1C1E)
+                : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.arrow_upward_rounded, color: Color(0xFF007AFF)),
+                title: Text('إدراج صف أعلى الصف ${rowIndex + 1}'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _addNewRow(atIndex: rowIndex);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.arrow_downward_rounded, color: Color(0xFF34C759)),
+                title: Text('إدراج صف أسفل الصف ${rowIndex + 1}'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _addNewRow(atIndex: rowIndex + 1);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                title: Text('حذف الصف ${rowIndex + 1}'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteRow(rowIndex);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Component: Bottom Bento Export Bar
+  // ───────────────────────────────────────────────────────────────────────────
+
+  Widget _buildBentoExportBar({required bool isDark}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.08),
+            width: 0.6,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFDC2626), size: 18),
+              label: const Text(
+                'تصدير PDF',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              onPressed: _exportPdf,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: const BorderSide(color: Color(0xFFDC2626), width: 1.2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: FilledButton.icon(
+              icon: const Icon(Icons.table_view_rounded, size: 18),
+              label: const Text(
+                'تصدير Excel (.xlsx)',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              onPressed: _exportExcel,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF107C41),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

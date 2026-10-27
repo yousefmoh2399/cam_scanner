@@ -14,6 +14,7 @@ import '../../features/scanner/data/office_exporter_service.dart';
 import '../../features/scanner/data/pdf_builder_service.dart';
 import '../../features/scanner/data/signature_storage_service.dart';
 import '../../features/scanner/data/smart_field_extractor_service.dart';
+import '../../features/scanner/data/table_extraction_service.dart';
 import '../../features/scanner/data/vault_security_service.dart';
 import '../../features/scanner/presentation/scan_session_controller.dart';
 import '../models/pending_upload.dart';
@@ -68,6 +69,12 @@ final officeExporterServiceProvider = Provider<OfficeExporterService>(
     pdfBuilderService: ref.read(pdfBuilderServiceProvider),
     ocrService: ref.read(ocrServiceProvider),
     searchService: ref.read(documentSearchServiceProvider),
+  ),
+);
+
+final tableExtractionServiceProvider = Provider<TableExtractionService>(
+  (ref) => TableExtractionService(
+    ocrService: ref.read(ocrServiceProvider),
   ),
 );
 
