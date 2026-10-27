@@ -58,8 +58,8 @@ import 'three_d_maker_studio_screen.dart';
 /// Categories for organizing tools in the hub
 enum ToolCategory {
   all('الكل', Icons.apps_rounded),
-  government('هوية ووثائق', Icons.badge_rounded),
-  intelligence('استخراج وذكاء', Icons.auto_awesome_rounded),
+  government('هوية ومستندات', Icons.badge_rounded),
+  intelligence('ذكاء ومعالجة', Icons.auto_awesome_rounded),
   pdf('أدوات PDF', Icons.picture_as_pdf_rounded),
   security('أمان وخصوصية', Icons.security_rounded);
 
@@ -70,30 +70,30 @@ enum ToolCategory {
   String get sectionTitle {
     switch (this) {
       case ToolCategory.all:
-        return 'جميع الأدوات';
+        return 'جميع الأدوات الذكية';
       case ToolCategory.government:
         return 'الهوية والمستندات الرسمية';
       case ToolCategory.intelligence:
-        return 'الذكاء الاصطناعي والاستخراج';
+        return 'الذكاء الاصطناعي ومعالجة الورق';
       case ToolCategory.pdf:
         return 'أدوات وإدارة ملفات PDF';
       case ToolCategory.security:
-        return 'الأمان والحماية والخصوصية';
+        return 'الأمان والخصوصية وحماية الأوراق';
     }
   }
 
   String get sectionSubtitle {
     switch (this) {
       case ToolCategory.all:
-        return 'تصفح كافة الأدوات المتوفرة';
+        return 'تصفح كافة الأدوات المتوفرة واستخدمها بنقرة واحدة';
       case ToolCategory.government:
-        return 'قوالب مطابقة للمواصفات الدولية ISO وضغط بوابات التقديم والسفارات';
+        return 'تصوير البطاقة وش وضهر، جواز السفر، الصور الشخصية، وكتابة العقود';
       case ToolCategory.intelligence:
-        return 'تحويل الجداول لإكسل، استخراج بيانات الرقم القومي، وفصل الكتب';
+        return 'تحويل الجداول لإكسل، مسح العيوب، فرد الكتب، وقراءة النصوص';
       case ToolCategory.pdf:
-        return 'دمج، تقسيم، وضغط ملفات الـ PDF مع الحفاظ على دقة النص';
+        return 'دمج وتقسيم الملفات، تصغير الحجم، والنقل للكمبيوتر بدون كابل';
       case ToolCategory.security:
-        return 'تشفير عسكري بالخزنة، العلامة المائية، والحجب الأمني الفوري';
+        return 'الخزنة بالبصمة، توقيع العقود، تفريغ الأختام، والعلامة المائية';
     }
   }
 }
@@ -141,71 +141,71 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Government & Official Category ──
     ToolItem(
       id: 'gov_id_card',
-      title: 'بطاقة وش وظهر A4 (مقياس 1:1)',
-      subtitle: 'دمج وجهي البطاقة في A4 بالأبعاد الحقيقية 1:1 مع علامة أمنية وطباعة فورية',
+      title: 'تصوير البطاقة وش وضهر',
+      subtitle: 'دمج وجهي بطاقة الرقم القومي أو الرخصة في ورقة A4 واحدة بحجمها الحقيقي 1:1 جاهزة للطباعة',
       category: ToolCategory.government,
       icon: Icons.badge_rounded,
-      badge: 'مقياس 1:1',
+      badge: 'طباعة رسمية A4',
       accentColor: Color(0xFF007AFF),
       keywords: ['بطاقة', 'هوية', 'رخصة', 'قيادة', 'إقامة', 'id', 'وش وضهر', 'رسمي', 'a4', '1:1', 'طباعة'],
     ),
     ToolItem(
       id: 'gov_passport_cert',
-      title: 'جواز السفر والشهادات',
-      subtitle: 'تنسيق عالي الدقة لوثائق السفر والعقود الرسمية',
+      title: 'مسح جواز السفر والشهادات',
+      subtitle: 'تصوير وثائق السفر وشهادات التخرج بجودة عالية وأبعاد واضحة مقبولة في السفارات',
       category: ToolCategory.government,
       icon: Icons.menu_book_rounded,
-      badge: 'ICAO',
+      badge: 'شروط السفارات',
       accentColor: Color(0xFF5856D6),
       keywords: ['جواز', 'سفر', 'شهادة', 'تخرج', 'عقد', 'رسمي', 'passport'],
     ),
     ToolItem(
       id: 'gov_photo_grid',
-      title: 'استوديو الصور الشخصية',
-      subtitle: 'شبكة صور A4 جاهزة للطباعة والتأشيرات',
+      title: 'تجهيز الصور الشخصية 4×6',
+      subtitle: 'تكرار وتجهيز صورك الشخصية في ورقة A4 للطباعة في الاستوديو لجوازات السفر والتأشيرات',
       category: ToolCategory.government,
       icon: Icons.photo_camera_front_rounded,
-      badge: 'تأشيرات',
+      badge: 'مقاس 4×6 جاهز',
       accentColor: Color(0xFF34C759),
       keywords: ['صور', 'شخصية', 'تأشيرة', 'شنغن', 'امريكا', 'سفر', 'جواز', 'طباعة', 'visa'],
     ),
     ToolItem(
       id: 'gov_portal_compress',
-      title: 'ضغط بوابات التقديم',
-      subtitle: 'تقليص الحجم للقبول في السفارات والمواقع',
+      title: 'تصغير حجم الملف للتقديم',
+      subtitle: 'تقليص حجم المستند لأقل من 1 ميجابايت أو 500 ك.ب ليقبله موقع التوظيف أو السفارة',
       category: ToolCategory.government,
       icon: Icons.speed_rounded,
-      badge: 'ضغط دقيق',
+      badge: 'أقل من 1 ميجا',
       accentColor: Color(0xFFFF2D55),
       keywords: ['ضغط', 'بوابات', 'تقديم', 'سفارات', 'توظيف', 'حجم', 'مستند'],
     ),
     ToolItem(
       id: 'gov_smart_contracts',
-      title: 'استوديو العقود والقوالب الذكية',
-      subtitle: 'توليد عقود بيع وإيجار وإيصالات أمانة وتفقيط المبالغ',
+      title: 'كتابة عقود وإيصالات أمانة',
+      subtitle: 'نماذج قانونية جاهزة لعقد إيجار، بيع سيارة، أو إيصال أمانة قانوني مع تفقيط المبالغ',
       category: ToolCategory.government,
       icon: Icons.gavel_rounded,
-      badge: 'قوالب قانونية',
+      badge: 'عقود قانونية',
       accentColor: Color(0xFF5856D6),
       keywords: ['عقد', 'عقود', 'إيجار', 'بيع', 'أمانة', 'إيصال', 'شقة', 'سيارة', 'قانوني'],
     ),
     ToolItem(
       id: 'gov_smart_id_wallet',
-      title: 'محفظة البطاقات وطباعة PVC',
-      subtitle: 'حفظ الهويات برؤية 3D وطباعة كروت بلاستيكية CR-80 بمقياس 1:1',
+      title: 'محفظة الكروت والبطاقات',
+      subtitle: 'حفظ بطاقاتك وكروتك في هاتفك بأمان مع إمكانية طباعتها كروت بلاستيك جاهزة',
       category: ToolCategory.government,
       icon: Icons.credit_card_rounded,
-      badge: 'CR-80 PVC',
+      badge: 'محفظة الهويات',
       accentColor: Color(0xFF007AFF),
       keywords: ['بطاقة', 'بلاستيك', 'pvc', 'cr80', 'محفظة', 'id', 'رخصة', 'كارنيه', 'طباعة'],
     ),
     ToolItem(
       id: 'gov_lanyard_badge',
-      title: 'كارنيهات العمل والزوار (54×86 ملم)',
-      subtitle: 'إنشاء وطباعة شارات الموظفين بمقياس 1:1 مع باركود وحامل التعليق',
+      title: 'طباعة كارنيهات العمل والشركات',
+      subtitle: 'إنشاء وطباعة شارات وكارنيهات الموظفين والزوار بمقاس رسمي مع صورة وباركود',
       category: ToolCategory.government,
       icon: Icons.contact_page_rounded,
-      badge: 'شارة معتمدة',
+      badge: 'كارنيه معتمد',
       accentColor: Color(0xFF0284C7),
       keywords: ['كارنيه', 'شارة', 'موظف', 'زائر', 'lanyard', 'badge', 'طباعة', '1:1', 'فعالية'],
     ),
@@ -213,141 +213,141 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Intelligence & Extraction Category ──
     ToolItem(
       id: 'three_d_maker_studio',
-      title: 'ماسح المجسمات 3D (3D Maker Studio)',
-      subtitle: 'مسح القطع الحقيقية واستخراج مجسم STL صلب للطباعة 3D بمقاس متري حقيقي (مم)',
+      title: 'مسح القطع الحقيقية 3D',
+      subtitle: 'تصوير أي قطعة أو منتج بالهاتف واستخراج مجسم STL صلب جاهز للطباعة 3D',
       category: ToolCategory.intelligence,
       icon: Icons.view_in_ar_rounded,
-      badge: 'STL 3D • Beta 🔬',
+      badge: 'مجسم 3D STL',
       accentColor: Color(0xFF00C853),
       keywords: ['3d', 'stl', 'طباعة ثلاثية', 'مجسم', 'سكانر 3d', 'cura', 'slicer', 'فوتوغرامتري', 'طابعة', '3d printer'],
     ),
     ToolItem(
       id: 'ai_interactive_table',
-      title: 'مستخرج ومحرر الجداول التفاعلي',
-      subtitle: 'كشف الجداول وتعديل الخلايا والجمع التلقائي وتصدير Excel و PDF',
+      title: 'سحب وتعديل الجداول (إكسل)',
+      subtitle: 'تصوير أي جدول أو فاتورة على الورق وتعديل خلاياه وجمع المبالغ وتصديره Excel',
       category: ToolCategory.intelligence,
       icon: Icons.table_view_rounded,
-      badge: 'محرر حي ∑',
+      badge: 'Excel تفاعلي ∑',
       accentColor: Color(0xFF059669),
       keywords: ['جدول', 'جداول', 'محرر', 'تعديل', 'جمع', 'sum', 'excel', 'xlsx', 'درجات', 'فاتورة'],
     ),
     ToolItem(
       id: 'ai_excel_converter',
-      title: 'تحويل الجداول إلى Excel',
-      subtitle: 'استخراج الجداول بدقة لملفات .xlsx حقيقية',
+      title: 'تحويل المستندات إلى Excel',
+      subtitle: 'استخراج الأرقام والبيانات الورقية وتحويلها مباشرة إلى ملف إكسل منسق جاهز',
       category: ToolCategory.intelligence,
       icon: Icons.table_chart_rounded,
-      badge: 'ذكاء اصطناعي',
+      badge: 'ملف XLSX',
       accentColor: Color(0xFF10B981),
       keywords: ['إكسل', 'excel', 'جدول', 'xlsx', 'أرقام', 'حسابات'],
     ),
     ToolItem(
       id: 'ai_smart_extraction',
-      title: 'الاستخراج الذكي والتحليل',
-      subtitle: 'تفكيك البيانات وجهات الاتصال وقراءة النصوص',
+      title: 'استخراج الأرقام وبيانات الاتصال',
+      subtitle: 'قراءة الرقم القومي، أرقام التليفونات، والبريد من الورقة وحفظها في جهات الاتصال',
       category: ToolCategory.intelligence,
       icon: Icons.psychology_rounded,
-      badge: 'Smart OCR',
+      badge: 'نسخ فوري',
       accentColor: Color(0xFF8B5CF6),
       keywords: ['رقم قومي', 'هاتف', 'اتصال', 'vcard', 'تفريغ', 'صوت', 'tts'],
     ),
     ToolItem(
       id: 'ai_book_split',
-      title: 'مسح وفصل صفحات الكتب',
-      subtitle: 'فصل وتعديل الصفحتين المتقابلتين تلقائياً',
+      title: 'تصوير الكتب صفحتين معاً',
+      subtitle: 'صوّر الكتاب مفتوحاً وسيقوم التطبيق بفصل الصفحتين وتعديلهما تلقائياً',
       category: ToolCategory.intelligence,
       icon: Icons.menu_book_rounded,
-      badge: 'Book Mode',
+      badge: 'فصل تلقائي',
       accentColor: Color(0xFFF59E0B),
       keywords: ['كتاب', 'صفحتين', 'فصل', 'منحنيات', 'مجلد', 'دراسة'],
     ),
     ToolItem(
       id: 'ai_magic_clean',
-      title: 'الممحاة الذكية وتنظيف الورق',
-      subtitle: 'إزالة أصابع اليد، ثقوب الدباسة، وبقع القهوة بذكاء اصطناعي',
+      title: 'مسح أصابع اليد وبقع الورق',
+      subtitle: 'حذف أصابع اليد الظاهرة في الصورة، ثقوب الدباسة، وبقع القهوة بلمسة واحدة',
       category: ToolCategory.intelligence,
       icon: Icons.auto_fix_high_rounded,
-      badge: 'ذكاء محلي',
+      badge: 'تنظيف الورق',
       accentColor: Color(0xFFFF2D55),
       keywords: ['ممحاة', 'أصابع', 'ثقوب', 'دباسة', 'بقع', 'تنظيف', 'ورق', 'magic', 'clean'],
     ),
     ToolItem(
       id: 'ai_shadow_remover',
-      title: 'إزالة ظل الهاتف وضبط الإضاءة',
-      subtitle: 'معادلة الإضاءة وإزالة ظلال اليد لتسوية خلفية الورقة',
+      title: 'إزالة ظل الهاتف واليد',
+      subtitle: 'التخلص من ظل الموبايل واليد أثناء التصوير لتصبح خلفية الورقة ناصعة البياض',
       category: ToolCategory.intelligence,
       icon: Icons.wb_sunny_rounded,
-      badge: 'Shadow Killer',
+      badge: 'ورق ناصع',
       accentColor: Color(0xFFFF9500),
       keywords: ['ظل', 'ظلال', 'إضاءة', 'هاتف', 'نور', 'فلاش', 'shadow', 'glare'],
     ),
     ToolItem(
       id: 'ai_doc_diff',
-      title: 'مقارنة المستندات واكتشاف الفروقات',
-      subtitle: 'منزلق بصري وكشف الكلمات المضافة والمحذوفة في العقود',
+      title: 'مقارنة نسختين من عقد أو ورقة',
+      subtitle: 'اكتشاف أي كلمة أو بند تم تغييره أو إضافته بين نسختين مختلفتين من نفس العقد',
       category: ToolCategory.intelligence,
       icon: Icons.splitscreen_rounded,
-      badge: 'Diff & Compare',
+      badge: 'كشف التعديلات',
       accentColor: Color(0xFF8B5CF6),
       keywords: ['مقارنة', 'فروقات', 'عقود', 'تعديل', 'تزوير', 'diff', 'compare'],
     ),
     ToolItem(
       id: 'ai_book_curve_flattener',
-      title: 'تسوية انحناء الكتب ثلاثي الأبعاد',
-      subtitle: 'معالجة تقوس صفحات المجلدات والكتب وإزالة ظل الكعب',
+      title: 'فرد تقوس صفحات الكتب',
+      subtitle: 'تعديل انحناء صفحات الكتب السميكة والمجلدات وإزالة سواد كعب الكتاب',
       category: ToolCategory.intelligence,
       icon: Icons.auto_stories_rounded,
-      badge: '3D Dewarp',
+      badge: 'فرد الورق',
       accentColor: Color(0xFFF59E0B),
       keywords: ['كتاب', 'مجلد', 'انحناء', 'تقوس', 'كعب', 'تسوية', 'مسطح', 'dewarp', 'curve', 'book'],
     ),
     ToolItem(
       id: 'ai_notebook_remover',
-      title: 'إزالة خطوط الدفاتر والشبكات',
-      subtitle: 'إزالة خطوط التسطير الأفقية وشبكات الرسم البياني مع الحفاظ على الكتابة اليدوية',
+      title: 'إزالة أسطر الكشكول والدفتر',
+      subtitle: 'حذف خطوط التسطير وشبكة المربعات من الكشكول وترك كتابة يدك فقط بخلفية بيضاء',
       category: ToolCategory.intelligence,
       icon: Icons.border_color_rounded,
-      badge: 'جديد • كشكول 📓',
+      badge: 'حفظ خط يدك',
       accentColor: Color(0xFF007AFF),
       keywords: ['كشكول', 'دفتر', 'تسطير', 'خطوط', 'مربعات', 'رسم بياني', 'شبكة', 'notebook', 'grid', 'lines'],
     ),
     ToolItem(
       id: 'ai_object_counter',
-      title: 'عداد العناصر والأشياء التلقائي',
-      subtitle: 'عد الأنابيب، الكراتين، حبات الدواء، والمستندات بنقاط مرقمة وتقرير جرد PDF',
+      title: 'عدّ الأشياء والبضائع بالصورة',
+      subtitle: 'عدّ الكراتين، الأنابيب، أو البضائع في الصورة تلقائياً وإخراج تقرير جرد PDF',
       category: ToolCategory.intelligence,
       icon: Icons.pin_rounded,
-      badge: 'عداد AI 🔢',
+      badge: 'عدّ تلقائي',
       accentColor: Color(0xFFFF9500),
       keywords: ['عد', 'عداد', 'أنابيب', 'كراتين', 'بضائع', 'دواء', 'جرد', 'مخزن', 'counter', 'inventory', 'objects'],
     ),
     ToolItem(
       id: 'ai_anti_moire_glare',
-      title: 'مزيل تموجات الشاشات والسبورة',
-      subtitle: 'إزالة تموجات Moiré من شاشات الحواسيب ولمعان إضاءة السبورة كلقطة شاشة رقمية',
+      title: 'تصوير شاشات الكمبيوتر والسبورة',
+      subtitle: 'إزالة خطوط وتموجات الشاشة ولمعان فلاش السبورة لتظهر كصورة رقمية واضحة',
       category: ToolCategory.intelligence,
       icon: Icons.screenshot_monitor_rounded,
-      badge: 'شاشات وسبورة 🖥️',
+      badge: 'شاشة نقية',
       accentColor: Color(0xFF5856D6),
       keywords: ['شاشة', 'كمبيوتر', 'تلفزيون', 'تموج', 'سبورة', 'لمعان', 'فلاش', 'moire', 'glare', 'whiteboard'],
     ),
     ToolItem(
       id: 'ai_qr_studio',
-      title: 'منشئ رموز QR والباركود الذكي',
-      subtitle: 'توليد رموز فورية للواي فاي، كروت الأعمال vCard، والروابط مع تخصيص الألوان والشعار وطباعتها',
+      title: 'صنع باركود ورمز QR مخصص',
+      subtitle: 'إنشاء باركود لشبكة الواي فاي، رقم هاتفك، أو موقعك مع إمكانية وضع شعارك وطباعته',
       category: ToolCategory.intelligence,
       icon: Icons.qr_code_2_rounded,
-      badge: 'QR Studio 📱',
+      badge: 'تصميم QR',
       accentColor: Color(0xFF007AFF),
       keywords: ['qr', 'باركود', 'كود', 'واي فاي', 'wifi', 'vcard', 'كارت', 'رابط', 'url', 'طباعة', 'واتساب', 'barcode'],
     ),
     ToolItem(
       id: 'ai_qr_scanner',
-      title: 'ماسح رموز QR والباركود الذكي',
-      subtitle: 'مسح وقراءة الرموز عبر الكاميرا أو المعرض والتنقل الفوري للروابط أو شبكات الواي فاي وسيرفرات المشاركة',
+      title: 'قراءة ومسح أي باركود أو QR',
+      subtitle: 'مسح أي باركود بالكاميرا أو من الصور وفتح الروابط وشبكات الواي فاي فوراً',
       category: ToolCategory.intelligence,
       icon: Icons.qr_code_scanner_rounded,
-      badge: 'مسح فوري 📷',
+      badge: 'مسح بالكاميرا',
       accentColor: Color(0xFF34C759),
       keywords: ['qr', 'باركود', 'مسح', 'scanner', 'كاميرا', 'سيرفر', 'barcode', 'كود', 'شاشة'],
     ),
@@ -355,81 +355,81 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── PDF Tools Category ──
     ToolItem(
       id: 'pdf_merge',
-      title: 'دمج مستندات PDF',
-      subtitle: 'تجميع عدة ملفات في مستند واحد منظم',
+      title: 'تجميع عدة ملفات في ملف واحد',
+      subtitle: 'دمج عدة أوراق وملفات PDF منفصلة في ملف واحد مرتب وسهل المشاركة',
       category: ToolCategory.pdf,
       icon: Icons.merge_type_rounded,
-      badge: 'دمج فوري',
+      badge: 'ملف واحد',
       accentColor: Color(0xFF2563EB),
       keywords: ['دمج', 'تجميع', 'pdf', 'ملفات', 'ترتيب'],
     ),
     ToolItem(
       id: 'pdf_split',
-      title: 'تقسيم واستخراج الصفحات',
-      subtitle: 'فصل وتصدير صفحات محددة من مستند PDF',
+      title: 'تقسيم واستخراج صفحات PDF',
+      subtitle: 'فصل صفحات محددة من كتاب أو ملف كبير وحفظها في ملف PDF منفصل',
       category: ToolCategory.pdf,
       icon: Icons.call_split_rounded,
-      badge: 'تقسيم',
+      badge: 'استخراج صفحات',
       accentColor: Color(0xFF0D9488),
       keywords: ['تقسيم', 'فصل', 'استخراج', 'صفحات', 'pdf'],
     ),
     ToolItem(
       id: 'pdf_target_compress',
-      title: 'ضغط PDF لحجم محدد',
-      subtitle: 'تقليص حجم المستند مع الحفاظ على الوضوح',
+      title: 'تصغير حجم ملف PDF',
+      subtitle: 'تقليل حجم الملف إلى 500 ك.ب أو الحجم المطلوب مع الحفاظ على وضوح الخطوط',
       category: ToolCategory.pdf,
       icon: Icons.compress_rounded,
-      badge: 'حجم مخصص',
+      badge: 'حجم أصغر',
       accentColor: Color(0xFF4F46E5),
       keywords: ['ضغط', 'حجم', 'pdf', 'تقليل', 'كيلوبايت'],
     ),
     ToolItem(
       id: 'pdf_import',
-      title: 'استيراد مستندات وصور',
-      subtitle: 'جلب ملفات PDF وصور خارجية إلى مكتبتك',
+      title: 'إضافة مستندات وصور من الهاتف',
+      subtitle: 'جلب ملفات PDF أو صور من ذاكرة هاتفك لحفظها وتعديلها داخل التطبيق',
       category: ToolCategory.pdf,
       icon: Icons.file_download_rounded,
-      badge: 'استيراد',
+      badge: 'استيراد سريع',
       accentColor: Color(0xFF059669),
       keywords: ['استيراد', 'جلب', 'ملف', 'صورة', 'تنزيل'],
     ),
     ToolItem(
       id: 'transfer_web_drop',
-      title: 'نقل للكمبيوتر محلياً (Web Drop)',
-      subtitle: 'إرسال وتنزيل الملفات عبر المتصفح بسرعة فائقة بدون كابلات',
+      title: 'إرسال الملفات للكمبيوتر بدون كابل',
+      subtitle: 'افتح المتصفح على اللابتوب واستلم وأرسل الملفات مباشرة عبر الواي فاي بسرعة',
       category: ToolCategory.pdf,
       icon: Icons.wifi_tethering_rounded,
-      badge: 'AirDrop محلي',
+      badge: 'بدون كابل',
       accentColor: Color(0xFF007AFF),
       keywords: ['كمبيوتر', 'ماك', 'wifi', 'نقل', 'متصفح', 'airdrop', 'drop', 'شير'],
     ),
     ToolItem(
       id: 'transfer_files_hub',
-      title: 'مركز الملفات المنقولة',
-      subtitle: 'إدارة الملفات المستلمة والمرسلة مع الكمبيوتر وحفظها وتنزيلها',
+      title: 'الملفات المستلمة من الكمبيوتر',
+      subtitle: 'عرض وتنزيل وإدارة الملفات التي تم نقلها بين الهاتف والكمبيوتر',
       category: ToolCategory.pdf,
       icon: Icons.folder_shared_rounded,
-      badge: 'مستندات النقل',
+      badge: 'الملفات المنقولة',
       accentColor: Color(0xFF0D9488),
       keywords: ['ملفات', 'منقولة', 'مستلمة', 'مرسلة', 'كمبيوتر', 'web drop', 'تنزيلات', 'transferred'],
     ),
     ToolItem(
       id: 'pdf_booklet_imposition',
-      title: 'صانع الكتيبات والملازم المطوية (A5)',
-      subtitle: 'ترتيب الصفحات هندسياً للطباعة المزدوجة والطي من المنتصف',
+      title: 'طباعة ملازم وكتيبات مطوية',
+      subtitle: 'ترتيب صفحات المذكرات تلقائياً لتطبع وش وضهر وتنثني ككتاب ومذكرة A5',
       category: ToolCategory.pdf,
       icon: Icons.auto_stories_rounded,
-      badge: 'كتيب مطوي',
+      badge: 'مذكرة مطوية',
       accentColor: Color(0xFF7C3AED),
       keywords: ['كتيب', 'ملزمة', 'booklet', 'طي', 'دوبلكس', 'كتاب', 'طباعة'],
     ),
     ToolItem(
       id: 'pdf_gutter_margin',
-      title: 'هامش التخريم والتجليد السلكي',
-      subtitle: 'إزاحة النصوص لحماية المحتوى من ثقوب الخرامة والسلك الحلزوني',
+      title: 'توسيع هامش التجليد والتخريم',
+      subtitle: 'إزاحة الكلام بعيداً عن حافة الورقة حتى لا تقطعه خرامة التجليد والسلك الحلزوني',
       category: ToolCategory.pdf,
       icon: Icons.margin_rounded,
-      badge: 'تجليد آمن',
+      badge: 'حماية الكلام',
       accentColor: Color(0xFFEA580C),
       keywords: ['هامش', 'تجليد', 'خرامة', 'ثقوب', 'سلك', 'حلزوني', 'gutter', 'تخريم'],
     ),
@@ -437,101 +437,101 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     // ── Security, Privacy & Maintenance Category ──
     ToolItem(
       id: 'legal_audit_studio',
-      title: 'استوديو التدقيق والتوثيق القانوني',
-      subtitle: 'مدقق الشيكات والتفقيط المالي، كاشف الصفحات المفقودة، وترقيم Bates',
+      title: 'مراجعة وتدقيق العقود والشيكات',
+      subtitle: 'كشف الصفحات المفقودة في العقود، كتابة المبالغ بالحروف، وترقيم أوراق القضايا',
       category: ToolCategory.security,
       icon: Icons.gavel_rounded,
-      badge: 'تدقيق قانوني ⚖️',
+      badge: 'تدقيق قانوني',
       accentColor: Color(0xFFB45309),
       keywords: ['شيك', 'تفقيط', 'أرقام', 'عقد', 'صفحة مفقودة', 'bates', 'قضية', 'محكمة', 'تدقيق'],
     ),
     ToolItem(
       id: 'sec_vault',
-      title: 'الخزنة السرية المشفرة',
-      subtitle: 'حماية وتشفير المستندات بالبصمة ورمز المرور',
+      title: 'الخزنة السرية المقفولة بالبصمة',
+      subtitle: 'مكان سري مشفر لحفظ مستنداتك الهامة مقفول ببصمة إصبعك أو رمز سري',
       category: ToolCategory.security,
       icon: Icons.enhanced_encryption_rounded,
-      badge: 'AES-256',
+      badge: 'حماية بالبصمة',
       accentColor: Color(0xFF059669),
       keywords: ['خزنة', 'قفل', 'بصمة', 'تشفير', 'سري', 'pin', 'حماية'],
     ),
     ToolItem(
       id: 'sec_exif_scrub',
-      title: 'تنظيف بيانات الخصوصية',
-      subtitle: 'إزالة الموقع الجغرافي وبيانات الكاميرا نهائياً',
+      title: 'حذف بيانات المكان من الصور',
+      subtitle: 'مسح موقع التقاط الصورة ومعلومات الهاتف قبل إرسالها لأي شخص لحماية خصوصيتك',
       category: ToolCategory.security,
       icon: Icons.location_off_rounded,
-      badge: 'خصوصية',
+      badge: 'حماية الخصوصية',
       accentColor: Color(0xFFE11D48),
       keywords: ['موقع', 'gps', 'exif', 'خصوصية', 'تنظيف', 'حذف'],
     ),
     ToolItem(
       id: 'sec_signatures',
-      title: 'التوقيعات الرقمية والأختام',
-      subtitle: 'توقيع العقود والمستندات بلمسة واحدة',
+      title: 'توقيع العقود وإضافة ختمك',
+      subtitle: 'ارسم توقيعك بيدك وضعه على أي عقد أو مستند مع إمكانية حفظه لإعادة استخدامه',
       category: ToolCategory.security,
       icon: Icons.draw_rounded,
-      badge: 'توقيع',
+      badge: 'توقيع بيدك',
       accentColor: Color(0xFF6366F1),
       keywords: ['توقيع', 'ختم', 'عقد', 'توقيعات', 'بصمة'],
     ),
     ToolItem(
       id: 'sec_trash',
-      title: 'سلة المحذوفات',
-      subtitle: 'استرجاع المستندات المحذوفة خلال 30 يوماً',
+      title: 'سلة المهملات والمستندات المحذوفة',
+      subtitle: 'استرجاع أي ورقة حذفتها بالخطأ خلال 30 يوماً قبل مسحها النهائي',
       category: ToolCategory.security,
       icon: Icons.delete_sweep_rounded,
-      badge: 'حماية 30 يوم',
+      badge: 'استرجاع 30 يوم',
       accentColor: Color(0xFFDC2626),
       keywords: ['سلة', 'حذف', 'محذوفات', 'استرجاع', 'مهملات'],
     ),
     ToolItem(
       id: 'sec_watermark',
-      title: 'العلامة المائية والأختام',
-      subtitle: 'إضافة نصوص وأختام أمنية لمنع التزوير',
+      title: 'وضع علامة مائية لحماية الورقة',
+      subtitle: 'اكتب اسمك أو كلمة "سري / معتمد" مائلة فوق الورقة لمنع سرقتها أو تزويرها',
       category: ToolCategory.security,
       icon: Icons.verified_user_rounded,
-      badge: 'أمان',
+      badge: 'منع التزوير',
       accentColor: Color(0xFFDC2626),
       keywords: ['علامة', 'مائية', 'ختم', 'أمان', 'بنك', 'بطاقة', 'تزوير', 'watermark'],
     ),
     ToolItem(
       id: 'sec_smart_redaction',
-      title: 'الحجب الأمني وتسويد البيانات',
-      subtitle: 'حجب الأرقام والبيانات الحساسة بشكل نهائي',
+      title: 'تسويد وحجب البيانات الحساسة',
+      subtitle: 'إخفاء الرقم القومي، الأرصدة، أو أي كلام سري بمستطيل أسود لا يمكن إزالته',
       category: ToolCategory.security,
       icon: Icons.visibility_off_rounded,
-      badge: 'حماية الهوية',
+      badge: 'تسويد نهائي',
       accentColor: Color(0xFF334155),
       keywords: ['حجب', 'تسويد', 'رقم قومي', 'خصوصية', 'redact', 'تشفير'],
     ),
     ToolItem(
       id: 'sec_backup_zip',
-      title: 'النسخ الاحتياطي السحابي المشفر',
-      subtitle: 'مزامنة Google Drive و iCloud بتشفير Zero-Knowledge عسكري معزز',
+      title: 'نسخ احتياطي على جوجل درايف',
+      subtitle: 'حفظ نسخة مشفرة من كل أوراقك على حسابك السحابي حتى لا تضيع أبداً',
       category: ToolCategory.security,
       icon: Icons.cloud_sync_rounded,
-      badge: 'Zero-Knowledge 🔒',
+      badge: 'حفظ سحابي',
       accentColor: Color(0xFF007AFF),
       keywords: ['نسخ', 'احتياطي', 'استعادة', 'سحابي', 'drive', 'icloud', 'zero-knowledge', 'تشفير', 'google', 'apple', 'أرشيف', 'تصدير'],
     ),
     ToolItem(
       id: 'sec_digital_stamp',
-      title: 'استوديو الأختام والتواقيع',
-      subtitle: 'أختام رسمية وتفريغ الحبر والشفافية بلمسة واحدة',
+      title: 'استخراج وتفريغ الختم الرسمي',
+      subtitle: 'قص وتفريغ حبر الختم وتنزيله كصورة شفافة لوضعه على أي ورقة رسمية',
       category: ToolCategory.security,
       icon: Icons.verified_rounded,
-      badge: 'أختام رسمية',
+      badge: 'ختم شفاف',
       accentColor: Color(0xFFD62B2B),
       keywords: ['ختم', 'أختام', 'توقيع', 'رسمي', 'معتمد', 'مدفوع', 'شفافية'],
     ),
     ToolItem(
       id: 'sec_pdf_lock',
-      title: 'قفل وتشفير المستندات (AES-256)',
-      subtitle: 'حماية وتشفير ملفات الـ PDF بكلمة مرور وقفل بالبصمة',
+      title: 'قفل ملف PDF بكلمة سر',
+      subtitle: 'منع أي شخص من فتح أو طباعة ملف PDF إلا بعد كتابة كلمة المرور الخاصة بك',
       category: ToolCategory.security,
       icon: Icons.lock_rounded,
-      badge: 'تشفير عسكري',
+      badge: 'كلمة سر قوية',
       accentColor: Color(0xFF059669),
       keywords: ['قفل', 'تشفير', 'كلمة سر', 'باسورد', 'بصمة', 'aes', 'حماية', 'pdf'],
     ),
@@ -2275,10 +2275,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
     final isWideTablet = screenWidth > 900;
     final int crossAxisCount = isWideTablet ? 4 : (isTablet ? 3 : 2);
     final double childAspectRatio = isWideTablet
-        ? 1.35
+        ? 1.30
         : (isTablet
-            ? 1.28
-            : (screenWidth < 360 ? 1.02 : 1.18));
+            ? 1.15
+            : (screenWidth < 360 ? 0.90 : 0.96));
 
     final isDefaultGroupedView =
         _selectedCategory == ToolCategory.all && _searchQuery.trim().isEmpty;
@@ -2999,9 +2999,9 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              'الأداة الأبرز • مقياس 1:1',
+                              'الأداة الأكثر استخداماً • طباعة فورية',
                               style: TextStyle(
-                                fontSize: 10.5,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: palette.accent,
                               ),
@@ -3121,17 +3121,17 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   children: [
                     _buildBentoMiniPill(
                       icon: Icons.print_rounded,
-                      label: 'طباعة 1:1',
+                      label: 'مقياس 1:1 حقيقي',
+                      isDark: isDark,
+                    ),
+                    _buildBentoMiniPill(
+                      icon: Icons.filter_none_rounded,
+                      label: 'ورقة A4 واحدة',
                       isDark: isDark,
                     ),
                     _buildBentoMiniPill(
                       icon: Icons.verified_user_rounded,
-                      label: 'علامة أمنية',
-                      isDark: isDark,
-                    ),
-                    _buildBentoMiniPill(
-                      icon: Icons.straighten_rounded,
-                      label: 'أبعاد ISO',
+                      label: 'علامة حماية أمنية',
                       isDark: isDark,
                     ),
                   ],
@@ -3160,7 +3160,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'استخدام الأداة',
+                              'ابدأ تصوير البطاقة الآن',
                               style: TextStyle(
                                 fontSize: isSmallPhone ? 11.5 : 12.5,
                                 fontWeight: FontWeight.w700,
@@ -3178,13 +3178,13 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                       ),
                     ),
                     Text(
-                      'جاهز للطباعة والتصدير ⚡',
+                      'جاهز للطباعة والتقديم المباشر ⚡',
                       style: TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: isDark
-                            ? const Color(0xFF98989D)
-                            : const Color(0xFF8E8E93),
+                            ? const Color(0xFFA1A1A6)
+                            : const Color(0xFF636366),
                       ),
                     ),
                   ],
@@ -3415,25 +3415,27 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 // Title
                 Text(
                   tool.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 12.5,
+                    fontSize: 13.5,
+                    height: 1.25,
+                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                     letterSpacing: -0.2,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
 
                 // Subtitle
                 Text(
                   tool.subtitle,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11.5,
                     color: isDark
-                        ? const Color(0xFF98989D)
-                        : const Color(0xFF8E8E93),
-                    height: 1.25,
+                        ? const Color(0xFFA1A1A6)
+                        : const Color(0xFF48484A),
+                    height: 1.3,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -3523,17 +3525,21 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   category.sectionTitle,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
-                    letterSpacing: -0.2,
+                    fontSize: 16,
+                    letterSpacing: -0.3,
                   ),
                 ),
+                const SizedBox(height: 1),
                 Text(
                   category.sectionSubtitle,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: Color(0xFF8E8E93),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? const Color(0xFFA1A1A6)
+                        : const Color(0xFF636366),
+                    height: 1.3,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -3636,16 +3642,16 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
             children: [
               // Squircle App Icon
               Container(
-                width: 38,
-                height: 38,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: tool.accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   tool.icon,
                   color: tool.accentColor,
-                  size: 20,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: 12),
@@ -3660,9 +3666,10 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         Expanded(
                           child: Text(
                             tool.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              fontSize: 13.5,
+                              fontSize: 14.5,
+                              color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                               letterSpacing: -0.2,
                             ),
                             maxLines: 1,
@@ -3672,17 +3679,17 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                            horizontal: 7,
+                            vertical: 2.5,
                           ),
                           decoration: BoxDecoration(
                             color: tool.accentColor.withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(5),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             tool.badge,
                             style: TextStyle(
-                              fontSize: 9.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
                               color: tool.accentColor,
                             ),
@@ -3690,14 +3697,17 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2.5),
+                    const SizedBox(height: 3),
                     Text(
                       tool.subtitle,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF8E8E93),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? const Color(0xFFA1A1A6)
+                            : const Color(0xFF48484A),
+                        height: 1.35,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -3762,8 +3772,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      width: 38,
-                      height: 38,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: tool.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
@@ -3772,7 +3782,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                         child: Icon(
                           tool.icon,
                           color: tool.accentColor,
-                          size: 20,
+                          size: 21,
                         ),
                       ),
                     ),
@@ -3780,8 +3790,8 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                     Flexible(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                          horizontal: 7,
+                          vertical: 2.5,
                         ),
                         decoration: BoxDecoration(
                           color: tool.accentColor.withValues(alpha: 0.10),
@@ -3792,7 +3802,7 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 9.5,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: tool.accentColor,
                           ),
@@ -3806,13 +3816,14 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                 // Title
                 Text(
                   tool.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                    fontSize: 13.5,
                     height: 1.25,
+                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                     letterSpacing: -0.2,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 3),
@@ -3822,13 +3833,13 @@ class _ToolsHubScreenState extends ConsumerState<ToolsHubScreen> {
                   child: Text(
                     tool.subtitle,
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 11.5,
                       color: isDark
-                          ? const Color(0xFF98989D)
-                          : const Color(0xFF8E8E93),
-                      height: 1.3,
+                          ? const Color(0xFFA1A1A6)
+                          : const Color(0xFF48484A),
+                      height: 1.35,
                     ),
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
